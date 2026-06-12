@@ -27,6 +27,22 @@ export async function PUT(req, { params }) {
     return NextResponse.json({ error: 'Quiz attempt not found' }, { status: 404 });
   }
 
+  // Security Lock: If role is evaluator, check if they are assigned to this specific quiz
+  if (session.role === 'evaluator') {
+    const { data: assignment, error: assignError } = await supabase
+      .from('quiz_evaluators')
+      .select('id')
+      .eq('quiz_id', attempt.quiz_id)
+      .eq('evaluator_user_id', session.userId)
+      .maybeSingle();
+
+    if (assignError || !assignment) {
+      return NextResponse.json({ 
+        error: 'Forbidden: You are not assigned as an evaluator for this quiz.' 
+      }, { status: 403 });
+    }
+  }
+
   // 2. Fetch the quiz questions
   const { data: quiz, error: quizError } = await supabase
     .from('quizzes')

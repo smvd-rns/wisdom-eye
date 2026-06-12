@@ -3,12 +3,28 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Play, Award, Clock, ChevronRight, LogOut, User, BarChart2, Loader2 } from 'lucide-react';
+import { 
+  BookOpen, 
+  Play, 
+  Award, 
+  Clock, 
+  ChevronRight, 
+  LogOut, 
+  User, 
+  BarChart2, 
+  Loader2, 
+  Flame, 
+  Sparkles, 
+  TrendingUp, 
+  Calendar, 
+  CheckCircle2 
+} from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [enrollments, setEnrollments] = useState([]);
+  const [recommendedCourses, setRecommendedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,7 +32,10 @@ export default function DashboardPage() {
       try {
         // Get current user
         const meRes = await fetch('/api/auth/me');
-        if (!meRes.ok) { router.push('/login'); return; }
+        if (!meRes.ok) { 
+          router.push('/login'); 
+          return; 
+        }
         const meData = await meRes.json();
         setUser(meData.user);
 
@@ -24,16 +43,29 @@ export default function DashboardPage() {
         const enrRes = await fetch('/api/student/enrollments');
         if (enrRes.ok) {
           const enrData = await enrRes.json();
-          setEnrollments(enrData.enrollments || []);
+          const activeEnrollments = enrData.enrollments || [];
+          setEnrollments(activeEnrollments);
+
+          // Get all courses to filter for recommendations
+          const coursesRes = await fetch('/api/courses');
+          if (coursesRes.ok) {
+            const coursesData = await coursesRes.json();
+            const enrolledIds = new Set(activeEnrollments.map(e => e.courses?.id));
+            const recommendations = (coursesData.courses || []).filter(
+              c => !enrolledIds.has(c.id)
+            );
+            setRecommendedCourses(recommendations);
+          }
         }
       } catch (e) {
+        console.error('Dashboard init error:', e);
         router.push('/login');
       } finally {
         setLoading(false);
       }
     };
     init();
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -43,7 +75,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div style={styles.loadingPage}>
-        <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: '#FF9F1C' }} />
+        <Loader2 size={36} style={{ animation: 'spin 1.2s linear infinite', color: 'var(--secondary)' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -51,13 +83,20 @@ export default function DashboardPage() {
 
   const completedCourses = enrollments.filter(e => e.course_progress?.percent_complete === 100).length;
   const inProgress = enrollments.filter(e => (e.course_progress?.percent_complete || 0) < 100).length;
+  const totalLessonsWatched = enrollments.reduce((acc, curr) => acc + (curr.course_progress?.lessons_completed || 0), 0);
+
+  // Streak calculation & status
+  const todayStr = new Date().toISOString().split('T')[0];
+  const lastActive = user?.last_active_date;
+  const isStreakActiveToday = lastActive === todayStr;
+  const currentStreak = user?.current_streak || 0;
 
   return (
     <div style={styles.page}>
       {/* Sidebar */}
       <aside style={styles.sidebar}>
         <Link href="/" style={styles.sidebarLogo}>
-          <div style={styles.logoIcon}><BookOpen size={18} color="#FF9F1C" /></div>
+          <div style={styles.logoIcon}><BookOpen size={18} color="var(--secondary)" /></div>
           <span style={styles.logoText}>Wisdom Eye</span>
         </Link>
 
@@ -97,42 +136,100 @@ export default function DashboardPage() {
             <h1 style={styles.greeting}>
               👋 Welcome back, {user?.name?.split(' ')[0]}!
             </h1>
-            <p style={styles.subGreeting}>Continue your learning journey</p>
+            <p style={styles.subGreeting}>Unlock your mind. Knowledge is the ultimate eye.</p>
           </div>
           <Link href="/courses" style={styles.browseCta}>
-            Browse Courses <ChevronRight size={16} />
+            Explore All Courses <ChevronRight size={16} />
           </Link>
         </div>
 
-        {/* Stats Row */}
-        <div style={styles.statsRow}>
-          {[
-            { label: 'Enrolled', value: enrollments.length, icon: <BookOpen size={20} />, color: '#1A1B4B' },
-            { label: 'In Progress', value: inProgress, icon: <Play size={20} />, color: '#FF9F1C' },
-            { label: 'Completed', value: completedCourses, icon: <Award size={20} />, color: '#22C55E' },
-          ].map((stat) => (
-            <div key={stat.label} style={styles.statCard}>
-              <div style={{ ...styles.statIcon, background: stat.color + '18', color: stat.color }}>
-                {stat.icon}
+        {/* Highlight Section: Streak + Key Metrics */}
+        <div style={styles.topSectionGrid}>
+          {/* Streak Widget */}
+          <div style={{
+            ...styles.streakCard,
+            background: isStreakActiveToday 
+              ? 'linear-gradient(135deg, #FF9F1C 0%, #E07A5F 100%)' 
+              : 'linear-gradient(135deg, #1A1B4B 0%, #2D2E6D 100%)',
+            boxShadow: isStreakActiveToday ? '0 10px 30px rgba(255, 159, 28, 0.25)' : 'none',
+          }}>
+            <div style={styles.streakInfo}>
+              <div style={{
+                ...styles.streakBadge,
+                background: isStreakActiveToday ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 159, 28, 0.15)',
+              }}>
+                <Flame 
+                  size={32} 
+                  className={isStreakActiveToday ? 'streak-flame-active' : ''} 
+                  color={isStreakActiveToday ? '#FFFFFF' : '#FF9F1C'} 
+                  style={{ transition: 'transform 0.3s ease' }}
+                />
               </div>
               <div>
-                <div style={styles.statValue}>{stat.value}</div>
-                <div style={styles.statLabel}>{stat.label}</div>
+                <span style={styles.streakSublabel}>LEARNING STREAK</span>
+                <h2 style={{
+                  ...styles.streakValue,
+                  color: isStreakActiveToday ? '#FFFFFF' : 'var(--secondary)',
+                }}>
+                  {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
+                </h2>
               </div>
             </div>
-          ))}
+            
+            <p style={{
+              ...styles.streakStatusText,
+              color: isStreakActiveToday ? 'rgba(255, 255, 255, 0.9)' : 'rgba(244, 244, 249, 0.7)'
+            }}>
+              {isStreakActiveToday 
+                ? 'Streak active today! You are building deep knowledge 🔥' 
+                : currentStreak > 0 
+                  ? 'Keep it up! Watch a lesson or take a quiz today to extend your streak!' 
+                  : 'Start learning today to begin your streak!'}
+            </p>
+
+            {/* Streak achievement badge if any */}
+            {currentStreak >= 3 && (
+              <div style={styles.streakMilestoneBadge}>
+                <Sparkles size={12} color="#FFF" />
+                <span>Streak Challenger Tier</span>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Learning Stats Grid */}
+          <div style={styles.statsRow}>
+            {[
+              { label: 'Active Courses', value: inProgress, icon: <Play size={20} />, color: '#FF9F1C', desc: 'Currently studying' },
+              { label: 'Completed', value: completedCourses, icon: <Award size={20} />, color: '#22C55E', desc: 'Fully finished' },
+              { label: 'Lessons Watched', value: totalLessonsWatched, icon: <BookOpen size={20} />, color: '#3B82F6', desc: 'Total topics learned' },
+            ].map((stat) => (
+              <div key={stat.label} style={styles.statCard}>
+                <div style={{ ...styles.statIcon, background: stat.color + '15', color: stat.color }}>
+                  {stat.icon}
+                </div>
+                <div>
+                  <div style={styles.statValue}>{stat.value}</div>
+                  <div style={styles.statLabel}>{stat.label}</div>
+                  <div style={styles.statDesc}>{stat.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Course List */}
+        {/* My Courses Section */}
         <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>My Courses</h2>
+          <div style={styles.sectionTitleWrapper}>
+            <TrendingUp size={20} color="var(--primary)" />
+            <h2 style={styles.sectionTitle}>My Active Learning</h2>
+          </div>
         </div>
 
         {enrollments.length === 0 ? (
           <div style={styles.emptyState}>
             <BookOpen size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
-            <h3 style={styles.emptyTitle}>No courses yet</h3>
-            <p style={styles.emptyText}>Explore our courses and start learning today.</p>
+            <h3 style={styles.emptyTitle}>No enrolled courses yet</h3>
+            <p style={styles.emptyText}>Find your next breakthrough among our classes.</p>
             <Link href="/courses" style={styles.emptyBtn}>Browse Courses</Link>
           </div>
         ) : (
@@ -141,7 +238,7 @@ export default function DashboardPage() {
               const pct = enr.course_progress?.percent_complete || 0;
               const lastLesson = enr.course_progress?.last_lesson_id;
               return (
-                <div key={enr.id} style={styles.courseCard}>
+                <div key={enr.id} className="course-card-hover" style={styles.courseCard}>
                   <div style={styles.courseThumbnail}>
                     {enr.courses?.thumbnail_url ? (
                       <img src={enr.courses.thumbnail_url} alt={enr.courses.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -151,17 +248,19 @@ export default function DashboardPage() {
                       </div>
                     )}
                     {pct === 100 && (
-                      <div style={styles.completedBadge}>✓ Completed</div>
+                      <div style={styles.completedBadge}>
+                        <CheckCircle2 size={12} /> Completed
+                      </div>
                     )}
                   </div>
                   <div style={styles.courseCardBody}>
-                    <div style={styles.courseCategory}>{enr.courses?.category || 'Course'}</div>
+                    <div style={styles.courseCategory}>{enr.courses?.category || 'General'}</div>
                     <h3 style={styles.courseTitle}>{enr.courses?.title}</h3>
 
                     {/* Progress bar */}
                     <div style={styles.progressSection}>
                       <div style={styles.progressHeader}>
-                        <span style={styles.progressLabel}>Progress</span>
+                        <span style={styles.progressLabel}>Course Progress</span>
                         <span style={styles.progressPct}>{Math.round(pct)}%</span>
                       </div>
                       <div style={styles.progressBar}>
@@ -173,7 +272,7 @@ export default function DashboardPage() {
                       href={`/courses/${enr.courses?.slug}/learn${lastLesson ? `/${lastLesson}` : ''}`}
                       style={styles.continueBtn}
                     >
-                      {pct === 0 ? 'Start Course' : pct === 100 ? 'Review Course' : 'Continue Learning'}
+                      {pct === 0 ? 'Start Learning' : pct === 100 ? 'Review Course' : 'Continue Learning'}
                       <ChevronRight size={16} />
                     </Link>
                   </div>
@@ -182,14 +281,88 @@ export default function DashboardPage() {
             })}
           </div>
         )}
+
+        {/* Recommended Courses Section */}
+        {recommendedCourses.length > 0 && (
+          <div style={{ marginTop: '48px' }}>
+            <div style={styles.sectionHeader}>
+              <div style={styles.sectionTitleWrapper}>
+                <Sparkles size={20} color="var(--secondary)" />
+                <h2 style={styles.sectionTitle}>Recommended For You</h2>
+              </div>
+              <p style={styles.sectionSubtitle}>Expand your perspective with these handpicked titles</p>
+            </div>
+
+            <div style={styles.recommendationsScrollContainer}>
+              {recommendedCourses.map((course) => (
+                <div key={course.id} style={styles.recommendationCard}>
+                  <div style={styles.recommendationThumbnail}>
+                    {course.thumbnail_url ? (
+                      <img src={course.thumbnail_url} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={styles.courseThumbnailPlaceholder}>
+                        <BookOpen size={24} color="#9CA3AF" />
+                      </div>
+                    )}
+                    <span style={styles.recommendationLevelBadge}>{course.level || 'Beginner'}</span>
+                  </div>
+                  
+                  <div style={styles.recommendationContent}>
+                    <span style={styles.recommendationCategory}>{course.category}</span>
+                    <h4 style={styles.recommendationTitle}>{course.title}</h4>
+                    <p style={styles.recommendationDesc}>{course.short_description}</p>
+                    
+                    <div style={styles.recommendationFooter}>
+                      <div style={styles.recommendationMeta}>
+                        <span style={styles.recommendationPrice}>
+                          {course.price === 0 ? 'Free' : `₹${course.price}`}
+                        </span>
+                        {course.original_price && (
+                          <span style={styles.recommendationOriginalPrice}>₹{course.original_price}</span>
+                        )}
+                      </div>
+                      
+                      <Link href={`/courses/${course.slug}`} style={styles.recommendationLink}>
+                        View Details <ChevronRight size={14} />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-glow {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4)); }
+          50% { transform: scale(1.1); filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.8)); }
+        }
+        
+        .streak-flame-active {
+          animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        .course-card-hover {
+          transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+        }
+        .course-card-hover:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 24px rgba(26, 27, 75, 0.08) !important;
+        }
+
+        @media (max-width: 1024px) {
+          .top-section-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
         @media (max-width: 768px) {
-          .lms-sidebar { display: none !important; }
-          .lms-main { margin-left: 0 !important; }
+          aside { display: none !important; }
+          main { margin-left: 0 !important; padding: 20px !important; }
         }
       `}</style>
     </div>
@@ -202,7 +375,7 @@ const styles = {
     justifyContent: 'center', background: '#F8F9FA',
   },
   page: {
-    display: 'flex', minHeight: '100vh', background: '#F0F2F5',
+    display: 'flex', minHeight: '100vh', background: '#F4F6F9',
   },
   sidebar: {
     width: '260px', flexShrink: 0, background: '#1A1B4B',
@@ -238,7 +411,7 @@ const styles = {
     justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: '#1A1B4B',
     flexShrink: 0,
   },
-  userName: { fontSize: '13px', fontWeight: '600', color: '#fff' },
+  userName: { fontSize: '13px', fontWeight: '600', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' },
   userRole: { fontSize: '11px', color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize' },
   logoutBtn: {
     display: 'flex', alignItems: 'center', gap: '8px',
@@ -247,71 +420,264 @@ const styles = {
     cursor: 'pointer', fontSize: '13px', width: '100%', fontFamily: 'inherit',
   },
   main: {
-    flex: 1, marginLeft: '260px', padding: '32px',
+    flex: 1, marginLeft: '260px', padding: '40px',
     minHeight: '100vh', animation: 'fadeIn 0.3s ease',
   },
   header: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: '28px', flexWrap: 'wrap', gap: '12px',
+    marginBottom: '32px', flexWrap: 'wrap', gap: '16px',
   },
-  greeting: { fontSize: '26px', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', marginBottom: '4px' },
-  subGreeting: { fontSize: '14px', color: '#6B7280' },
+  greeting: { fontSize: '28px', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', fontWeight: '800' },
+  subGreeting: { fontSize: '14px', color: '#6B7280', marginTop: '2px' },
   browseCta: {
     display: 'flex', alignItems: 'center', gap: '6px',
-    background: '#FF9F1C', color: '#1A1B4B', padding: '10px 20px',
+    background: '#1A1B4B', color: '#fff', padding: '12px 24px',
     borderRadius: '9999px', fontWeight: '700', fontSize: '14px', textDecoration: 'none',
+    fontFamily: 'Outfit, sans-serif', transition: 'background 0.2s',
+  },
+  topSectionGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1.2fr 2fr',
+    gap: '24px',
+    marginBottom: '40px',
+  },
+  // Streak Card style
+  streakCard: {
+    borderRadius: '24px',
+    padding: '28px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    color: '#FFFFFF',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  streakInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    marginBottom: '16px',
+  },
+  streakBadge: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streakSublabel: {
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '1px',
+    opacity: 0.8,
+  },
+  streakValue: {
     fontFamily: 'Outfit, sans-serif',
+    fontSize: '32px',
+    fontWeight: '900',
+    lineHeight: 1.1,
   },
-  statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' },
+  streakStatusText: {
+    fontSize: '13px',
+    lineHeight: 1.5,
+    margin: '12px 0',
+  },
+  streakMilestoneBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    background: 'rgba(255,255,255,0.15)',
+    alignSelf: 'flex-start',
+    padding: '4px 12px',
+    borderRadius: '9999px',
+    fontSize: '11px',
+    fontWeight: '600',
+    marginTop: 'auto',
+  },
+  // Stats row container
+  statsRow: { 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(3, 1fr)', 
+    gap: '16px' 
+  },
   statCard: {
-    background: '#fff', borderRadius: '16px', padding: '20px 24px',
-    display: 'flex', alignItems: 'center', gap: '16px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+    background: '#fff', borderRadius: '20px', padding: '24px',
+    display: 'flex', flexDirection: 'column', justifyContent: 'center',
+    boxShadow: '0 2px 12px rgba(26,27,75,0.03)',
+    border: '1px solid rgba(26,27,75,0.04)',
   },
-  statIcon: { width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statValue: { fontSize: '28px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif' },
-  statLabel: { fontSize: '13px', color: '#6B7280', fontWeight: '500' },
-  sectionHeader: { marginBottom: '20px' },
-  sectionTitle: { fontSize: '20px', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif' },
+  statIcon: { 
+    width: '44px', 
+    height: '44px', 
+    borderRadius: '12px', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginBottom: '16px',
+    fontWeight: 'bold',
+  },
+  statValue: { fontSize: '32px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', lineHeight: 1 },
+  statLabel: { fontSize: '14px', color: '#1A1B4B', fontWeight: '700', marginTop: '6px' },
+  statDesc: { fontSize: '11px', color: '#888', marginTop: '2px' },
+  sectionHeader: { marginBottom: '24px' },
+  sectionTitleWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  sectionTitle: { fontSize: '22px', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', fontWeight: '800' },
+  sectionSubtitle: { fontSize: '13px', color: '#6B7280' },
   emptyState: {
-    background: '#fff', borderRadius: '20px', padding: '60px 40px',
-    textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+    background: '#fff', borderRadius: '24px', padding: '60px 40px',
+    textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+    border: '1px solid rgba(26,27,75,0.04)',
   },
-  emptyTitle: { fontSize: '20px', color: '#1A1B4B', marginBottom: '8px' },
+  emptyTitle: { fontSize: '20px', color: '#1A1B4B', marginBottom: '8px', fontWeight: '700' },
   emptyText: { fontSize: '14px', color: '#6B7280', marginBottom: '24px' },
   emptyBtn: {
-    display: 'inline-block', background: '#1A1B4B', color: '#fff',
+    display: 'inline-block', background: '#FF9F1C', color: '#1A1B4B',
     padding: '12px 28px', borderRadius: '9999px', fontWeight: '700',
     textDecoration: 'none', fontFamily: 'Outfit, sans-serif',
   },
-  courseGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' },
+  courseGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' },
   courseCard: {
-    background: '#fff', borderRadius: '16px', overflow: 'hidden',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)', transition: 'transform 0.2s, box-shadow 0.2s',
+    background: '#fff', borderRadius: '20px', overflow: 'hidden',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.02)', border: '1px solid rgba(26,27,75,0.04)',
   },
-  courseThumbnail: { height: '160px', background: '#F0F2F5', position: 'relative', overflow: 'hidden' },
+  courseThumbnail: { height: '180px', background: '#F0F2F5', position: 'relative', overflow: 'hidden' },
   courseThumbnailPlaceholder: {
     width: '100%', height: '100%', display: 'flex',
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center', background: '#EAEAEA'
   },
   completedBadge: {
-    position: 'absolute', top: '10px', right: '10px',
+    position: 'absolute', top: '12px', right: '12px',
     background: '#22C55E', color: '#fff', fontSize: '11px',
-    fontWeight: '700', padding: '4px 10px', borderRadius: '9999px',
+    fontWeight: '700', padding: '6px 12px', borderRadius: '9999px',
+    display: 'flex', alignItems: 'center', gap: '4px',
+    boxShadow: '0 4px 8px rgba(34,197,94,0.3)',
   },
-  courseCardBody: { padding: '20px' },
-  courseCategory: { fontSize: '11px', fontWeight: '700', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' },
-  courseTitle: { fontSize: '16px', fontWeight: '700', color: '#1A1B4B', marginBottom: '16px', lineHeight: 1.4 },
-  progressSection: { marginBottom: '16px' },
-  progressHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '6px' },
-  progressLabel: { fontSize: '12px', color: '#6B7280' },
+  courseCardBody: { padding: '24px' },
+  courseCategory: { fontSize: '10px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' },
+  courseTitle: { fontSize: '18px', fontWeight: '700', color: '#1A1B4B', marginBottom: '20px', lineHeight: 1.35, height: '48px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' },
+  progressSection: { marginBottom: '20px' },
+  progressHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' },
+  progressLabel: { fontSize: '12px', color: '#888', fontWeight: '500' },
   progressPct: { fontSize: '12px', fontWeight: '700', color: '#1A1B4B' },
-  progressBar: { height: '6px', background: '#F0F2F5', borderRadius: '9999px', overflow: 'hidden' },
-  progressFill: { height: '100%', background: 'linear-gradient(90deg, #FF9F1C, #E07A5F)', borderRadius: '9999px', transition: 'width 0.5s ease' },
+  progressBar: { height: '8px', background: '#F0F2F5', borderRadius: '9999px', overflow: 'hidden' },
+  progressFill: { height: '100%', background: 'linear-gradient(90deg, #FF9F1C 0%, #E07A5F 100%)', borderRadius: '9999px', transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)' },
   continueBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-    background: '#1A1B4B', color: '#fff', padding: '10px 20px',
+    background: '#1A1B4B', color: '#fff', padding: '12px 20px',
     borderRadius: '9999px', fontWeight: '700', fontSize: '13px',
-    textDecoration: 'none', fontFamily: 'Outfit, sans-serif',
+    textDecoration: 'none', fontFamily: 'Outfit, sans-serif', width: '100%',
+    transition: 'background 0.2s',
+  },
+
+  // Recommended courses scroll container
+  recommendationsScrollContainer: {
+    display: 'flex',
+    gap: '20px',
+    overflowX: 'auto',
+    paddingBottom: '16px',
+    paddingRight: '4px',
+    scrollbarWidth: 'thin',
+    WebkitOverflowScrolling: 'touch',
+  },
+  recommendationCard: {
+    flex: '0 0 280px',
+    background: '#FFFFFF',
+    borderRadius: '20px',
+    overflow: 'hidden',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+    border: '1px solid rgba(26,27,75,0.04)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  recommendationThumbnail: {
+    height: '140px',
+    position: 'relative',
+    background: '#F0F2F5',
+  },
+  recommendationLevelBadge: {
+    position: 'absolute',
+    bottom: '10px',
+    left: '10px',
+    background: 'rgba(26,27,75,0.8)',
+    color: '#FFF',
+    fontSize: '9px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    padding: '4px 8px',
+    borderRadius: '4px',
+  },
+  recommendationContent: {
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+  },
+  recommendationCategory: {
+    fontSize: '9px',
+    fontWeight: '800',
+    color: '#FF9F1C',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    marginBottom: '4px',
+  },
+  recommendationTitle: {
+    fontSize: '14px',
+    fontWeight: '700',
+    color: '#1A1B4B',
+    marginBottom: '6px',
+    lineHeight: 1.3,
+    height: '36px',
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+  },
+  recommendationDesc: {
+    fontSize: '11px',
+    color: '#6B7280',
+    lineHeight: 1.4,
+    marginBottom: '12px',
+    height: '32px',
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+  },
+  recommendationFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 'auto',
+    borderTop: '1px solid #F3F4F6',
+    paddingTop: '12px',
+  },
+  recommendationMeta: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '6px',
+  },
+  recommendationPrice: {
+    fontSize: '14px',
+    fontWeight: '800',
+    color: '#1A1B4B',
+  },
+  recommendationOriginalPrice: {
+    fontSize: '11px',
+    textDecoration: 'line-through',
+    color: '#9CA3AF',
+  },
+  recommendationLink: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: '#FF9F1C',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
   },
 };

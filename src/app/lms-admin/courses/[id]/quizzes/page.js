@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Plus, Trash2, Edit3, Save, X, ChevronUp, ChevronDown,
-  Loader2, BookOpen, AlertCircle, HelpCircle, Check, Settings
+  Loader2, BookOpen, AlertCircle, HelpCircle, Check, Settings, Users, Search
 } from 'lucide-react';
 
 export default function AdminQuizzesPage() {
@@ -28,6 +28,15 @@ export default function AdminQuizzesPage() {
     time_limit_mins: '', max_attempts: '3', show_correct_answers: true
   });
   const [editingQuizId, setEditingQuizId] = useState(null);
+
+  // Evaluator Modal State
+  const [showEvaluatorModal, setShowEvaluatorModal] = useState(false);
+  const [evaluatorModalQuiz, setEvaluatorModalQuiz] = useState(null);
+  const [staffList, setStaffList] = useState([]);
+  const [assignedEvaluatorIds, setAssignedEvaluatorIds] = useState(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingEvaluators, setLoadingEvaluators] = useState(false);
+  const [savingEvaluators, setSavingEvaluators] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -252,6 +261,62 @@ export default function AdminQuizzesPage() {
     }
   };
 
+  const handleOpenEvaluatorModal = async (quiz) => {
+    setEvaluatorModalQuiz(quiz);
+    setShowEvaluatorModal(true);
+    setLoadingEvaluators(true);
+    setSearchQuery('');
+    try {
+      const res = await fetch(`/api/admin/quizzes/evaluators?quiz_id=${quiz.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStaffList(data.allEvaluators || []);
+        setAssignedEvaluatorIds(new Set(data.assignedEvaluatorIds || []));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingEvaluators(false);
+    }
+  };
+
+  const handleToggleEvaluator = (userId) => {
+    setAssignedEvaluatorIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
+
+  const handleSaveEvaluatorAssignments = async () => {
+    if (!evaluatorModalQuiz) return;
+    setSavingEvaluators(true);
+    try {
+      const res = await fetch('/api/admin/quizzes/evaluators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quiz_id: evaluatorModalQuiz.id,
+          evaluator_user_ids: Array.from(assignedEvaluatorIds)
+        })
+      });
+      if (res.ok) {
+        setShowEvaluatorModal(false);
+        setEvaluatorModalQuiz(null);
+      } else {
+        alert('Failed to save evaluator assignments.');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingEvaluators(false);
+    }
+  };
+
   if (loading && !activeQuiz) return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '80px' }}>
       <Loader2 size={32} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
@@ -373,9 +438,14 @@ export default function AdminQuizzesPage() {
                   <p style={styles.quizCardDesc}>{quiz.description || 'No description provided.'}</p>
                   
                   <div style={styles.quizCardFooter}>
-                    <button onClick={() => handleOpenQuestionsEditor(quiz)} style={styles.manageBtn}>
-                      Manage Questions ({quiz.questions_count || 0})
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                      <button onClick={() => handleOpenQuestionsEditor(quiz)} style={styles.manageBtn}>
+                        Manage Questions ({quiz.questions_count || 0})
+                      </button>
+                      <button onClick={() => handleOpenEvaluatorModal(quiz)} style={styles.evaluatorBtn}>
+                        <Users size={12} style={{ marginRight: '4px' }} /> Assign Evaluators
+                      </button>
+                    </div>
                     <div style={styles.cardActions}>
                       <button onClick={() => handleEditQuizSettings(quiz)} style={styles.iconBtn}><Edit3 size={14} /></button>
                       <button onClick={() => handleDeleteQuiz(quiz.id)} style={{ ...styles.iconBtn, color: '#EF4444' }}><Trash2 size={14} /></button>
@@ -514,6 +584,110 @@ export default function AdminQuizzesPage() {
         </div>
       )}
 
+      {/* Assign Evaluators Modal */}
+      {showEvaluatorModal && evaluatorModalQuiz && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalHeader}>
+              <div>
+                <h3 style={styles.modalTitle}>Assign Evaluators</h3>
+                <p style={styles.modalSubtitle}>{evaluatorModalQuiz.title}</p>
+              </div>
+              <button 
+                onClick={() => { setShowEvaluatorModal(false); setEvaluatorModalQuiz(null); }} 
+                style={styles.modalCloseBtn}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={styles.modalBody}>
+              {/* Search Bar */}
+              <div style={styles.searchContainer}>
+                <Search size={14} style={styles.searchIcon} />
+                <input
+                  type="text"
+                  placeholder="Search staff by name or email..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  style={styles.searchInput}
+                />
+              </div>
+
+              {loadingEvaluators ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                  <Loader2 size={24} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
+                </div>
+              ) : (
+                <div style={styles.evaluatorList}>
+                  {staffList
+                    .filter(staff => 
+                      staff.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      staff.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map(staff => {
+                      const isChecked = assignedEvaluatorIds.has(staff.user_id);
+                      return (
+                        <div 
+                          key={staff.user_id} 
+                          onClick={() => handleToggleEvaluator(staff.user_id)}
+                          style={{
+                            ...styles.evaluatorRow,
+                            background: isChecked ? '#EEF2FF' : 'transparent',
+                            borderColor: isChecked ? '#C7D2FE' : '#E5E7EB'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}} 
+                            style={styles.checkbox}
+                          />
+                          <div style={styles.evaluatorRowInfo}>
+                            <span style={styles.evaluatorName}>{staff.name}</span>
+                            <span style={styles.evaluatorEmail}>{staff.email}</span>
+                          </div>
+                          <span style={{
+                            ...styles.roleLabel,
+                            background: staff.role === 'evaluator' ? '#FEE2E2' : staff.role === 'admin' || staff.role === 'superadmin' ? '#FEF3C7' : '#E0F2FE',
+                            color: staff.role === 'evaluator' ? '#991B1B' : staff.role === 'admin' || staff.role === 'superadmin' ? '#92400E' : '#075985'
+                          }}>
+                            {staff.role}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  
+                  {staffList.filter(staff => 
+                    staff.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    staff.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <div style={styles.noResults}>No matching staff members found.</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button 
+                onClick={handleSaveEvaluatorAssignments} 
+                disabled={savingEvaluators || loadingEvaluators} 
+                style={styles.modalSaveBtn}
+              >
+                {savingEvaluators ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Save Assignments'}
+              </button>
+              <button 
+                onClick={() => { setShowEvaluatorModal(false); setEvaluatorModalQuiz(null); }} 
+                disabled={savingEvaluators}
+                style={styles.modalCancelBtn}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -573,5 +747,27 @@ const styles = {
   optionInput: { flex: 1, padding: '7px 10px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '12px' },
   removeOptBtn: { border: 'none', background: 'none', color: '#9CA3AF', cursor: 'pointer', padding: '4px' },
   addOptBtn: { background: 'none', border: 'none', color: '#FF9F1C', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' },
-  subjectiveInfo: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#4F46E5', background: '#EEF2FF', padding: '8px 12px', borderRadius: '6px', marginTop: '4px' }
+  subjectiveInfo: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#4F46E5', background: '#EEF2FF', padding: '8px 12px', borderRadius: '6px', marginTop: '4px' },
+  evaluatorBtn: { background: 'none', border: 'none', color: '#4F46E5', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', marginTop: '4px' },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modalContent: { background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', maxHeight: '85vh', alignSelf: 'center' },
+  modalHeader: { padding: '20px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  modalTitle: { fontSize: '16px', fontWeight: '700', color: '#111827', fontFamily: 'Outfit, sans-serif' },
+  modalSubtitle: { fontSize: '12px', color: '#6B7280', marginTop: '2px' },
+  modalCloseBtn: { background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' },
+  modalBody: { padding: '20px', overflowY: 'auto', flex: 1 },
+  searchContainer: { display: 'flex', alignItems: 'center', border: '1.5px solid #E5E7EB', borderRadius: '8px', padding: '2px 10px', marginBottom: '16px', background: '#F9FAFB' },
+  searchIcon: { color: '#9CA3AF', marginRight: '8px' },
+  searchInput: { border: 'none', background: 'transparent', width: '100%', padding: '8px 0', fontSize: '13px', outline: 'none', fontFamily: 'inherit' },
+  evaluatorList: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  evaluatorRow: { display: 'flex', alignItems: 'center', padding: '12px', borderRadius: '10px', border: '1px solid #E5E7EB', cursor: 'pointer', transition: 'all 0.15s ease' },
+  checkbox: { cursor: 'pointer', marginRight: '12px' },
+  evaluatorRowInfo: { display: 'flex', flexDirection: 'column', flex: 1 },
+  evaluatorName: { fontSize: '13px', fontWeight: '600', color: '#111827' },
+  evaluatorEmail: { fontSize: '11px', color: '#6B7280' },
+  roleLabel: { fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', padding: '2px 8px', borderRadius: '9999px' },
+  noResults: { textAlign: 'center', padding: '20px', color: '#6B7280', fontSize: '13px' },
+  modalFooter: { padding: '16px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#F9FAFB', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' },
+  modalSaveBtn: { background: '#1A1B4B', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' },
+  modalCancelBtn: { background: '#fff', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }
 };

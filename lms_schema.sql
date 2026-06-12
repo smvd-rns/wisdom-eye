@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   role TEXT NOT NULL DEFAULT 'student'
     CHECK (role IN ('superadmin', 'admin', 'course_builder', 'evaluator', 'student')),
   is_active BOOLEAN DEFAULT TRUE,
+  current_streak INTEGER DEFAULT 0,
+  last_active_date DATE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -287,3 +289,10 @@ CREATE INDEX IF NOT EXISTS idx_course_progress_user_id ON course_progress(user_i
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_id ON quiz_attempts(user_id);
 CREATE INDEX IF NOT EXISTS idx_discussions_lesson_id ON discussions(lesson_id);
 CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code);
+
+-- ============================================================
+-- SECTION 9: DATABASE MIGRATIONS (STREAKS & USER ACCESS)
+-- ============================================================
+
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS current_streak INTEGER DEFAULT 0;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS last_active_date DATE;

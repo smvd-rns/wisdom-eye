@@ -11,7 +11,7 @@ export async function GET() {
   // Refresh user data from DB
   const { data: user } = await supabase
     .from('user_profiles')
-    .select('id, user_id, name, email, phone, avatar_url, role, is_active')
+    .select('id, user_id, name, email, phone, avatar_url, role, is_active, current_streak, last_active_date')
     .eq('user_id', session.userId)
     .single();
 

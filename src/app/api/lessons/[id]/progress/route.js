@@ -82,6 +82,43 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: 'Failed to update lesson progress' }, { status: 500 });
   }
 
+  // 3.5. Update Daily Streak
+  try {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('current_streak, last_active_date')
+      .eq('user_id', session.userId)
+      .single();
+
+    if (profile) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const lastActiveStr = profile.last_active_date || null;
+      let newStreak = parseInt(profile.current_streak) || 0;
+      let didUpdate = false;
+
+      if (lastActiveStr !== todayStr) {
+        if (lastActiveStr === yesterdayStr) {
+          newStreak += 1;
+        } else {
+          newStreak = 1;
+        }
+        didUpdate = true;
+      }
+
+      if (didUpdate) {
+        await supabase
+          .from('user_profiles')
+          .update({ current_streak: newStreak, last_active_date: todayStr })
+          .eq('user_id', session.userId);
+      }
+    }
+  } catch (err) {
+    console.error('Streak update failed inside progress log:', err);
+  }
+
   // 4. Calculate total lessons in course
   const { count: totalLessons, error: countError } = await supabase
     .from('lessons')
