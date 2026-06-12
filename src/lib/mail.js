@@ -462,3 +462,84 @@ export async function sendShipmentEmail({ email, name, trackingId, courierStatus
     return false;
   }
 }
+
+/**
+ * Sends a notification email when a subjective quiz attempt is graded.
+ */
+export async function sendGradedNotificationEmail({ email, name, quizTitle, score, totalMarks, passed, feedback }) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log('SMTP config missing. Skipping custom HTML grading email.');
+    return false;
+  }
+
+  const fromEmail = process.env.SMTP_FROM_EMAIL || 'manager@voicepune.com';
+  const fromName = process.env.SMTP_FROM_NAME || 'Wisdom Eye VOICE';
+
+  const mailOptions = {
+    from: `"${fromName}" <${fromEmail}>`,
+    to: email,
+    subject: `📝 Quiz Graded: ${quizTitle} - Wisdom Eye`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 10px; padding: 24px; background: #fff;">
+        <h2 style="color: #1A1B4B; margin-top: 0;">Your Quiz Has Been Graded</h2>
+        <p>Hare Krishna, ${name},</p>
+        <p>Your subjective answers for the quiz <strong>${quizTitle}</strong> have been reviewed by an evaluator.</p>
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 8px 0;"><strong>Score:</strong> ${score} / ${totalMarks} marks</p>
+          <p style="margin: 0 0 8px 0;"><strong>Result:</strong> <span style="font-weight: bold; color: ${passed ? '#10B981' : '#EF4444'}">${passed ? 'PASSED' : 'FAILED'}</span></p>
+          ${feedback ? `<p style="margin: 0;"><strong>Evaluator Feedback:</strong> "${feedback}"</p>` : ''}
+        </div>
+        <p style="font-size: 13px; color: #6B7280; margin-top: 24px;">This is an automated notification. Please log in to the student portal to review detailed answers.</p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return true;
+  } catch (error) {
+    console.error('Error sending grading notification email:', error);
+    return false;
+  }
+}
+
+/**
+ * Sends an email completion card when a course is 100% completed.
+ */
+export async function sendCompletionNotificationEmail({ email, name, courseTitle }) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log('SMTP config missing. Skipping course completion notification.');
+    return false;
+  }
+
+  const fromEmail = process.env.SMTP_FROM_EMAIL || 'manager@voicepune.com';
+  const fromName = process.env.SMTP_FROM_NAME || 'Wisdom Eye VOICE';
+
+  const mailOptions = {
+    from: `"${fromName}" <${fromEmail}>`,
+    to: email,
+    subject: `🎓 Course Completed: ${courseTitle} - Wisdom Eye`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 10px; padding: 24px; background: #fff; text-align: center;">
+        <span style="font-size: 48px;">🏆</span>
+        <h2 style="color: #1A1B4B; margin-top: 14px;">Congratulations, ${name}!</h2>
+        <p style="font-size: 16px; color: #4B5563;">You have successfully completed 100% of the course:</p>
+        <h3 style="color: #997300; font-size: 20px; margin: 10px 0 24px;">${courseTitle}</h3>
+        <p style="font-size: 14px; color: #4A5568; line-height: 1.6;">
+          Your certificate has been issued and is available for download under the "Certificates" tab in your student dashboard.
+        </p>
+        <p style="font-size: 13px; color: #6B7280; margin-top: 28px;">Thank you for your dedicated efforts and commitment to spiritual growth and values education.</p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return true;
+  } catch (error) {
+    console.error('Error sending completion notification email:', error);
+    return false;
+  }
+}

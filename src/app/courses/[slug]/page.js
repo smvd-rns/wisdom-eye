@@ -88,26 +88,26 @@ export default function CourseLandingPage() {
       setEnrolling(false);
     } else {
       // Paid — create Razorpay order
-      const res = await fetch('/api/lms/create-order', {
+      const res = await fetch(`/api/courses/${course.id}/enroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ course_id: course.id, coupon_code: couponResult ? coupon : null }),
+        body: JSON.stringify({ coupon_code: couponResult ? coupon : null }),
       });
       const orderData = await res.json();
       if (!res.ok) { alert(orderData.error || 'Payment error'); setEnrolling(false); return; }
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: orderData.keyId,
         amount: orderData.amount,
-        currency: 'INR',
+        currency: orderData.currency,
         name: 'Wisdom Eye',
         description: course.title,
-        order_id: orderData.order_id,
+        order_id: orderData.orderId,
         handler: async (response) => {
-          const verifyRes = await fetch('/api/lms/verify-payment', {
+          const verifyRes = await fetch('/api/courses/verify-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...response, course_id: course.id, coupon_code: couponResult ? coupon : null }),
+            body: JSON.stringify(response),
           });
           if (verifyRes.ok) {
             router.push(`/courses/${slug}/learn`);
