@@ -24,11 +24,12 @@ import CheckoutModal from '@/components/checkout-modal';
 export default function LandingPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState(null);
   
   // Accordion state (keys correspond to lesson numbers 1 to 6)
   const [openLesson, setOpenLesson] = useState(1);
 
-  // Monitor scroll for navbar styles
+  // Monitor scroll for navbar styles & check user session
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 50) {
@@ -38,6 +39,22 @@ export default function LandingPage() {
       }
     };
     window.addEventListener('scroll', handleScroll);
+
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated) {
+            setUser(data.user);
+          }
+        }
+      } catch (err) {
+        console.error('Auth check error:', err);
+      }
+    };
+    checkAuth();
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -140,11 +157,39 @@ export default function LandingPage() {
             <li className="hide-md"><a href="#syllabus" className="nav-link">Syllabus</a></li>
             <li className="hide-md"><a href="#materials" className="nav-link">Books Included</a></li>
             <li className="hide-md"><a href="#faq" className="nav-link">FAQs</a></li>
-            <li>
-              <button onClick={() => setModalOpen(true)} className="btn btn-primary" style={{ padding: '10px 22px', fontSize: '14px' }}>
-                Enroll Now
-              </button>
-            </li>
+            {user ? (
+              <li>
+                <Link 
+                  href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
+                  className="btn btn-primary" 
+                  style={{ padding: '10px 22px', fontSize: '14px' }}
+                >
+                  Dashboard
+                </Link>
+              </li>
+            ) : (
+              <>
+                <li>
+                  <Link href="/login" className="nav-link" style={{ fontWeight: '700', color: 'var(--primary)', marginRight: '4px' }}>
+                    Sign In
+                  </Link>
+                </li>
+                <li>
+                  <Link 
+                    href="/signup" 
+                    className="btn btn-secondary" 
+                    style={{ padding: '10px 20px', fontSize: '14px', border: '1.5px solid var(--primary)', marginRight: '4px' }}
+                  >
+                    Sign Up
+                  </Link>
+                </li>
+                <li>
+                  <button onClick={() => setModalOpen(true)} className="btn btn-primary" style={{ padding: '10px 22px', fontSize: '14px' }}>
+                    Enroll Now
+                  </button>
+                </li>
+              </>
+            )}
           </ul>
         </div>
       </header>
@@ -159,11 +204,25 @@ export default function LandingPage() {
               <p className="hero-subtitle">
                 De-stress your mind, clear your intellect, and discover your true potential through a scientific exploration of the Bhagavad Gita. A comprehensive 6-lesson digital course accompanied by physical study books delivered directly to you.
               </p>
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                <button onClick={() => setModalOpen(true)} className="btn btn-primary btn-glow" style={{ padding: '16px 36px' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button onClick={() => setModalOpen(true)} className="btn btn-primary btn-glow" style={{ padding: '16px 32px' }}>
                   Register for Course @ ₹200
                 </button>
-                <a href="#syllabus" className="btn btn-secondary" style={{ padding: '16px 36px' }}>
+                {user ? (
+                  <Link href={user.role === 'student' ? '/dashboard' : '/lms-admin'} className="btn btn-secondary" style={{ padding: '16px 32px' }}>
+                    Go to Dashboard
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/login" className="btn btn-secondary" style={{ padding: '16px 32px' }}>
+                      Sign In
+                    </Link>
+                    <Link href="/signup" className="btn btn-secondary" style={{ padding: '16px 32px', backgroundColor: 'var(--primary)', color: 'white' }}>
+                      Sign Up Free
+                    </Link>
+                  </>
+                )}
+                <a href="#syllabus" className="btn btn-secondary" style={{ padding: '16px 32px', border: '1px solid #D1D5DB', background: 'transparent', color: 'var(--text-dark)' }}>
                   View Syllabus
                 </a>
               </div>
