@@ -66,7 +66,7 @@ export default function SignupPage() {
           <div style={styles.logoIcon}>
             <BookOpen size={20} color="#FF9F1C" />
           </div>
-          <span style={styles.logoText}>Wisdom Eye</span>
+          <span style={styles.logoText}>Radheshyam Das</span>
         </Link>
 
         <h1 style={styles.title}>Create your account</h1>

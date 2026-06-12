@@ -70,6 +70,21 @@ export default function CourseLandingPage() {
     }
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleEnroll = async () => {
     if (!user) { router.push(`/login?redirect=/courses/${slug}`); return; }
     setEnrolling(true);
@@ -87,6 +102,14 @@ export default function CourseLandingPage() {
       alert(data.error || 'Enrollment failed.');
       setEnrolling(false);
     } else {
+      // Load Razorpay Script first
+      const isScriptLoaded = await loadRazorpayScript();
+      if (!isScriptLoaded) {
+        alert('Failed to load Razorpay payment gateway. Please check your internet connection.');
+        setEnrolling(false);
+        return;
+      }
+
       // Paid — create Razorpay order
       const res = await fetch(`/api/courses/${course.id}/enroll`, {
         method: 'POST',
@@ -100,7 +123,7 @@ export default function CourseLandingPage() {
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Wisdom Eye',
+        name: 'Radheshyam Das',
         description: course.title,
         order_id: orderData.orderId,
         handler: async (response) => {

@@ -417,7 +417,7 @@ export default function AdminDashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
             <div className="admin-logo">
               <span style={{ fontSize: '24px' }}>👁</span>
-              <span>Wisdom Eye Registrations</span>
+              <span>Radheshyam Das - Wisdom Eye Registrations</span>
               <span style={{ fontSize: '11px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '1px', marginLeft: '10px' }}>
                 {role === 'admin' ? 'Admin Mode' : 'View Only'}
               </span>

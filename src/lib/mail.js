@@ -543,3 +543,54 @@ export async function sendCompletionNotificationEmail({ email, name, courseTitle
     return false;
   }
 }
+
+/**
+ * Sends a password reset email with a token link.
+ */
+export async function sendForgotPasswordEmail({ email, name, resetLink }) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log('SMTP config missing. Skipping forgot password email.');
+    return false;
+  }
+
+  const fromEmail = process.env.SMTP_FROM_EMAIL || 'manager@voicepune.com';
+  const fromName = process.env.SMTP_FROM_NAME || 'Wisdom Eye VOICE';
+
+  const mailOptions = {
+    from: `"${fromName}" <${fromEmail}>`,
+    to: email,
+    subject: '🔑 Reset Your Wisdom Eye LMS Password',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 10px; padding: 24px; background: #fff;">
+        <h2 style="color: #1A1B4B; margin-top: 0;">Reset Your Password</h2>
+        <p style="font-size: 15px; color: #4B5563;">Hello ${name},</p>
+        <p style="font-size: 15px; color: #4B5563; line-height: 1.6;">
+          We received a request to reset your password for your Wisdom Eye LMS account.
+          Please click the button below to choose a new password. This link is valid for 1 hour.
+        </p>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${resetLink}" style="background-color: #FF9F1C; color: #1A1B4B; padding: 12px 24px; border-radius: 6px; font-weight: bold; text-decoration: none; display: inline-block;">
+            Reset Password
+          </a>
+        </div>
+        <p style="font-size: 13px; color: #6B7280; line-height: 1.6;">
+          If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
+        </p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="font-size: 11px; color: #9CA3AF;">
+          If the button above doesn't work, copy and paste this URL into your browser: <br/>
+          <a href="${resetLink}" style="color: #FF9F1C;">${resetLink}</a>
+        </p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return true;
+  } catch (error) {
+    console.error('Error sending forgot password email:', error);
+    return false;
+  }
+}

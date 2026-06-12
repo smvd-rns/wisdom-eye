@@ -62,7 +62,7 @@ function LoginForm() {
           <div style={styles.logoIcon}>
             <BookOpen size={20} color="#FF9F1C" />
           </div>
-          <span style={styles.logoText}>Wisdom Eye</span>
+          <span style={styles.logoText}>Radheshyam Das</span>
         </Link>
 
         <h1 style={styles.title}>Welcome back</h1>

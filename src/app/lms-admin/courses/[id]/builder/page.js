@@ -55,32 +55,57 @@ export default function CourseBuilderPage() {
   const addModule = async () => {
     if (!newModuleTitle.trim()) return;
     setSaving(true);
-    const res = await fetch('/api/admin/modules', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ course_id: id, title: newModuleTitle.trim(), order_index: modules.length }),
-    });
-    const data = await res.json();
-    setModules(p => [...p, { ...data.module, lessons: [] }]);
-    setNewModuleTitle('');
-    setAddingModule(false);
-    setSaving(false);
+    try {
+      const res = await fetch('/api/admin/modules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ course_id: id, title: newModuleTitle.trim(), order_index: modules.length }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to create module.');
+      }
+      const data = await res.json();
+      setModules(p => [...p, { ...data.module, lessons: [] }]);
+      setNewModuleTitle('');
+      setAddingModule(false);
+    } catch (err) {
+      alert(err.message || 'An error occurred while adding the module.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveModuleTitle = async (moduleId) => {
-    await fetch('/api/admin/modules', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: moduleId, title: editingModuleTitle }),
-    });
-    setModules(p => p.map(m => m.id === moduleId ? { ...m, title: editingModuleTitle } : m));
-    setEditingModuleId(null);
+    try {
+      const res = await fetch('/api/admin/modules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: moduleId, title: editingModuleTitle }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to update module title.');
+      }
+      setModules(p => p.map(m => m.id === moduleId ? { ...m, title: editingModuleTitle } : m));
+      setEditingModuleId(null);
+    } catch (err) {
+      alert(err.message || 'An error occurred while saving module title.');
+    }
   };
 
   const deleteModule = async (moduleId) => {
     if (!confirm('Delete this module and all its lessons?')) return;
-    await fetch(`/api/admin/modules?id=${moduleId}`, { method: 'DELETE' });
-    setModules(p => p.filter(m => m.id !== moduleId));
+    try {
+      const res = await fetch(`/api/admin/modules?id=${moduleId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to delete module.');
+      }
+      setModules(p => p.filter(m => m.id !== moduleId));
+    } catch (err) {
+      alert(err.message || 'An error occurred while deleting the module.');
+    }
   };
 
   const moveModule = async (index, dir) => {
@@ -89,14 +114,22 @@ export default function CourseBuilderPage() {
     if (target < 0 || target >= newMods.length) return;
     [newMods[index], newMods[target]] = [newMods[target], newMods[index]];
     // Update order_index
-    await Promise.all(newMods.map((m, i) =>
-      fetch('/api/admin/modules', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: m.id, order_index: i }),
-      })
-    ));
-    setModules(newMods);
+    try {
+      const responses = await Promise.all(newMods.map((m, i) =>
+        fetch('/api/admin/modules', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: m.id, order_index: i }),
+        })
+      ));
+      const failed = responses.find(r => !r.ok);
+      if (failed) {
+        throw new Error('Some module order updates failed on the server.');
+      }
+      setModules(newMods);
+    } catch (err) {
+      alert(err.message || 'Failed to update module order.');
+    }
   };
 
   // ── Lesson operations ─────────────────────────────────────
@@ -135,49 +168,70 @@ export default function CourseBuilderPage() {
       duration_seconds: parseInt(lessonForm.duration_seconds) || 0,
     };
 
-    if (editingLesson) {
-      // Update
-      const res = await fetch('/api/admin/lessons', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingLesson.id, ...payload }),
-      });
-      const data = await res.json();
-      setModules(p => p.map(m => ({
-        ...m,
-        lessons: m.lessons?.map(l => l.id === editingLesson.id ? data.lesson : l) || [],
-      })));
-      setEditingLesson(null);
-    } else {
-      // Create
-      const res = await fetch('/api/admin/lessons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          module_id: moduleId,
-          course_id: id,
-          order_index: mod?.lessons?.length || 0,
-          ...payload,
-        }),
-      });
-      const data = await res.json();
-      setModules(p => p.map(m => m.id === moduleId
-        ? { ...m, lessons: [...(m.lessons || []), data.lesson] }
-        : m
-      ));
-      setAddingLesson(null);
+    try {
+      if (editingLesson) {
+        // Update
+        const res = await fetch('/api/admin/lessons', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingLesson.id, ...payload }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to update lesson.');
+        }
+        const data = await res.json();
+        setModules(p => p.map(m => ({
+          ...m,
+          lessons: m.lessons?.map(l => l.id === editingLesson.id ? data.lesson : l) || [],
+        })));
+        setEditingLesson(null);
+      } else {
+        // Create
+        const res = await fetch('/api/admin/lessons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            module_id: moduleId,
+            course_id: id,
+            order_index: mod?.lessons?.length || 0,
+            ...payload,
+          }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to create lesson.');
+        }
+        const data = await res.json();
+        setModules(p => p.map(m => m.id === moduleId
+          ? { ...m, lessons: [...(m.lessons || []), data.lesson] }
+          : m
+        ));
+        setAddingLesson(null);
+      }
+      resetLessonForm();
+    } catch (err) {
+      alert(err.message || 'An error occurred while saving the lesson.');
+    } finally {
+      setSaving(false);
     }
-    resetLessonForm();
-    setSaving(false);
   };
 
   const deleteLesson = async (moduleId, lessonId) => {
     if (!confirm('Delete this lesson?')) return;
-    await fetch(`/api/admin/lessons?id=${lessonId}`, { method: 'DELETE' });
-    setModules(p => p.map(m => m.id === moduleId
-      ? { ...m, lessons: m.lessons?.filter(l => l.id !== lessonId) || [] }
-      : m
-    ));
+    try {
+      const res = await fetch(`/api/admin/lessons?id=${lessonId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to delete lesson.');
+      }
+      setModules(p => p.map(m => m.id === moduleId
+        ? { ...m, lessons: m.lessons?.filter(l => l.id !== lessonId) || [] }
+        : m
+      ));
+    } catch (err) {
+      alert(err.message || 'An error occurred while deleting the lesson.');
+    }
   };
 
   const moveLesson = async (moduleId, index, dir) => {
@@ -186,14 +240,22 @@ export default function CourseBuilderPage() {
     const target = index + dir;
     if (target < 0 || target >= lessons.length) return;
     [lessons[index], lessons[target]] = [lessons[target], lessons[index]];
-    await Promise.all(lessons.map((l, i) =>
-      fetch('/api/admin/lessons', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: l.id, order_index: i }),
-      })
-    ));
-    setModules(p => p.map(m => m.id === moduleId ? { ...m, lessons } : m));
+    try {
+      const responses = await Promise.all(lessons.map((l, i) =>
+        fetch('/api/admin/lessons', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: l.id, order_index: i }),
+        })
+      ));
+      const failed = responses.find(r => !r.ok);
+      if (failed) {
+        throw new Error('Some lesson order updates failed on the server.');
+      }
+      setModules(p => p.map(m => m.id === moduleId ? { ...m, lessons } : m));
+    } catch (err) {
+      alert(err.message || 'Failed to update lesson order.');
+    }
   };
 
   const typeIcon = (type) => type === 'youtube' ? '▶️' : type === 'gdrive' ? '📄' : '📝';

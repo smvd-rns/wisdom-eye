@@ -97,7 +97,7 @@ export default function DashboardPage() {
       <aside style={styles.sidebar}>
         <Link href="/" style={styles.sidebarLogo}>
           <div style={styles.logoIcon}><BookOpen size={18} color="var(--secondary)" /></div>
-          <span style={styles.logoText}>Wisdom Eye</span>
+          <span style={styles.logoText}>Radheshyam Das</span>
         </Link>
 
         <nav style={styles.nav}>

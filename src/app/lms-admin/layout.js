@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard, BookOpen, Users, Tag, CreditCard,
   BarChart2, LogOut, ChevronRight, Menu, X, BookMarked,
-  GraduationCap, ClipboardCheck, Settings
+  GraduationCap, ClipboardCheck, Settings, Loader2
 } from 'lucide-react';
 
 const NAV = [
@@ -64,7 +64,7 @@ export default function LmsAdminLayout({ children }) {
           <Link href="/" style={styles.logo}>
             <div style={styles.logoIcon}><GraduationCap size={20} color="#FF9F1C" /></div>
             <div>
-              <div style={styles.logoName}>Wisdom Eye</div>
+              <div style={styles.logoName}>Radheshyam Das</div>
               <div style={styles.logoSub}>Admin Panel</div>
             </div>
           </Link>
@@ -136,7 +136,12 @@ export default function LmsAdminLayout({ children }) {
 
         {/* Page content */}
         <main style={styles.content}>
-          {children}
+          {user ? children : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', flexDirection: 'column', gap: '12px' }}>
+              <Loader2 size={36} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
+              <span style={{ color: '#6B7280', fontSize: '14px', fontWeight: '500' }}>Verifying admin access...</span>
+            </div>
+          )}
         </main>
       </div>
 
