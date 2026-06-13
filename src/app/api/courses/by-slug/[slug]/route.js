@@ -12,7 +12,8 @@ export async function GET(req, { params }) {
       *,
       modules (
         id, title, description, order_index,
-        lessons (id, title, type, content_url, duration_seconds, order_index, is_free_preview, description)
+        lessons (id, title, type, content_url, content_text, duration_seconds, order_index, is_free_preview, description),
+        quizzes (id, title, description, type, pass_score_percent, time_limit_mins, max_attempts, order_index)
       )
     `)
     .eq('slug', slug)
@@ -28,6 +29,7 @@ export async function GET(req, { params }) {
     course.modules.sort((a, b) => a.order_index - b.order_index);
     course.modules.forEach(m => {
       if (m.lessons) m.lessons.sort((a, b) => a.order_index - b.order_index);
+      if (m.quizzes) m.quizzes.sort((a, b) => a.order_index - b.order_index);
     });
   }
 

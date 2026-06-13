@@ -19,6 +19,7 @@ import {
   Calendar, 
   CheckCircle2 
 } from 'lucide-react';
+import { formatImageUrl } from '@/lib/utils';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -239,9 +240,36 @@ export default function DashboardPage() {
               const lastLesson = enr.course_progress?.last_lesson_id;
               return (
                 <div key={enr.id} className="course-card-hover" style={styles.courseCard}>
-                  <div style={styles.courseThumbnail}>
+                  <div style={{ ...styles.courseThumbnail, overflow: 'hidden' }}>
                     {enr.courses?.thumbnail_url ? (
-                      <img src={enr.courses.thumbnail_url} alt={enr.courses.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <>
+                        {/* Ambient background blur */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundImage: `url(${formatImageUrl(enr.courses.thumbnail_url)})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          filter: 'blur(10px) brightness(0.5)',
+                          transform: 'scale(1.15)',
+                          opacity: 0.8,
+                        }} />
+                        {/* Crisp contained foreground image */}
+                        <img 
+                          src={formatImageUrl(enr.courses.thumbnail_url)} 
+                          alt={enr.courses.title} 
+                          style={{ 
+                            position: 'relative',
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'contain',
+                            zIndex: 1
+                          }} 
+                        />
+                      </>
                     ) : (
                       <div style={styles.courseThumbnailPlaceholder}>
                         <BookOpen size={32} color="#6B7280" />
@@ -296,15 +324,42 @@ export default function DashboardPage() {
             <div style={styles.recommendationsScrollContainer}>
               {recommendedCourses.map((course) => (
                 <div key={course.id} style={styles.recommendationCard}>
-                  <div style={styles.recommendationThumbnail}>
+                  <div style={{ ...styles.recommendationThumbnail, overflow: 'hidden' }}>
                     {course.thumbnail_url ? (
-                      <img src={course.thumbnail_url} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <>
+                        {/* Ambient background blur */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundImage: `url(${formatImageUrl(course.thumbnail_url)})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          filter: 'blur(10px) brightness(0.5)',
+                          transform: 'scale(1.15)',
+                          opacity: 0.8,
+                        }} />
+                        {/* Crisp contained foreground image */}
+                        <img 
+                          src={formatImageUrl(course.thumbnail_url)} 
+                          alt={course.title} 
+                          style={{ 
+                            position: 'relative',
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'contain',
+                            zIndex: 1
+                          }} 
+                        />
+                      </>
                     ) : (
                       <div style={styles.courseThumbnailPlaceholder}>
                         <BookOpen size={24} color="#9CA3AF" />
                       </div>
                     )}
-                    <span style={styles.recommendationLevelBadge}>{course.level || 'Beginner'}</span>
+                    <span style={{ ...styles.recommendationLevelBadge, zIndex: 2 }}>{course.level || 'Beginner'}</span>
                   </div>
                   
                   <div style={styles.recommendationContent}>

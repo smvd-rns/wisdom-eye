@@ -178,7 +178,7 @@ const styles = {
   userRole: { fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'capitalize' },
   logoutBtn: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '4px', flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 59 },
-  main: { flex: 1, marginLeft: '256px', display: 'flex', flexDirection: 'column', minHeight: '100vh' },
+  main: { flex: 1, marginLeft: '256px', display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0, overflow: 'hidden' },
   topbar: { height: '60px', background: '#fff', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', padding: '0 24px', gap: '16px', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
   menuBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'none', padding: '4px' },
   breadcrumb: { flex: 1, display: 'flex', alignItems: 'center' },

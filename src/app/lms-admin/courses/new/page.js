@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, BookOpen, Image, Tag, DollarSign, Award } from 'lucide-react';
+import { formatImageUrl } from '@/lib/utils';
 
 const CATEGORIES = ['Spirituality', 'Philosophy', 'Values Education', 'Meditation', 'General', 'Other'];
 const LEVELS = ['beginner', 'intermediate', 'advanced'];
@@ -92,7 +93,7 @@ export default function NewCoursePage() {
                   placeholder="https://… (paste a direct image link)" style={styles.input} type="url" />
               </div>
               {form.thumbnail_url && (
-                <img src={form.thumbnail_url} alt="Preview"
+                <img src={formatImageUrl(form.thumbnail_url)} alt="Preview"
                   style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '10px', marginTop: '8px' }}
                   onError={e => e.target.style.display = 'none'}
                 />

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Edit, Trash2, Eye, BookOpen, Loader2, MoreVertical, ToggleLeft, ToggleRight } from 'lucide-react';
+import { formatImageUrl } from '@/lib/utils';
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState([]);
@@ -100,7 +101,7 @@ export default function AdminCoursesPage() {
                 <div style={styles.courseCell}>
                   <div style={styles.thumbSmall}>
                     {course.thumbnail_url
-                      ? <img src={course.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ? <img src={formatImageUrl(course.thumbnail_url, 150)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       : <BookOpen size={18} color="#9CA3AF" />}
                   </div>
                   <div>

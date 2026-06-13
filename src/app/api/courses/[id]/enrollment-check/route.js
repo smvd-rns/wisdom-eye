@@ -15,5 +15,42 @@ export async function GET(req, { params }) {
     .eq('status', 'active')
     .single();
 
-  return NextResponse.json({ enrolled: !!data });
+  if (!data) {
+    return NextResponse.json({ enrolled: false });
+  }
+
+  // Fetch course progress
+  const { data: progressData } = await supabase
+    .from('course_progress')
+    .select('percent_complete, lessons_completed, last_lesson_id')
+    .eq('user_id', session.userId)
+    .eq('course_id', params.id)
+    .single();
+
+  // Fetch completed lesson IDs
+  const { data: completedLessons } = await supabase
+    .from('lesson_progress')
+    .select('lesson_id')
+    .eq('user_id', session.userId)
+    .eq('course_id', params.id)
+    .eq('completed', true);
+
+  // Fetch passed quizzes
+  const { data: passedAttempts } = await supabase
+    .from('quiz_attempts')
+    .select('quiz_id')
+    .eq('user_id', session.userId)
+    .eq('passed', true);
+
+  const progress = {
+    percent_complete: progressData?.percent_complete || 0,
+    lessons_completed: progressData?.lessons_completed || 0,
+    completed_lessons_ids: completedLessons ? completedLessons.map(lp => lp.lesson_id) : [],
+    passed_quiz_ids: passedAttempts ? passedAttempts.map(a => a.quiz_id) : []
+  };
+
+  return NextResponse.json({
+    enrolled: true,
+    progress
+  });
 }

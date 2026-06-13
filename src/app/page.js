@@ -15,6 +15,7 @@ import {
   BookCheck, 
   GraduationCap 
 } from 'lucide-react';
+import { formatImageUrl } from '@/lib/utils';
 
 export default function GeneralHomePage() {
   const [courses, setCourses] = useState([]);
@@ -162,15 +163,42 @@ export default function GeneralHomePage() {
 
                 return (
                   <div key={course.id} style={styles.courseCard}>
-                    <div style={styles.courseThumbnail}>
+                    <div style={{ ...styles.courseThumbnail, overflow: 'hidden' }}>
                       {course.thumbnail_url ? (
-                        <img src={course.thumbnail_url} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <>
+                          {/* Ambient background blur */}
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundImage: `url(${formatImageUrl(course.thumbnail_url)})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            filter: 'blur(10px) brightness(0.5)',
+                            transform: 'scale(1.15)',
+                            opacity: 0.8,
+                          }} />
+                          {/* Crisp contained foreground image */}
+                          <img 
+                            src={formatImageUrl(course.thumbnail_url)} 
+                            alt={course.title} 
+                            style={{ 
+                              position: 'relative',
+                              width: '100%', 
+                              height: '100%', 
+                              objectFit: 'contain',
+                              zIndex: 1
+                            }} 
+                          />
+                        </>
                       ) : (
                         <div style={styles.thumbnailPlaceholder}>
                           <BookOpen size={36} color="#9CA3AF" />
                         </div>
                       )}
-                      <span style={styles.levelBadge}>{course.level}</span>
+                      <span style={{ ...styles.levelBadge, zIndex: 2 }}>{course.level}</span>
                     </div>
 
                     <div style={styles.courseCardBody}>
@@ -379,6 +407,7 @@ const styles = {
     fontWeight: '900',
     lineHeight: 1.2,
     marginBottom: '20px',
+    color: '#FFFFFF',
   },
   heroGradient: {
     background: 'linear-gradient(135deg, #FFE066 0%, var(--secondary) 100%)',

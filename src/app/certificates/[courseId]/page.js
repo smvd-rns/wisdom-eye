@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2, Printer, ArrowLeft } from 'lucide-react';
+import { formatImageUrl } from '@/lib/utils';
 
 export default function CertificatePrintPage() {
   const { courseId } = useParams();
@@ -69,7 +70,7 @@ export default function CertificatePrintPage() {
       <div style={styles.certificateOuter}>
         <div style={{
           ...styles.certificateCanvas,
-          backgroundImage: `url(${certData.certificate_image_url})`
+          backgroundImage: `url(${formatImageUrl(certData.certificate_image_url, 1600)})`
         }}>
           {/* Text Overlays */}
           <div style={styles.canvasContent}>

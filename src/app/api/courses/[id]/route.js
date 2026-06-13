@@ -13,7 +13,7 @@ export async function GET(req, { params }) {
       *,
       modules (
         id, title, description, order_index,
-        lessons (id, title, type, content_url, duration_seconds, order_index, is_free_preview, description)
+        lessons (id, title, type, content_url, content_text, duration_seconds, order_index, is_free_preview, description)
       )
     `)
     .eq('id', id)

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Clock, Award, ChevronDown, ChevronUp, Play, FileText, Lock, CheckCircle, Loader2, Star, Users } from 'lucide-react';
+import { formatImageUrl } from '@/lib/utils';
 
 export default function CourseLandingPage() {
   const { slug } = useParams();
@@ -17,6 +18,33 @@ export default function CourseLandingPage() {
   const [coupon, setCoupon] = useState('');
   const [couponResult, setCouponResult] = useState(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [previewLesson, setPreviewLesson] = useState(null);
+
+  const getYouTubeId = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const getGDriveEmbedUrl = (url) => {
+    if (!url) return null;
+    if (url.includes('/preview')) return url;
+    
+    // Extract file ID
+    const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileIdMatch && fileIdMatch[1]) {
+      return `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+    }
+    
+    // Extract folder ID
+    const folderIdMatch = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    if (folderIdMatch && folderIdMatch[1]) {
+      return `https://drive.google.com/embeddedfolderview?id=${folderIdMatch[1]}`;
+    }
+    
+    return url;
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -183,16 +211,16 @@ export default function CourseLandingPage() {
 
             <div style={styles.metaRow}>
               {course.level && <span style={styles.metaBadge}>{course.level}</span>}
-              {totalLessons > 0 && <span style={styles.metaItem}><BookOpen size={14}/> {totalLessons} lessons</span>}
-              {course.total_duration_seconds > 0 && <span style={styles.metaItem}><Clock size={14}/> {formatDuration(course.total_duration_seconds)}</span>}
-              {course.has_certificate && <span style={styles.metaItem}><Award size={14}/> Certificate</span>}
+              {totalLessons > 0 && <span style={styles.metaItem}><BookOpen size={14} /> {totalLessons} lessons</span>}
+              {course.total_duration_seconds > 0 && <span style={styles.metaItem}><Clock size={14} /> {formatDuration(course.total_duration_seconds)}</span>}
+              {course.has_certificate && <span style={styles.metaItem}><Award size={14} /> Certificate</span>}
             </div>
           </div>
 
           {/* Enroll card */}
           <div style={styles.enrollCard}>
             {course.thumbnail_url && (
-              <img src={course.thumbnail_url} alt={course.title} style={styles.thumbnail} />
+              <img src={formatImageUrl(course.thumbnail_url)} alt={course.title} style={styles.thumbnail} />
             )}
             <div style={styles.enrollBody}>
               <div style={styles.priceRow}>
@@ -258,6 +286,59 @@ export default function CourseLandingPage() {
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>Course Curriculum</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Premium Video / Document Preview Modal */}
+              {previewLesson && (
+                <div style={styles.modalOverlay} onClick={() => setPreviewLesson(null)}>
+                  <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+                    <div style={styles.modalHeader}>
+                      <div style={styles.modalTitleArea}>
+                        <span style={styles.modalTag}>
+                          {previewLesson.type === 'youtube' 
+                            ? 'Free Video Preview' 
+                            : previewLesson.type === 'gdrive' 
+                              ? 'Document Preview' 
+                              : 'Text Preview'}
+                        </span>
+                        <h3 style={styles.modalTitle}>{previewLesson.title}</h3>
+                      </div>
+                      <button onClick={() => setPreviewLesson(null)} style={styles.modalCloseBtn}>
+                        &times;
+                      </button>
+                    </div>
+                    
+                    {previewLesson.type === 'youtube' && (
+                      <div style={styles.videoWrapper}>
+                        <iframe
+                          src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(previewLesson.content_url)}?autoplay=1&rel=0`}
+                          title={previewLesson.title}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          style={styles.iframe}
+                        />
+                      </div>
+                    )}
+                    
+                    {previewLesson.type === 'gdrive' && (
+                      <div style={styles.videoWrapper}>
+                        <iframe
+                          src={getGDriveEmbedUrl(previewLesson.content_url)}
+                          title={previewLesson.title}
+                          frameBorder="0"
+                          allow="autoplay"
+                          style={styles.iframe}
+                        />
+                      </div>
+                    )}
+                    
+                    {previewLesson.type === 'text' && (
+                      <div style={styles.textContent}>
+                        {previewLesson.content_text || 'No text content available for this lesson preview.'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               {course.modules.map((mod, mi) => (
                 <div key={mod.id} style={styles.moduleCard}>
                   <button onClick={() => toggleModule(mod.id)} style={styles.moduleHeader}>
@@ -273,19 +354,45 @@ export default function CourseLandingPage() {
 
                   {expandedModules[mod.id] && mod.lessons?.length > 0 && (
                     <div style={styles.lessonList}>
-                      {mod.lessons.map(lesson => (
-                        <div key={lesson.id} style={styles.lessonRow}>
-                          <div style={styles.lessonLeft}>
-                            {lesson.type === 'youtube' ? <Play size={14} color="#6B7280" /> : <FileText size={14} color="#6B7280" />}
-                            <span style={styles.lessonTitle}>{lesson.title}</span>
-                            {lesson.is_free_preview && <span style={styles.freeBadge}>Preview</span>}
+                      {mod.lessons.map(lesson => {
+                        const isClickable = lesson.is_free_preview;
+                        return (
+                          <div 
+                            key={lesson.id} 
+                            style={{
+                              ...styles.lessonRow,
+                              ...(isClickable ? { cursor: 'pointer' } : {})
+                            }}
+                            onClick={() => {
+                              if (isClickable) {
+                                setPreviewLesson(lesson);
+                              }
+                            }}
+                            className={isClickable ? 'free-lesson-row' : ''}
+                          >
+                            <div style={styles.lessonLeft}>
+                              {lesson.type === 'youtube' ? <Play size={14} color="#6B7280" /> : <FileText size={14} color="#6B7280" />}
+                              <span style={styles.lessonTitle}>{lesson.title}</span>
+                              {lesson.is_free_preview && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPreviewLesson(lesson);
+                                  }} 
+                                  style={styles.freeBadgeBtn}
+                                  className="preview-badge"
+                                >
+                                  Preview
+                                </button>
+                              )}
+                            </div>
+                            {!lesson.is_free_preview && !isEnrolled && <Lock size={12} color="#D1D5DB" />}
+                            {lesson.duration_seconds > 0 && (
+                              <span style={styles.lessonDuration}>{formatDuration(lesson.duration_seconds)}</span>
+                            )}
                           </div>
-                          {!lesson.is_free_preview && !isEnrolled && <Lock size={12} color="#D1D5DB" />}
-                          {lesson.duration_seconds > 0 && (
-                            <span style={styles.lessonDuration}>{formatDuration(lesson.duration_seconds)}</span>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -296,7 +403,28 @@ export default function CourseLandingPage() {
       </div>
 
       <script src="https://checkout.razorpay.com/v1/checkout.js" />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Interactive free lesson rows */
+        .free-lesson-row {
+          transition: all 0.2s ease !important;
+        }
+        .free-lesson-row:hover {
+          background-color: #EEF2FF !important; /* light indigo */
+        }
+        
+        /* Preview Badge hover */
+        .preview-badge {
+          background-color: #DCFCE7 !important;
+          color: #16A34A !important;
+          transition: all 0.2s ease !important;
+        }
+        .preview-badge:hover {
+          background-color: #BBF7D0 !important;
+          transform: scale(1.05);
+        }
+      `}</style>
     </div>
   );
 }
@@ -337,6 +465,35 @@ const styles = {
   lessonRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 18px', borderBottom: '1px solid #F3F4F6' },
   lessonLeft: { flex: 1, display: 'flex', alignItems: 'center', gap: '10px' },
   lessonTitle: { fontSize: '13px', color: '#374151', flex: 1 },
-  freeBadge: { background: '#DCFCE7', color: '#16A34A', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '9999px' },
-  lessonDuration: { fontSize: '12px', color: '#9CA3AF', marginLeft: 'auto' },
+  freeBadgeBtn: {
+    background: '#DCFCE7',
+    color: '#16A34A',
+    fontSize: '10px',
+    fontWeight: '700',
+    padding: '3px 10px',
+    borderRadius: '9999px',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    marginLeft: '8px',
+  },
+  textContent: {
+    padding: '28px',
+    maxHeight: '450px',
+    overflowY: 'auto',
+    color: '#374151',
+    fontSize: '15px',
+    lineHeight: '1.8',
+    whiteSpace: 'pre-wrap',
+    background: '#F9FAFB',
+    fontFamily: 'inherit',
+  },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
+  modalContent: { background: '#fff', width: '100%', maxWidth: '700px', borderRadius: '12px', overflow: 'hidden' },
+  modalHeader: { padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #E5E7EB' },
+  modalTag: { fontSize: '10px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase' },
+  modalTitle: { margin: '4px 0 0', fontSize: '18px' },
+  modalCloseBtn: { background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6B7280' },
+  videoWrapper: { position: 'relative', width: '100%', paddingTop: '56.25%', background: '#000' },
+  iframe: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
 };

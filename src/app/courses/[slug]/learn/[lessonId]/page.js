@@ -98,26 +98,55 @@ export default function StudentPlayerPage() {
   }, [lessonId]);
 
   // Helper: Find next/previous lesson
-  const getFlatLessons = () => {
+  const getFlatItems = () => {
     if (!course?.modules) return [];
     return course.modules.reduce((list, mod) => {
+      let items = [];
       if (mod.lessons) {
-        const sorted = [...mod.lessons].sort((a, b) => a.order_index - b.order_index);
-        return [...list, ...sorted];
+        const sortedLessons = [...mod.lessons]
+          .sort((a, b) => a.order_index - b.order_index)
+          .map(l => ({ ...l, itemType: 'lesson' }));
+        items = [...items, ...sortedLessons];
       }
-      return list;
+      if (mod.quizzes) {
+        const sortedQuizzes = [...mod.quizzes]
+          .sort((a, b) => a.order_index - b.order_index)
+          .map(q => ({ ...q, itemType: 'quiz' }));
+        items = [...items, ...sortedQuizzes];
+      }
+      return [...list, ...items];
     }, []);
   };
 
   const getNavigation = () => {
-    const lessons = getFlatLessons();
-    const idx = lessons.findIndex(l => l.id === lessonId);
+    const items = getFlatItems();
+    const idx = items.findIndex(l => l.id === lessonId);
     return {
-      prev: idx > 0 ? lessons[idx - 1] : null,
-      next: idx < lessons.length - 1 ? lessons[idx + 1] : null,
+      prev: idx > 0 ? items[idx - 1] : null,
+      next: idx < items.length - 1 ? items[idx + 1] : null,
       currentIdx: idx,
-      total: lessons.length
+      total: items.length
     };
+  };
+
+  const handleGoPrev = () => {
+    const prev = nav.prev;
+    if (!prev) return;
+    if (prev.itemType === 'quiz') {
+      router.push(`/courses/${slug}/quiz/${prev.id}`);
+    } else {
+      router.push(`/courses/${slug}/learn/${prev.id}`);
+    }
+  };
+
+  const handleGoNext = () => {
+    const next = nav.next;
+    if (!next) return;
+    if (next.itemType === 'quiz') {
+      router.push(`/courses/${slug}/quiz/${next.id}`);
+    } else {
+      router.push(`/courses/${slug}/learn/${next.id}`);
+    }
   };
 
   const handleMarkComplete = async () => {
@@ -142,10 +171,14 @@ export default function StudentPlayerPage() {
           setProgressSummary(progress);
         }
 
-        // Auto-navigate to next lesson
+        // Auto-navigate to next item
         const { next } = getNavigation();
         if (next) {
-          router.push(`/courses/${slug}/learn/${next.id}`);
+          if (next.itemType === 'quiz') {
+            router.push(`/courses/${slug}/quiz/${next.id}`);
+          } else {
+            router.push(`/courses/${slug}/learn/${next.id}`);
+          }
         }
       }
     } catch (err) {
@@ -197,7 +230,7 @@ export default function StudentPlayerPage() {
     if (match && match[2].length === 11) {
       videoId = match[2];
     }
-    return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0` : '';
+    return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0` : '';
   };
 
   // Helper: Google Drive link parser
@@ -218,7 +251,6 @@ export default function StudentPlayerPage() {
   );
 
   const nav = getNavigation();
-  const flatLessons = getFlatLessons();
 
   return (
     <div style={styles.layout}>
@@ -254,7 +286,7 @@ export default function StudentPlayerPage() {
               <div style={styles.sidebarLessons}>
                 {mod.lessons?.map((les) => {
                   const isActive = les.id === lessonId;
-                  // Check if completed (need to track from completion checklist or state)
+                  // Check if completed
                   const isCompleted = progressSummary?.completed_lessons_ids?.includes(les.id) || 
                                       (les.id === lessonId && lessonProgress.completed);
 
@@ -278,6 +310,30 @@ export default function StudentPlayerPage() {
                       <span style={styles.lessonTypeIcon}>
                         {les.type === 'youtube' ? '▶️' : les.type === 'gdrive' ? '📄' : '📝'}
                       </span>
+                    </Link>
+                  );
+                })}
+                {mod.quizzes?.map((quiz) => {
+                  const isCompleted = progressSummary?.passed_quiz_ids?.includes(quiz.id);
+                  return (
+                    <Link
+                      key={quiz.id}
+                      href={`/courses/${slug}/quiz/${quiz.id}`}
+                      style={{
+                        ...styles.lessonItem,
+                        borderLeftColor: 'transparent',
+                        paddingLeft: '20px'
+                      }}
+                    >
+                      <span style={{ marginRight: '8px', flexShrink: 0 }}>
+                        {isCompleted ? (
+                          <CheckCircle size={15} color="#10B981" />
+                        ) : (
+                          <Circle size={15} color="#FF9F1C" />
+                        )}
+                      </span>
+                      <span style={styles.lessonTitleText}>{quiz.title}</span>
+                      <span style={styles.lessonTypeIcon}>📝</span>
                     </Link>
                   );
                 })}
@@ -310,7 +366,7 @@ export default function StudentPlayerPage() {
 
           <div style={styles.topActions}>
             <button
-              onClick={() => nav.prev && router.push(`/courses/${slug}/learn/${nav.prev.id}`)}
+              onClick={handleGoPrev}
               disabled={!nav.prev}
               style={styles.navBtn}
             >
@@ -335,6 +391,15 @@ export default function StudentPlayerPage() {
                 'Mark Completed & Next'
               )}
             </button>
+
+            {nav.next && (
+              <button
+                onClick={handleGoNext}
+                style={styles.navBtn}
+              >
+                Next <ChevronRight size={16} />
+              </button>
+            )}
           </div>
         </div>
 

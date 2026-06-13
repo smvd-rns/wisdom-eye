@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, BookOpen, Clock, Award, ChevronRight, Loader2, Filter } from 'lucide-react';
+import { formatImageUrl } from '@/lib/utils';
 
 const CATEGORIES = ['All', 'Spirituality', 'Philosophy', 'Values Education', 'Meditation', 'General'];
 const LEVELS = ['All', 'Beginner', 'Intermediate', 'Advanced'];
@@ -89,15 +90,42 @@ export default function CoursesPage() {
               {courses.map(course => (
                 <Link key={course.id} href={`/courses/${course.slug}`} style={styles.card}>
                   {/* Thumbnail */}
-                  <div style={styles.thumb}>
+                  <div style={{ ...styles.thumb, overflow: 'hidden' }}>
                     {course.thumbnail_url ? (
-                      <img src={course.thumbnail_url} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <>
+                        {/* Ambient background blur */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundImage: `url(${formatImageUrl(course.thumbnail_url)})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          filter: 'blur(10px) brightness(0.5)',
+                          transform: 'scale(1.15)',
+                          opacity: 0.8,
+                        }} />
+                        {/* Crisp contained foreground image */}
+                        <img 
+                          src={formatImageUrl(course.thumbnail_url)} 
+                          alt={course.title} 
+                          style={{ 
+                            position: 'relative',
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'contain',
+                            zIndex: 1
+                          }} 
+                        />
+                      </>
                     ) : (
                       <div style={styles.thumbPlaceholder}>
                         <BookOpen size={36} color="#9CA3AF" />
                       </div>
                     )}
-                    <div style={styles.levelBadge}>{course.level}</div>
+                    <div style={{ ...styles.levelBadge, zIndex: 2 }}>{course.level}</div>
                   </div>
 
                   {/* Body */}

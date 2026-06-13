@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Save, BookOpen, Image, Tag, DollarSign, Award, Trash2, AlertTriangle } from 'lucide-react';
+import { formatImageUrl } from '@/lib/utils';
 
 const CATEGORIES = ['Spirituality', 'Philosophy', 'Values Education', 'Meditation', 'General', 'Other'];
 const LEVELS = ['beginner', 'intermediate', 'advanced'];
@@ -82,6 +83,9 @@ export default function EditCoursePage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <h1 style={styles.title}>Edit Course</h1>
           <div style={{ display: 'flex', gap: '10px' }}>
+            <Link href={`/lms-admin/courses/${id}/quizzes`} style={styles.quizzesBtn}>
+              📝 Manage Quizzes
+            </Link>
             <Link href={`/lms-admin/courses/${id}/builder`} style={styles.builderBtn}>
               📚 Go to Builder
             </Link>
@@ -115,7 +119,7 @@ export default function EditCoursePage() {
                 <input value={form.thumbnail_url} onChange={e => set('thumbnail_url', e.target.value)} type="url" placeholder="https://…" style={styles.input} />
               </Field>
               {form.thumbnail_url && (
-                <img src={form.thumbnail_url} alt="Preview" style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '10px', marginTop: '8px' }} onError={e => e.target.style.display = 'none'} />
+                <img src={formatImageUrl(form.thumbnail_url)} alt="Preview" style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '10px', marginTop: '8px' }} onError={e => e.target.style.display = 'none'} />
               )}
             </div>
 
@@ -176,7 +180,7 @@ export default function EditCoursePage() {
                 <Field label="Certificate Image URL" style={{ marginTop: '12px' }}>
                   <input value={form.certificate_image_url} onChange={e => set('certificate_image_url', e.target.value)} placeholder="https://… (direct image URL of your certificate design)" type="url" style={styles.input} />
                   {form.certificate_image_url && (
-                    <img src={form.certificate_image_url} alt="Certificate" style={{ width: '100%', borderRadius: '8px', marginTop: '8px' }} onError={e => e.target.style.display = 'none'} />
+                    <img src={formatImageUrl(form.certificate_image_url)} alt="Certificate" style={{ width: '100%', borderRadius: '8px', marginTop: '8px' }} onError={e => e.target.style.display = 'none'} />
                   )}
                 </Field>
               )}
@@ -208,6 +212,7 @@ const styles = {
   back: { display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#6B7280', fontSize: '12px', marginBottom: '8px', textDecoration: 'none' },
   title: { fontSize: '22px', fontWeight: '800', color: '#111827', fontFamily: 'Outfit, sans-serif' },
   builderBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '8px', background: '#FF9F1C', color: '#1A1B4B', fontWeight: '700', fontSize: '13px', textDecoration: 'none' },
+  quizzesBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '8px', border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: '600', fontSize: '13px', textDecoration: 'none' },
   errorBox: { background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px', color: '#DC2626', fontSize: '14px', marginBottom: '16px' },
   successBox: { background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '12px 16px', color: '#16A34A', fontSize: '14px', marginBottom: '16px' },
   grid: { display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px', alignItems: 'start' },

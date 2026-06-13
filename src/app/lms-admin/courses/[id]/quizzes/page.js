@@ -38,6 +38,8 @@ export default function AdminQuizzesPage() {
   const [loadingEvaluators, setLoadingEvaluators] = useState(false);
   const [savingEvaluators, setSavingEvaluators] = useState(false);
 
+  const [modules, setModules] = useState([]);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -45,6 +47,7 @@ export default function AdminQuizzesPage() {
         if (!courseRes.ok) { router.push('/lms-admin/courses'); return; }
         const { course: data } = await courseRes.json();
         setCourse(data);
+        setModules(data.modules || []);
 
         const quizzesRes = await fetch(`/api/admin/quizzes?course_id=${courseId}`);
         if (quizzesRes.ok) {
@@ -173,12 +176,13 @@ export default function AdminQuizzesPage() {
   };
 
   const updateQuestionType = (index, type) => {
-    setQuestions(p => p.map((q, i) => i === index ? {
-      ...q,
-      type,
-      options: type === 'mcq' ? ['Option 1', 'Option 2'] : null,
-      correct_answer: type === 'mcq' ? '0' : ''
-    } : q));
+    setQuestions(p => p.map((q, i) => {
+      if (i !== index) return q;
+      const defaultOpts = ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
+      if (type === 'mcq') return { ...q, type, options: defaultOpts, correct_answer: '0' };
+      if (type === 'mcq_multi') return { ...q, type, options: defaultOpts, correct_answer: '[]' };
+      return { ...q, type, options: null, correct_answer: '' }; // subjective
+    }));
   };
 
   const updateQuestionMarks = (index, val) => {
@@ -204,19 +208,35 @@ export default function AdminQuizzesPage() {
     setQuestions(p => p.map((q, i) => {
       if (i !== qIdx) return q;
       const filtered = q.options.filter((_, oi) => oi !== optIdx);
-      // Adjust correct answer index if needed
+      if (q.type === 'mcq_multi') {
+        let current = [];
+        try { current = JSON.parse(q.correct_answer || '[]'); } catch { current = []; }
+        const removed = String(optIdx);
+        const updated = current
+          .filter(k => k !== removed)
+          .map(k => parseInt(k) > optIdx ? String(parseInt(k) - 1) : k);
+        return { ...q, options: filtered, correct_answer: JSON.stringify(updated) };
+      }
       let correct = parseInt(q.correct_answer) || 0;
       if (correct >= filtered.length) correct = Math.max(0, filtered.length - 1);
-      return {
-        ...q,
-        options: filtered,
-        correct_answer: String(correct)
-      };
+      return { ...q, options: filtered, correct_answer: String(correct) };
     }));
   };
 
   const setMcqCorrectOption = (qIdx, optIdx) => {
     setQuestions(p => p.map((q, i) => i === qIdx ? { ...q, correct_answer: String(optIdx) } : q));
+  };
+
+  // Toggle a checkbox option in/out of multi-correct answer array
+  const toggleMultiCorrect = (qIdx, optIdx) => {
+    setQuestions(p => p.map((q, i) => {
+      if (i !== qIdx) return q;
+      let current = [];
+      try { current = JSON.parse(q.correct_answer || '[]'); } catch { current = []; }
+      const key = String(optIdx);
+      const next = current.includes(key) ? current.filter(k => k !== key) : [...current, key];
+      return { ...q, correct_answer: JSON.stringify(next) };
+    }));
   };
 
   const moveQuestion = (index, dir) => {
@@ -328,15 +348,15 @@ export default function AdminQuizzesPage() {
       {/* Header */}
       <div style={styles.header}>
         <div>
-          <Link href={`/lms-admin/courses/${courseId}`} style={styles.back}>
-            <ArrowLeft size={14} /> Course Settings
+          <Link href={`/lms-admin/courses/${courseId}/builder`} style={styles.back}>
+            <ArrowLeft size={14} /> Course Builder
           </Link>
-          <h1 style={styles.title}>Quizzes & Assessments</h1>
-          <p style={styles.subtitle}>{course?.title}</p>
+          <h1 style={styles.title}>Quiz Library</h1>
+          <p style={styles.subtitle}>{course?.title} · {quizzes.length} quiz{quizzes.length !== 1 ? 'zes' : ''} total</p>
         </div>
         {!activeQuiz && (
           <button onClick={() => setShowQuizForm(!showQuizForm)} style={styles.addBtn}>
-            {showQuizForm ? 'Cancel' : 'Create New Quiz'}
+            {showQuizForm ? 'Cancel' : '+ Create New Quiz'}
           </button>
         )}
       </div>
@@ -435,6 +455,14 @@ export default function AdminQuizzesPage() {
                     </div>
                   </div>
                   <h3 style={styles.quizCardTitle}>{quiz.title}</h3>
+                  {quiz.module_id && (
+                    <p style={{ fontSize: '11px', color: '#4338CA', background: '#EEF2FF', display: 'inline-block', padding: '2px 8px', borderRadius: '9999px', marginBottom: '4px', fontWeight: '600' }}>
+                      📦 {modules.find(m => m.id === quiz.module_id)?.title || 'Module'}
+                    </p>
+                  )}
+                  {!quiz.module_id && (
+                    <p style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>Not assigned to any module</p>
+                  )}
                   <p style={styles.quizCardDesc}>{quiz.description || 'No description provided.'}</p>
                   
                   <div style={styles.quizCardFooter}>
@@ -499,7 +527,8 @@ export default function AdminQuizzesPage() {
                         onChange={e => updateQuestionType(qIdx, e.target.value)}
                         style={styles.select}
                       >
-                        <option value="mcq">MCQ (Auto-Graded)</option>
+                        <option value="mcq">MCQ — Single Answer ●</option>
+                        <option value="mcq_multi">Multi-Answer ☑ (multiple correct)</option>
                         <option value="subjective">Subjective (Evaluator Graded)</option>
                       </select>
 
@@ -531,14 +560,13 @@ export default function AdminQuizzesPage() {
                       style={{ ...styles.input, minHeight: '50px', resize: 'vertical' }}
                     />
 
-                    {/* MCQ Options Config */}
+                    {/* MCQ Single-Answer Options */}
                     {q.type === 'mcq' && (
                       <div style={styles.optionsSection}>
-                        <label style={styles.label}>Answer Options & Correct Key</label>
+                        <label style={styles.label}>Answer Options — select the ONE correct answer (●)</label>
                         <div style={styles.optionsList}>
                           {q.options?.map((opt, optIdx) => (
                             <div key={optIdx} style={styles.optionRow}>
-                              {/* Checkbox for correct option */}
                               <input
                                 type="radio"
                                 name={`correct-${qIdx}`}
@@ -546,13 +574,11 @@ export default function AdminQuizzesPage() {
                                 onChange={() => setMcqCorrectOption(qIdx, optIdx)}
                                 style={styles.radio}
                               />
-                              {/* Text input */}
                               <input
                                 value={opt}
                                 onChange={e => updateMcqOption(qIdx, optIdx, e.target.value)}
                                 style={styles.optionInput}
                               />
-                              {/* Remove option */}
                               <button
                                 type="button"
                                 onClick={() => removeMcqOption(qIdx, optIdx)}
@@ -569,6 +595,54 @@ export default function AdminQuizzesPage() {
                         </button>
                       </div>
                     )}
+
+                    {/* MCQ Multi-Answer Options (checkboxes) */}
+                    {q.type === 'mcq_multi' && (() => {
+                      let selected = [];
+                      try { selected = JSON.parse(q.correct_answer || '[]'); } catch { selected = []; }
+                      return (
+                        <div style={{ ...styles.optionsSection, borderColor: '#818CF8', borderWidth: '1.5px' }}>
+                          <label style={{ ...styles.label, color: '#4338CA' }}>☑ Multi-Answer — tick ALL correct options</label>
+                          <p style={{ fontSize: '11px', color: '#6B7280', marginBottom: '8px', marginTop: '2px' }}>
+                            Students must select all correct answers to score full marks.
+                          </p>
+                          <div style={styles.optionsList}>
+                            {q.options?.map((opt, optIdx) => {
+                              const isChecked = selected.includes(String(optIdx));
+                              return (
+                                <div key={optIdx} style={styles.optionRow}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleMultiCorrect(qIdx, optIdx)}
+                                    style={{ ...styles.radio, width: '15px', height: '15px', accentColor: '#4338CA' }}
+                                  />
+                                  <input
+                                    value={opt}
+                                    onChange={e => updateMcqOption(qIdx, optIdx, e.target.value)}
+                                    style={{ ...styles.optionInput, borderColor: isChecked ? '#818CF8' : '#D1D5DB', background: isChecked ? '#F5F3FF' : '#fff' }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeMcqOption(qIdx, optIdx)}
+                                    disabled={q.options.length <= 2}
+                                    style={styles.removeOptBtn}
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {selected.length === 0 && (
+                            <p style={{ fontSize: '11px', color: '#F59E0B', marginTop: '4px' }}>⚠ Tick at least one correct answer.</p>
+                          )}
+                          <button type="button" onClick={() => addMcqOption(qIdx)} style={styles.addOptBtn}>
+                            + Add Option
+                          </button>
+                        </div>
+                      );
+                    })()}
 
                     {q.type === 'subjective' && (
                       <div style={styles.subjectiveInfo}>

@@ -35,7 +35,11 @@ export async function POST(req) {
   }
 
   // Update total_lessons count on course
-  await supabase.rpc('increment_course_lessons', { course_id_param: course_id }).catch(() => {});
+  try {
+    await supabase.rpc('increment_course_lessons', { course_id_param: course_id });
+  } catch (rpcError) {
+    console.error('Failed to increment course lessons:', rpcError);
+  }
 
   return NextResponse.json({ lesson: data }, { status: 201 });
 }

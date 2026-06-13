@@ -37,10 +37,10 @@ export async function GET(req) {
   }
 
   if (courseId) {
-    // List quizzes for course
+    // List quizzes for course, including question count
     const { data: quizzes, error } = await supabase
       .from('quizzes')
-      .select('*')
+      .select('*, questions_count:quiz_questions(count)')
       .eq('course_id', courseId)
       .order('order_index', { ascending: true });
 
@@ -48,7 +48,13 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Failed to fetch quizzes' }, { status: 500 });
     }
 
-    return NextResponse.json({ quizzes });
+    // Flatten the questions_count from [{count:N}] to a simple integer
+    const normalized = (quizzes || []).map(q => ({
+      ...q,
+      questions_count: q.questions_count?.[0]?.count ?? 0
+    }));
+
+    return NextResponse.json({ quizzes: normalized });
   }
 
   return NextResponse.json({ error: 'id or course_id required' }, { status: 400 });
@@ -113,7 +119,8 @@ export async function PUT(req) {
 
   const allowedFields = [
     'title', 'description', 'type', 'pass_score_percent',
-    'time_limit_mins', 'max_attempts', 'show_correct_answers', 'order_index'
+    'time_limit_mins', 'max_attempts', 'show_correct_answers', 'order_index',
+    'module_id', 'lesson_id'
   ];
 
   const safeUpdates = {};

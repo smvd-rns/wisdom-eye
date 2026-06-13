@@ -26,7 +26,7 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, serviceKey);
 
 async function run() {
-  const module_id = 'ace42101-49e2-4171-9141-974f6b0bc9aa';
+  const module_id = 'f84b8d57-912f-49ae-ac4e-8c7a8dadb065';
   const course_id = '194ae06c-f058-45cc-99db-ec40ab9cac0e';
   const title = 'Test Lesson Insertion';
 
@@ -36,14 +36,14 @@ async function run() {
     .insert({
       module_id,
       course_id,
-      title,
+      title: 'Password for happiness',
       type: 'youtube',
-      content_url: 'https://youtube.com',
-      content_text: 'Hello content text',
-      description: 'Hello description',
-      duration_seconds: 120,
+      content_url: 'https://youtu.be/TGN5joom_cE',
+      content_text: '',
+      description: '',
+      duration_seconds: 0,
       order_index: 0,
-      is_free_preview: false,
+      is_free_preview: true,
     })
     .select()
     .single();
