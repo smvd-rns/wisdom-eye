@@ -205,14 +205,23 @@ export default function CourseLandingPage() {
             <Link href="/courses" style={styles.backLink}>← All Courses</Link>
             <span style={styles.category}>{course.category}</span>
             <h1 style={styles.title}>{course.title}</h1>
-            {course.short_description && (
-              <p style={styles.subtitle}>{course.short_description}</p>
-            )}
+            <p style={styles.subtitle}>
+              {course.short_description || "Embark on a transformative journey of self-discovery and spiritual growth. Gain profound insights from timeless Vedic teachings adapted for the modern world."}
+            </p>
 
             <div style={styles.metaRow}>
               {course.level && <span style={styles.metaBadge}>{course.level}</span>}
-              {totalLessons > 0 && <span style={styles.metaItem}><BookOpen size={14} /> {totalLessons} lessons</span>}
-              {course.total_duration_seconds > 0 && <span style={styles.metaItem}><Clock size={14} /> {formatDuration(course.total_duration_seconds)}</span>}
+              {totalLessons > 0 ? (
+                <>
+                  <span style={styles.metaItem}><BookOpen size={14} /> {totalLessons} lessons</span>
+                  {course.total_duration_seconds > 0 && <span style={styles.metaItem}><Clock size={14} /> {formatDuration(course.total_duration_seconds)}</span>}
+                </>
+              ) : (
+                <>
+                  <span style={styles.metaItem}><Clock size={14} /> Self-Paced Learning</span>
+                  <span style={styles.metaItem}><Users size={14} /> Global Community Access</span>
+                </>
+              )}
               {course.has_certificate && <span style={styles.metaItem}><Award size={14} /> Certificate</span>}
             </div>
           </div>
@@ -220,7 +229,34 @@ export default function CourseLandingPage() {
           {/* Enroll card */}
           <div style={styles.enrollCard}>
             {course.thumbnail_url && (
-              <img src={formatImageUrl(course.thumbnail_url)} alt={course.title} style={styles.thumbnail} />
+              <div style={{ position: 'relative', width: '100%', height: '180px', overflow: 'hidden' }}>
+                {/* Ambient background blur */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundImage: `url(${formatImageUrl(course.thumbnail_url)})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  filter: 'blur(10px) brightness(0.5)',
+                  transform: 'scale(1.15)',
+                  opacity: 0.8,
+                }} />
+                {/* Crisp contained foreground image */}
+                <img 
+                  src={formatImageUrl(course.thumbnail_url)} 
+                  alt={course.title} 
+                  style={{ 
+                    position: 'relative',
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain',
+                    zIndex: 1
+                  }} 
+                />
+              </div>
             )}
             <div style={styles.enrollBody}>
               <div style={styles.priceRow}>
@@ -280,6 +316,41 @@ export default function CourseLandingPage() {
             <div style={{ color: '#4B5563', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{course.description}</div>
           </div>
         )}
+
+        {/* What You Will Learn */}
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>What You Will Learn</h2>
+          <div className="highlights-grid">
+            <div style={styles.highlightCard} className="highlight-card-hover">
+              <div style={styles.highlightIconWrapper}><BookOpen size={18} color="#FF9F1C" /></div>
+              <div>
+                <h3 style={styles.highlightTitle}>Timeless Vedic Wisdom</h3>
+                <p style={styles.highlightText}>Connect with centuries-old philosophical concepts structured for contemporary life challenges.</p>
+              </div>
+            </div>
+            <div style={styles.highlightCard} className="highlight-card-hover">
+              <div style={styles.highlightIconWrapper}><Clock size={18} color="#FF9F1C" /></div>
+              <div>
+                <h3 style={styles.highlightTitle}>Practical Mindfulness</h3>
+                <p style={styles.highlightText}>Translate profound philosophical wisdom into actionable daily meditation and lifestyle habits.</p>
+              </div>
+            </div>
+            <div style={styles.highlightCard} className="highlight-card-hover">
+              <div style={styles.highlightIconWrapper}><Award size={18} color="#FF9F1C" /></div>
+              <div>
+                <h3 style={styles.highlightTitle}>Interactive Quizzes</h3>
+                <p style={styles.highlightText}>Validate your understanding after key lessons with interactive self-assessment questions.</p>
+              </div>
+            </div>
+            <div style={styles.highlightCard} className="highlight-card-hover">
+              <div style={styles.highlightIconWrapper}><Users size={18} color="#FF9F1C" /></div>
+              <div>
+                <h3 style={styles.highlightTitle}>Global Community</h3>
+                <p style={styles.highlightText}>Engage in thought-provoking discussions, share insights, and connect with global seekers.</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Curriculum */}
         {course.modules?.length > 0 && (
@@ -400,6 +471,42 @@ export default function CourseLandingPage() {
             </div>
           </div>
         )}
+
+        {/* Meet Your Instructor */}
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Meet Your Instructor</h2>
+          <div className="instructor-card-layout">
+            <div style={styles.instructorAvatar}>
+              <span style={styles.instructorInitials}>RD</span>
+            </div>
+            <div style={styles.instructorInfo}>
+              <h3 style={styles.instructorName}>Radheshyam Das</h3>
+              <p style={styles.instructorTitle}>Founding Director, VOICE & Renowned Vedic Educator</p>
+              <p style={styles.instructorBio}>
+                Radheshyam Das holds a Master's degree from IIT Bombay and is a celebrated author, speaker, and spiritual mentor. Having dedicated over three decades to studying and teaching Vedic literature, he has inspired tens of thousands of youths and professionals across the globe to lead balanced, value-based, and spiritually enriched lives.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* FAQs */}
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Frequently Asked Questions</h2>
+          <div style={styles.faqList}>
+            <div style={styles.faqItem}>
+              <h3 style={styles.faqQuestion}>Who is this course for?</h3>
+              <p style={styles.faqAnswer}>This course is designed for students, professionals, and seekers of all backgrounds who want to deepen their understanding of life, spirituality, and personal leadership based on Vedic principles.</p>
+            </div>
+            <div style={styles.faqItem}>
+              <h3 style={styles.faqQuestion}>Is there any certificate provided?</h3>
+              <p style={styles.faqAnswer}>Yes! For courses that have certificates enabled, you will receive a verifiable digital certificate once you complete all modules and pass the course quizzes.</p>
+            </div>
+            <div style={styles.faqItem}>
+              <h3 style={styles.faqQuestion}>How long will I have access to the course?</h3>
+              <p style={styles.faqAnswer}>You will get lifetime access to the course content. You can learn at your own pace and revisit lessons whenever you like.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <script src="https://checkout.razorpay.com/v1/checkout.js" />
@@ -423,6 +530,42 @@ export default function CourseLandingPage() {
         .preview-badge:hover {
           background-color: #BBF7D0 !important;
           transform: scale(1.05);
+        }
+
+        /* Grid and Flex Layout responsiveness */
+        .highlights-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 16px;
+          margin-top: 12px;
+        }
+        @media (max-width: 640px) {
+          .highlights-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        
+        .instructor-card-layout {
+          display: flex;
+          gap: 24px;
+          align-items: flex-start;
+        }
+        @media (max-width: 600px) {
+          .instructor-card-layout {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+        }
+        
+        /* Interactive animations for highlight cards */
+        .highlight-card-hover {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .highlight-card-hover:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+          border-color: rgba(255,159,28,0.3) !important;
         }
       `}</style>
     </div>
@@ -496,4 +639,100 @@ const styles = {
   modalCloseBtn: { background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6B7280' },
   videoWrapper: { position: 'relative', width: '100%', paddingTop: '56.25%', background: '#000' },
   iframe: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+  highlightCard: {
+    display: 'flex',
+    gap: '16px',
+    padding: '16px',
+    background: '#F9FAFB',
+    borderRadius: '12px',
+    border: '1px solid #E5E7EB',
+    cursor: 'default',
+  },
+  highlightIconWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '40px',
+    height: '40px',
+    background: 'rgba(255,159,28,0.1)',
+    borderRadius: '8px',
+    flexShrink: 0,
+  },
+  highlightTitle: {
+    fontSize: '15px',
+    fontWeight: '700',
+    color: '#1A1B4B',
+    marginBottom: '4px',
+    fontFamily: 'Outfit, sans-serif',
+  },
+  highlightText: {
+    fontSize: '13px',
+    color: '#6B7280',
+    lineHeight: '1.5',
+    margin: 0,
+  },
+  instructorAvatar: {
+    width: '80px',
+    height: '80px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #1A1B4B 0%, #2D1B69 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 12px rgba(26,27,75,0.15)',
+    flexShrink: 0,
+  },
+  instructorInitials: {
+    color: '#FFFFFF',
+    fontSize: '28px',
+    fontWeight: '700',
+    fontFamily: 'Outfit, sans-serif',
+    letterSpacing: '1px',
+  },
+  instructorInfo: {
+    flex: 1,
+  },
+  instructorName: {
+    fontSize: '18px',
+    fontWeight: '700',
+    color: '#1A1B4B',
+    margin: '0 0 4px 0',
+    fontFamily: 'Outfit, sans-serif',
+  },
+  instructorTitle: {
+    fontSize: '13px',
+    color: '#FF9F1C',
+    fontWeight: '600',
+    margin: '0 0 12px 0',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  instructorBio: {
+    fontSize: '14px',
+    color: '#4B5563',
+    lineHeight: '1.7',
+    margin: 0,
+  },
+  faqList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  faqItem: {
+    paddingBottom: '16px',
+    borderBottom: '1px solid #F3F4F6',
+  },
+  faqQuestion: {
+    fontSize: '15px',
+    fontWeight: '700',
+    color: '#1A1B4B',
+    marginBottom: '6px',
+    fontFamily: 'Outfit, sans-serif',
+  },
+  faqAnswer: {
+    fontSize: '13px',
+    color: '#4B5563',
+    lineHeight: '1.6',
+    margin: 0,
+  },
 };
