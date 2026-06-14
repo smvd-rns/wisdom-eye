@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard, BookOpen, Users, Tag, CreditCard,
   BarChart2, LogOut, ChevronRight, Menu, X, BookMarked,
-  GraduationCap, ClipboardCheck, Settings, Loader2
+  GraduationCap, ClipboardCheck, Settings, Loader2, Home
 } from 'lucide-react';
 
 const NAV = [
@@ -101,6 +101,12 @@ export default function LmsAdminLayout({ children }) {
           })}
 
           <p style={{ ...styles.navSection, marginTop: '20px' }}>WEBSITE</p>
+          <Link href="/lms-admin/home-editor"
+            style={{ ...styles.navItem, ...(pathname.startsWith('/lms-admin/home-editor') ? styles.navActive : {}) }}
+            onClick={() => setSidebarOpen(false)}>
+            <Home size={17} /> <span>Home Editor</span>
+            {pathname.startsWith('/lms-admin/home-editor') && <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.6 }} />}
+          </Link>
           <Link href="/" style={styles.navItem} target="_blank">
             <BookMarked size={17} /> <span>View Site</span>
           </Link>

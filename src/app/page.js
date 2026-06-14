@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -46,57 +46,57 @@ const FEATURED_BOOKS = [
   {
     id: 1,
     title: 'The Happiness Paradox (SS Series - Book 1)',
-    price: '₹170.00',
+    price: 'â‚¹170.00',
     url: 'https://voicepublication.in/products/the-happiness-paradox',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/TheHappinessParadox-cover.jpg?v=1780304890'
   },
   {
     id: 3,
     title: 'Decoding the Self (CC Series - Book 1)',
-    price: '₹200.00',
+    price: 'â‚¹200.00',
     url: 'https://voicepublication.in/products/decoding-the-self',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/TCCDecodingtheself-cover.jpg?v=1780305591'
   },
   {
     id: 5,
     title: 'Your Best Friend',
-    price: '₹280.00',
+    price: 'â‚¹280.00',
     url: 'https://voicepublication.in/products/your-best-friend',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/YourBestFriend-front.jpg?v=1764746523'
   },
   {
     id: 6,
     title: 'Wisdom Eye (Course 1) - Laying the Foundation for Success',
-    price: '₹150.00',
-    originalPrice: '₹200.00',
+    price: 'â‚¹150.00',
+    originalPrice: 'â‚¹200.00',
     url: 'https://voicepublication.in/products/wisdom-eye',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483'
   },
   {
     id: 12,
     title: 'GAME Positive Thinker (Course 1, 2, 4 & 6)',
-    price: '₹120.00 - ₹280.00',
+    price: 'â‚¹120.00 - â‚¹280.00',
     url: 'https://voicepublication.in/products/game-positive-thinker-course-1-2-6',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/GAME-PT-12.png?v=1764741397'
   },
   {
     id: 14,
     title: 'Discover Yourself',
-    price: '₹160.00',
+    price: 'â‚¹160.00',
     url: 'https://voicepublication.in/products/discover-yourself',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/DYS-front.jpg?v=1764332893'
   },
   {
     id: 16,
     title: 'Art of Smart Work',
-    price: '₹70.00',
+    price: 'â‚¹70.00',
     url: 'https://voicepublication.in/products/art-of-smart-work',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/ArtofSmartWork-Front.jpg?v=1756533599'
   },
   {
     id: 4,
     title: 'Your Secret Journey',
-    price: '₹200.00',
+    price: 'â‚¹200.00',
     url: 'https://voicepublication.in/products/your-secret-journey',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/YSJ-front.jpg?v=1764746566'
   }
@@ -119,18 +119,50 @@ export default function GeneralHomePage() {
   const [youtubeVideos, setYoutubeVideos] = useState([]);
   const [activeVideo, setActiveVideo] = useState(null);
   const [ytLoading, setYtLoading] = useState(true);
+  const [homeConfig, setHomeConfig] = useState(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  // Fetch YouTube Videos
+  // Load home config from API
+  useEffect(() => {
+    fetch('/api/home-config').then(r => r.ok ? r.json() : null).then(data => {
+      if (data) setHomeConfig(data);
+    }).catch(() => {});
+  }, []);
+
+  // Helper: get section config
+  const getSection = (id) => homeConfig?.sections?.find(s => s.id === id);
+  const isSectionVisible = (id) => {
+    if (!homeConfig) return true; // fallback: show all while loading
+    const sec = getSection(id);
+    return sec ? sec.visible !== false : true;
+  };
+  const sortedSectionIds = homeConfig?.sections
+    ? [...homeConfig.sections].sort((a, b) => a.order - b.order).map(s => s.id)
+    : ['hero', 'credentials', 'logos', 'featured', 'about', 'books', 'youtube'];
+
+  // Data driven from config or defaults
+  const POSTER_IMAGES_LIVE = homeConfig?.heroSlides?.length > 0 ? homeConfig.heroSlides : POSTER_IMAGES;
+  const FEATURED_BOOKS_LIVE = homeConfig?.featuredBooks?.length > 0 ? homeConfig.featuredBooks : FEATURED_BOOKS;
+  const credentialsData = homeConfig?.credentials?.length > 0 ? homeConfig.credentials : [
+    { src: "https://lh3.googleusercontent.com/d/19yYbEATwSgrOVfuKk339h6j6qVNY48Nw", alt: "IIT Mumbai Topper" },
+    { src: "https://lh3.googleusercontent.com/d/1zHSviGsVWpcjqEEcDClEht0qNihIQ8qp", alt: "Temple President ISKCON Pune" },
+    { src: "https://lh3.googleusercontent.com/d/1etXzaXu2p4rmW81PrMW6T-bHRfKIZzSQ", alt: "Temple Management Council Member ISKCON Abids" },
+    { src: "https://lh3.googleusercontent.com/d/1vu3f15JL_oJ8LAiYq4WItoVSH4Of5uEz", alt: "Global Duty Officer Youth Training ISKCON" },
+  ];
+
+  // Fetch YouTube Videos and respect pinned videos order
   useEffect(() => {
     async function fetchVideos() {
       try {
         const res = await fetch('/api/youtube');
         if (res.ok) {
           const data = await res.json();
-          setYoutubeVideos(data);
-          if (data.length > 0) {
-            setActiveVideo(data[0]);
-          }
+          const pinned = homeConfig?.pinnedVideos || [];
+          const pinnedList = pinned.map(id => data.find(v => v.id === id) || { id, title: id, thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`, publishedAt: new Date().toISOString() });
+          const rest = data.filter(v => !pinned.includes(v.id));
+          const ordered = [...pinnedList, ...rest];
+          setYoutubeVideos(ordered);
+          if (ordered.length > 0) setActiveVideo(ordered[0]);
         }
       } catch (err) {
         console.error('Failed to load YouTube videos', err);
@@ -139,155 +171,132 @@ export default function GeneralHomePage() {
       }
     }
     fetchVideos();
-  }, []);
+  }, [homeConfig]);
 
   // Auto-scroll Hero Poster Slider
   useEffect(() => {
     const timer = setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % POSTER_IMAGES.length);
+      setActiveSlide((prev) => (prev + 1) % POSTER_IMAGES_LIVE.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [POSTER_IMAGES_LIVE.length]);
 
-  const nextSlide = () => setActiveSlide((prev) => (prev + 1) % POSTER_IMAGES.length);
-  const prevSlide = () => setActiveSlide((prev) => (prev - 1 + POSTER_IMAGES.length) % POSTER_IMAGES.length);
+  const nextSlide = () => setActiveSlide((prev) => (prev + 1) % POSTER_IMAGES_LIVE.length);
+  const prevSlide = () => setActiveSlide((prev) => (prev - 1 + POSTER_IMAGES_LIVE.length) % POSTER_IMAGES_LIVE.length);
 
-  // Helper arrays for credentials to map index
-  const credentialsData = [
-    { src: "https://lh3.googleusercontent.com/d/19yYbEATwSgrOVfuKk339h6j6qVNY48Nw", alt: "IIT Mumbai Topper" },
-    { src: "https://lh3.googleusercontent.com/d/1zHSviGsVWpcjqEEcDClEht0qNihIQ8qp", alt: "Temple President ISKCON Pune" },
-    { src: "https://lh3.googleusercontent.com/d/1etXzaXu2p4rmW81PrMW6T-bHRfKIZzSQ", alt: "Temple Management Council Member ISKCON Abids" },
-    { src: "https://lh3.googleusercontent.com/d/1vu3f15JL_oJ8LAiYq4WItoVSH4Of5uEz", alt: "Global Duty Officer Youth Training ISKCON" }
-  ];
+  // Active announcements (not expired, visible)
+  const activeAnnouncements = (homeConfig?.announcements || []).filter(a => {
+    if (!a.visible) return false;
+    if (a.expiresAt && new Date(a.expiresAt) < new Date()) return false;
+    return true;
+  });
 
-  return (
-    <div style={styles.page}>
-      
-      {/* Shared Header & Navbar */}
-      <Navbar />
+  const banner = homeConfig?.notificationBanner;
+  const showBanner = banner?.enabled && banner?.text && !bannerDismissed;
 
-      {/* Premium Hero Image Slider Section */}
-      <section style={styles.heroSection}>
+  const ANNOUNCE_COLORS = {
+    info: { bg: '#EFF6FF', border: '#BFDBFE', text: '#1E40AF' },
+    success: { bg: '#F0FDF4', border: '#BBF7D0', text: '#166534' },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#92400E' },
+    promo: { bg: '#FDF2F8', border: '#F9A8D4', text: '#9D174D' },
+  };
+
+  // Render section by id
+  const renderSection = (id) => {
+    if (!isSectionVisible(id)) return null;
+
+    switch (id) {
+      case 'hero': return renderHeroSection();
+      case 'credentials': return renderCredentialsSection();
+      case 'logos': return renderLogosSection();
+      case 'featured': return renderFeaturedSection();
+      case 'about': return renderAboutSection();
+      case 'books': return renderBooksSection();
+      case 'youtube': return renderYoutubeSection();
+      default: return null;
+    }
+  };
+
+  function renderHeroSection() {
+    return (
+      <section key="hero" style={styles.heroSection}>
         <div style={styles.heroSliderContainer}>
           <button onClick={prevSlide} style={styles.sliderArrowLeft}>
             <ChevronLeft size={24} />
           </button>
-          
           <div style={styles.slideImageWrapper}>
-            {/* Blurred background underlay */}
-            <img 
-              src={formatImageUrl(POSTER_IMAGES[activeSlide])} 
-              alt="" 
-              style={styles.heroPosterBlurredBg}
-            />
-            {/* Sharp main contained image */}
-            <img 
-              src={formatImageUrl(POSTER_IMAGES[activeSlide])} 
-              alt={`Wisdom Poster ${activeSlide + 1}`} 
-              style={styles.heroPosterImage}
-            />
+            <img src={formatImageUrl(POSTER_IMAGES_LIVE[activeSlide])} alt="" style={styles.heroPosterBlurredBg} />
+            <img src={formatImageUrl(POSTER_IMAGES_LIVE[activeSlide])} alt={`Wisdom Poster ${activeSlide + 1}`} style={styles.heroPosterImage} />
           </div>
-
           <button onClick={nextSlide} style={styles.sliderArrowRight}>
             <ChevronRight size={24} />
           </button>
         </div>
-        
-        {/* Slide Indicator Dots */}
         <div style={styles.dotsContainer}>
-          {POSTER_IMAGES.map((_, idx) => (
-            <span 
-              key={idx} 
-              onClick={() => setActiveSlide(idx)}
-              style={{
-                ...styles.dot,
-                background: activeSlide === idx ? '#FF9F1C' : 'rgba(255,255,255,0.4)',
-                width: activeSlide === idx ? '16px' : '8px',
-              }}
+          {POSTER_IMAGES_LIVE.map((_, idx) => (
+            <span key={idx} onClick={() => setActiveSlide(idx)}
+              style={{ ...styles.dot, background: activeSlide === idx ? '#FF9F1C' : 'rgba(255,255,255,0.4)', width: activeSlide === idx ? '16px' : '8px' }}
             />
           ))}
         </div>
       </section>
+    );
+  }
 
-      {/* 4 Separate Sections Segment (IIT, ISKCON Pune, Abids, Global Duty Officer) */}
-      <section style={styles.credentialsSection}>
+  function renderCredentialsSection() {
+    return (
+      <section key="credentials" style={styles.credentialsSection}>
         <div style={styles.container}>
-          <div 
-            className="credentials-scroll-container" 
-            style={styles.credentialsGrid}
-          >
+          <div className="credentials-scroll-container" style={styles.credentialsGrid}>
             {credentialsData.concat(credentialsData).map((cred, idx) => (
-              <div 
-                key={idx} 
-                className={`cred-slide-card ${idx >= credentialsData.length ? 'duplicate' : ''}`}
-                style={styles.credCard}
-              >
-                <img 
-                  src={formatImageUrl(cred.src)} 
-                  alt={cred.alt} 
-                  style={styles.credImage}
-                />
+              <div key={idx} className={`cred-slide-card ${idx >= credentialsData.length ? 'duplicate' : ''}`} style={styles.credCard}>
+                <img src={formatImageUrl(cred.src)} alt={cred.alt} style={styles.credImage} />
               </div>
             ))}
           </div>
         </div>
       </section>
+    );
+  }
 
-      {/* Company Visited Slider Segment */}
-      <section style={styles.logoSliderSection}>
+  function renderLogosSection() {
+    return (
+      <section key="logos" style={styles.logoSliderSection}>
         <div style={styles.container}>
           <h4 style={styles.visitedTitle}>Corporate Trainer</h4>
           <div style={styles.sliderContainer}>
             <div style={styles.sliderTrack}>
               {COMPANIES.concat(COMPANIES).map((comp, idx) => (
                 <div key={idx} style={styles.logoItem}>
-                  <img 
-                    src={comp.logo} 
-                    alt={comp.name} 
-                    style={styles.logoImage}
-                    onError={(e) => {
-                      e.target.style.display = 'none'; // Fallback if logo fails
-                    }}
-                  />
+                  <img src={comp.logo} alt={comp.name} style={styles.logoImage} onError={e => { e.target.style.display = 'none'; }} />
                 </div>
               ))}
             </div>
           </div>
         </div>
       </section>
+    );
+  }
 
-      {/* Featured Section */}
-      <section style={styles.featuredSection}>
+  function renderFeaturedSection() {
+    return (
+      <section key="featured" style={styles.featuredSection}>
         <div style={styles.container}>
           <div style={styles.featuredGrid}>
             <div style={styles.featuredCard}>
               <span style={styles.featuredTag}>Featured Book</span>
-              <img 
-                src="https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483" 
-                alt="Wisdom Eye" 
-                style={styles.featuredImage}
-              />
+              <img src="https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483" alt="Wisdom Eye" style={styles.featuredImage} />
               <h3 style={styles.featuredCardTitle}>Wisdom Eye</h3>
               <p style={styles.featuredCardDesc}>Laying the foundation for character and personal leadership success.</p>
-              <Link href="/books" style={styles.featuredCta}>
-                View All Books <ExternalLink size={14} />
-              </Link>
+              <Link href="/books" style={styles.featuredCta}>View All Books <ExternalLink size={14} /></Link>
             </div>
-
             <div style={styles.featuredCard}>
               <span style={styles.featuredTag}>Scripture Academy</span>
-              <img 
-                src="https://gaurangadarshandas.com/images/courses/8aab8f0c77c546568fd0c9c430ef6547_dw6z4v.png" 
-                alt="Wisdom Eye Course" 
-                style={styles.featuredImage}
-              />
+              <img src="https://gaurangadarshandas.com/images/courses/8aab8f0c77c546568fd0c9c430ef6547_dw6z4v.png" alt="Wisdom Eye Course" style={styles.featuredImage} />
               <h3 style={styles.featuredCardTitle}>Certified Courses</h3>
               <p style={styles.featuredCardDesc}>Auto-graded quizzes, certification, and discussions under the guidance of Radheshyam Das.</p>
-              <Link href="/courses" style={styles.featuredCta}>
-                Explore Academy <ChevronRight size={14} />
-              </Link>
+              <Link href="/courses" style={styles.featuredCta}>Explore Academy <ChevronRight size={14} /></Link>
             </div>
-
             <div style={styles.featuredCard}>
               <span style={styles.featuredTag}>Daily Reading</span>
               <div style={{ ...styles.featuredImage, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eadecd', borderRadius: '8px' }}>
@@ -295,159 +304,106 @@ export default function GeneralHomePage() {
               </div>
               <h3 style={styles.featuredCardTitle}>Daily Reading Wisdom</h3>
               <p style={styles.featuredCardDesc}>Start your day with spiritual inspiration and logical insights from timeless scriptures.</p>
-              <Link href="/daily-reading" style={styles.featuredCta}>
-                Read Daily Verse <ChevronRight size={14} />
-              </Link>
+              <Link href="/daily-reading" style={styles.featuredCta}>Read Daily Verse <ChevronRight size={14} /></Link>
             </div>
           </div>
         </div>
       </section>
+    );
+  }
 
-      {/* Author Intro Teaser */}
-      <section style={styles.aboutSection}>
+  function renderAboutSection() {
+    return (
+      <section key="about" style={styles.aboutSection}>
         <div style={styles.container}>
           <div className="about-biography-grid" style={styles.aboutWrapper}>
             <div style={styles.aboutTextContent}>
               <span style={styles.sectionLabel}>Biography</span>
               <h2 style={styles.aboutHeader}>Radheshyam Das</h2>
               <div style={styles.divider} />
-              
-              <p style={styles.aboutText}>
-                <strong>Radheshyam Das</strong> is an IIT Mumbai Topper who dedicated his life as a full-time monk, youth educator, and author. Born in a devout family near Madurai, his childhood was fascinated by Vedic chants and philosophical classics.
-              </p>
-              
-              <p style={styles.aboutText}>
-                After top ranking at IIT Mumbai, working as a Senior Research Fellow and mechanical engineer at top companies, he took up the role of a celibate monk. He designed the DYS (Discover Your Self) and GAME (Gita for All Made Easy) course structures which are taught across leading universities.
-              </p>
-
-              <Link href="/about" style={styles.heroBtnPrimary}>
-                Read Full Biography <ArrowRight size={16} />
-              </Link>
+              <p style={styles.aboutText}><strong>Radheshyam Das</strong> is an IIT Mumbai Topper who dedicated his life as a full-time monk, youth educator, and author. Born in a devout family near Madurai, his childhood was fascinated by Vedic chants and philosophical classics.</p>
+              <p style={styles.aboutText}>After top ranking at IIT Mumbai, working as a Senior Research Fellow and mechanical engineer at top companies, he took up the role of a celibate monk. He designed the DYS (Discover Your Self) and GAME (Gita for All Made Easy) course structures which are taught across leading universities.</p>
+              <Link href="/about" style={styles.heroBtnPrimary}>Read Full Biography <ArrowRight size={16} /></Link>
             </div>
-
             <div style={styles.aboutVisualContent}>
               <div style={styles.imageCardDecoration} />
-              <img 
-                src="https://gdo.radheshyamdas.com/favicon.png" 
-                alt="Radheshyam Das" 
-                style={styles.aboutPhoto}
-              />
+              <img src="https://gdo.radheshyamdas.com/favicon.png" alt="Radheshyam Das" style={styles.aboutPhoto} />
             </div>
           </div>
         </div>
       </section>
+    );
+  }
 
-      {/* VOICE Publication Books Teaser */}
-      <section style={styles.booksSection}>
+  function renderBooksSection() {
+    return (
+      <section key="books" style={styles.booksSection}>
         <div style={styles.container}>
           <div style={styles.sectionHeaderRow}>
             <div>
               <span style={styles.sectionLabelLight}>Featured Literature</span>
               <h2 style={styles.sectionTitleLight}>Radheshyam Das Books</h2>
             </div>
-            <Link href="/books" style={styles.viewAllBtn}>
-              View All Books <ChevronRight size={16} />
-            </Link>
+            <Link href="/books" style={styles.viewAllBtn}>View All Books <ChevronRight size={16} /></Link>
           </div>
-
-          <div 
-            className="books-scroll-container" 
-            style={styles.booksGrid}
-          >
-            {FEATURED_BOOKS.map((book, idx) => (
+          <div className="books-scroll-container" style={styles.booksGrid}>
+            {FEATURED_BOOKS_LIVE.map((book, idx) => (
               <div key={idx} style={styles.bookCard}>
                 <div style={styles.bookImgWrapper}>
                   <img src={book.image} alt={book.title} style={styles.bookImage} />
                 </div>
                 <div style={styles.bookDetails}>
                   <h3 style={styles.bookTitle}>{book.title}</h3>
-                  <div style={styles.bookPriceBlock}>
-                    <span style={styles.bookPrice}>{book.price}</span>
-                  </div>
-                  <a href={book.url} target="_blank" rel="noopener noreferrer" style={styles.buyBtn}>
-                    Buy on Store <ExternalLink size={12} />
-                  </a>
+                  <div style={styles.bookPriceBlock}><span style={styles.bookPrice}>{book.price}</span></div>
+                  <a href={book.url} target="_blank" rel="noopener noreferrer" style={styles.buyBtn}>Buy on Store <ExternalLink size={12} /></a>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </section>
+    );
+  }
 
-      {/* YouTube Channel Section */}
-      <section style={styles.youtubeSection}>
+  function renderYoutubeSection() {
+    return (
+      <section key="youtube" style={styles.youtubeSection}>
         <div style={styles.container}>
           <div style={styles.sectionHeaderRow}>
             <div>
               <span style={styles.sectionLabel}>Video Channel</span>
               <h2 style={styles.sectionTitle}>Radheshyam Das YouTube Lectures</h2>
             </div>
-            <a 
-              href="https://www.youtube.com/channel/UC9Pap1xwEQAo7X1tKqpcpWg" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              style={styles.youtubeChannelBtn}
-            >
+            <a href="https://www.youtube.com/channel/UC9Pap1xwEQAo7X1tKqpcpWg" target="_blank" rel="noopener noreferrer" style={styles.youtubeChannelBtn}>
               Subscribe on YouTube <Play size={14} fill="#FFF" style={{ marginLeft: '4px' }} />
             </a>
           </div>
-
           {ytLoading ? (
-            <div style={styles.youtubeLoading}>
-              <div>Loading latest lectures...</div>
-            </div>
+            <div style={styles.youtubeLoading}><div>Loading latest lectures...</div></div>
           ) : youtubeVideos.length > 0 ? (
             <div className="youtube-layout">
-              {/* Active Player */}
               <div style={styles.youtubePlayerContainer}>
-                {activeVideo && (
-                  <>
-                    <div style={styles.iframeWrapper}>
-                      <iframe
-                        src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}`}
-                        title={activeVideo.title}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        style={styles.youtubeIframe}
-                      />
-                    </div>
-                    <h3 style={styles.activeVideoTitle}>{activeVideo.title}</h3>
-                    <p style={styles.activeVideoMeta}>
-                      Published: {new Date(activeVideo.publishedAt).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </>
-                )}
+                {activeVideo && (<>
+                  <div style={styles.iframeWrapper}>
+                    <iframe src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}`} title={activeVideo.title}
+                      frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen style={styles.youtubeIframe} />
+                  </div>
+                  <h3 style={styles.activeVideoTitle}>{activeVideo.title}</h3>
+                  <p style={styles.activeVideoMeta}>Published: {new Date(activeVideo.publishedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </>)}
               </div>
-
-              {/* Scrollable Playlist */}
               <div style={styles.youtubePlaylistContainer}>
                 <h4 style={styles.playlistHeader}>Recent Lectures ({youtubeVideos.length})</h4>
                 <div style={styles.playlistScroll}>
                   {youtubeVideos.map((video) => (
-                    <div 
-                      key={video.id}
-                      onClick={() => setActiveVideo(video)}
-                      style={{
-                        ...styles.playlistItem,
-                        background: activeVideo?.id === video.id ? 'rgba(255, 159, 28, 0.15)' : 'transparent',
-                        borderColor: activeVideo?.id === video.id ? '#FF9F1C' : 'rgba(26, 27, 75, 0.08)'
-                      }}
-                      className="playlist-item-card"
-                    >
+                    <div key={video.id} onClick={() => setActiveVideo(video)}
+                      style={{ ...styles.playlistItem, background: activeVideo?.id === video.id ? 'rgba(255, 159, 28, 0.15)' : 'transparent', borderColor: activeVideo?.id === video.id ? '#FF9F1C' : 'rgba(26, 27, 75, 0.08)' }}
+                      className="playlist-item-card">
                       <img src={video.thumbnail} alt={video.title} style={styles.playlistThumb} />
                       <div style={styles.playlistItemDetails}>
-                        <h5 style={{
-                          ...styles.playlistItemTitle,
-                          color: activeVideo?.id === video.id ? '#FF9F1C' : '#1A1B4B'
-                        }}>{video.title}</h5>
-                        <p style={styles.playlistItemDate}>
-                          {new Date(video.publishedAt).toLocaleDateString()}
-                        </p>
+                        <h5 style={{ ...styles.playlistItemTitle, color: activeVideo?.id === video.id ? '#FF9F1C' : '#1A1B4B' }}>{video.title}</h5>
+                        <p style={styles.playlistItemDate}>{new Date(video.publishedAt).toLocaleDateString()}</p>
                       </div>
                     </div>
                   ))}
@@ -455,14 +411,56 @@ export default function GeneralHomePage() {
               </div>
             </div>
           ) : (
-            <div style={styles.youtubeLoading}>
-              <p>No videos available. Visit the YouTube channel to watch more.</p>
-            </div>
+            <div style={styles.youtubeLoading}><p>No videos available. Visit the YouTube channel to watch more.</p></div>
           )}
         </div>
       </section>
+    );
+  }
 
-      {/* Shared Footer */}
+
+
+  return (
+    <div style={styles.page}>
+      <Navbar />
+
+      {/* Notification Banner */}
+      {showBanner && (
+        <div style={{
+          background: banner.bgColor || '#1A1B4B',
+          color: banner.textColor || '#FF9F1C',
+          padding: '10px 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+          fontSize: '14px', fontWeight: '600', position: 'relative', zIndex: 50,
+        }}>
+          {banner.link ? (
+            <a href={banner.link} style={{ color: 'inherit', textDecoration: 'underline' }}>{banner.text}</a>
+          ) : (
+            <span>{banner.text}</span>
+          )}
+          {banner.dismissable && (
+            <button onClick={() => setBannerDismissed(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', marginLeft: '8px', opacity: 0.7, fontSize: '18px', lineHeight: 1 }}>Ã—</button>
+          )}
+        </div>
+      )}
+
+      {/* Announcements */}
+      {activeAnnouncements.length > 0 && (
+        <div style={{ padding: '8px 24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {activeAnnouncements.map(a => {
+            const colors = ANNOUNCE_COLORS[a.type] || ANNOUNCE_COLORS.info;
+            return (
+              <div key={a.id} style={{ background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text, padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600' }}>
+                {a.text}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Dynamic Sections */}
+      {sortedSectionIds.map(id => renderSection(id))}
+
       <Footer />
     </div>
   );
