@@ -1112,7 +1112,14 @@ button, input, select, textarea {
 }
 
 /* continuous scrolling marquee with manual scroll & 3D tilt effects for credentials */
+.duplicate {
+  display: none !important;
+}
+
 @media (max-width: 576px) {
+  .duplicate {
+    display: flex !important;
+  }
   section[style*="padding: 60px 24px"] {
     padding: 16px 0 !important;
   }

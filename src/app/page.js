@@ -195,7 +195,7 @@ export default function GeneralHomePage() {
             {credentialsData.concat(credentialsData).map((cred, idx) => (
               <div 
                 key={idx} 
-                className="cred-slide-card"
+                className={`cred-slide-card ${idx >= credentialsData.length ? 'duplicate' : ''}`}
                 style={styles.credCard}
               >
                 <img 
