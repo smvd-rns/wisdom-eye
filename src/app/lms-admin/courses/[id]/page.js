@@ -82,12 +82,15 @@ export default function EditCoursePage() {
         <Link href="/lms-admin/courses" style={styles.back}><ArrowLeft size={14} /> Back to Courses</Link>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <h1 style={styles.title}>Edit Course</h1>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <Link href={`/lms-admin/courses/${id}/quizzes`} style={styles.quizzesBtn}>
               📝 Manage Quizzes
             </Link>
             <Link href={`/lms-admin/courses/${id}/builder`} style={styles.builderBtn}>
               📚 Go to Builder
+            </Link>
+            <Link href={`/lms-admin/courses/${id}/page-builder`} style={styles.pageBuilderBtn}>
+              🎨 Special Page Builder
             </Link>
           </div>
         </div>
@@ -212,6 +215,7 @@ const styles = {
   back: { display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#6B7280', fontSize: '12px', marginBottom: '8px', textDecoration: 'none' },
   title: { fontSize: '22px', fontWeight: '800', color: '#111827', fontFamily: 'Outfit, sans-serif' },
   builderBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '8px', background: '#FF9F1C', color: '#1A1B4B', fontWeight: '700', fontSize: '13px', textDecoration: 'none' },
+  pageBuilderBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '8px', background: 'linear-gradient(135deg, #7C3AED, #2D1B69)', color: '#fff', fontWeight: '700', fontSize: '13px', textDecoration: 'none' },
   quizzesBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '8px', border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: '600', fontSize: '13px', textDecoration: 'none' },
   errorBox: { background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px', color: '#DC2626', fontSize: '14px', marginBottom: '16px' },
   successBox: { background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '12px 16px', color: '#16A34A', fontSize: '14px', marginBottom: '16px' },

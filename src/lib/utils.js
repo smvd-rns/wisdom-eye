@@ -23,7 +23,7 @@ export function formatImageUrl(url, width = 600) {
     }
 
     if (fileId) {
-      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${width}`;
+      return `https://lh3.googleusercontent.com/d/${fileId}=w${width}`;
     }
   }
 

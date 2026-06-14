@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Clock, Award, ChevronDown, ChevronUp, Play, FileText, Lock, CheckCircle, Loader2, Star, Users } from 'lucide-react';
 import { formatImageUrl } from '@/lib/utils';
+import SpecialCourseLanding from '@/components/SpecialCourseLanding';
 
 export default function CourseLandingPage() {
   const { slug } = useParams();
@@ -191,6 +192,26 @@ export default function CourseLandingPage() {
   );
 
   if (!course) return null;
+
+  // ── Special Course: render custom page builder layout ──────────────
+  if (course.is_special && course.custom_layout?.blocks?.length > 0) {
+    return (
+      <SpecialCourseLanding
+        course={course}
+        user={user}
+        isEnrolled={isEnrolled}
+        enrolling={enrolling}
+        onEnroll={handleEnroll}
+        coupon={coupon}
+        setCoupon={setCoupon}
+        couponResult={couponResult}
+        setCouponResult={setCouponResult}
+        applyingCoupon={applyingCoupon}
+        onApplyCoupon={applyCoupon}
+        slug={slug}
+      />
+    );
+  }
 
   const discountedPrice = couponResult?.final_price ?? null;
   const displayPrice = discountedPrice !== null ? discountedPrice : course.price;

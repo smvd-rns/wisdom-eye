@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS courses (
   certificate_image_url TEXT,
   total_lessons INTEGER DEFAULT 0,
   total_duration_seconds INTEGER DEFAULT 0,
+  is_special BOOLEAN DEFAULT FALSE,
+  custom_layout JSONB DEFAULT NULL,
   created_by UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -296,3 +298,6 @@ CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code);
 
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS current_streak INTEGER DEFAULT 0;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS last_active_date DATE;
+
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_special BOOLEAN DEFAULT FALSE;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS custom_layout JSONB DEFAULT NULL;

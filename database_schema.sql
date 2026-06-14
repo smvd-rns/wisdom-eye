@@ -28,11 +28,7 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
--- Seed initial admin and viewer passwords
-INSERT INTO settings (key, value) VALUES 
-('admin_password', 'Gauranga@!08smvd'),
-('viewer_password', 'Prabhupada@108')
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+-- Seed initial admin and viewer passwords (configured via settings table values or environment variables)
 -- Enable RLS (Row Level Security)
 ALTER TABLE registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;

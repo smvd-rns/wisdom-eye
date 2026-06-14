@@ -13,8 +13,8 @@ export async function POST(req) {
     }
 
     // Default Env Fallbacks
-    let adminPassword = process.env.ADMIN_DASHBOARD_PASSWORD || 'Gauranga@!08smvd';
-    let viewerPassword = process.env.VIEWER_DASHBOARD_PASSWORD || 'Prabhupada@108';
+    let adminPassword = process.env.ADMIN_DASHBOARD_PASSWORD || '';
+    let viewerPassword = process.env.VIEWER_DASHBOARD_PASSWORD || '';
 
     // Query password overrides from Supabase settings table
     try {
