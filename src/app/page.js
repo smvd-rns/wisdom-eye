@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
   BookOpen, 
@@ -71,6 +71,34 @@ const FEATURED_BOOKS = [
     originalPrice: '₹200.00',
     url: 'https://voicepublication.in/products/wisdom-eye',
     image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483'
+  },
+  {
+    id: 12,
+    title: 'GAME Positive Thinker (Course 1, 2, 4 & 6)',
+    price: '₹120.00 - ₹280.00',
+    url: 'https://voicepublication.in/products/game-positive-thinker-course-1-2-6',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/GAME-PT-12.png?v=1764741397'
+  },
+  {
+    id: 14,
+    title: 'Discover Yourself',
+    price: '₹160.00',
+    url: 'https://voicepublication.in/products/discover-yourself',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/DYS-front.jpg?v=1764332893'
+  },
+  {
+    id: 16,
+    title: 'Art of Smart Work',
+    price: '₹70.00',
+    url: 'https://voicepublication.in/products/art-of-smart-work',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/ArtofSmartWork-Front.jpg?v=1756533599'
+  },
+  {
+    id: 4,
+    title: 'Your Secret Journey',
+    price: '₹200.00',
+    url: 'https://voicepublication.in/products/your-secret-journey',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/YSJ-front.jpg?v=1764746566'
   }
 ];
 
@@ -100,6 +128,14 @@ export default function GeneralHomePage() {
   const nextSlide = () => setActiveSlide((prev) => (prev + 1) % POSTER_IMAGES.length);
   const prevSlide = () => setActiveSlide((prev) => (prev - 1 + POSTER_IMAGES.length) % POSTER_IMAGES.length);
 
+  // Helper arrays for credentials to map index
+  const credentialsData = [
+    { src: "https://lh3.googleusercontent.com/d/19yYbEATwSgrOVfuKk339h6j6qVNY48Nw", alt: "IIT Mumbai Topper" },
+    { src: "https://lh3.googleusercontent.com/d/1zHSviGsVWpcjqEEcDClEht0qNihIQ8qp", alt: "Temple President ISKCON Pune" },
+    { src: "https://lh3.googleusercontent.com/d/1etXzaXu2p4rmW81PrMW6T-bHRfKIZzSQ", alt: "Temple Management Council Member ISKCON Abids" },
+    { src: "https://lh3.googleusercontent.com/d/1vu3f15JL_oJ8LAiYq4WItoVSH4Of5uEz", alt: "Global Duty Officer Youth Training ISKCON" }
+  ];
+
   return (
     <div style={styles.page}>
       
@@ -114,6 +150,13 @@ export default function GeneralHomePage() {
           </button>
           
           <div style={styles.slideImageWrapper}>
+            {/* Blurred background underlay */}
+            <img 
+              src={formatImageUrl(POSTER_IMAGES[activeSlide])} 
+              alt="" 
+              style={styles.heroPosterBlurredBg}
+            />
+            {/* Sharp main contained image */}
             <img 
               src={formatImageUrl(POSTER_IMAGES[activeSlide])} 
               alt={`Wisdom Poster ${activeSlide + 1}`} 
@@ -145,38 +188,23 @@ export default function GeneralHomePage() {
       {/* 4 Separate Sections Segment (IIT, ISKCON Pune, Abids, Global Duty Officer) */}
       <section style={styles.credentialsSection}>
         <div style={styles.container}>
-          <div style={styles.credentialsGrid}>
-            <div style={styles.credCard}>
-              <img 
-                src={formatImageUrl("https://lh3.googleusercontent.com/d/19yYbEATwSgrOVfuKk339h6j6qVNY48Nw")} 
-                alt="IIT Mumbai Topper" 
-                style={styles.credImage}
-              />
-            </div>
-
-            <div style={styles.credCard}>
-              <img 
-                src={formatImageUrl("https://lh3.googleusercontent.com/d/1zHSviGsVWpcjqEEcDClEht0qNihIQ8qp")} 
-                alt="Temple President ISKCON Pune" 
-                style={styles.credImage}
-              />
-            </div>
-
-            <div style={styles.credCard}>
-              <img 
-                src={formatImageUrl("https://lh3.googleusercontent.com/d/1etXzaXu2p4rmW81PrMW6T-bHRfKIZzSQ")} 
-                alt="Temple Management Council Member ISKCON Abids" 
-                style={styles.credImage}
-              />
-            </div>
-
-            <div style={styles.credCard}>
-              <img 
-                src={formatImageUrl("https://lh3.googleusercontent.com/d/1vu3f15JL_oJ8LAiYq4WItoVSH4Of5uEz")} 
-                alt="Global Duty Officer Youth Training ISKCON" 
-                style={styles.credImage}
-              />
-            </div>
+          <div 
+            className="credentials-scroll-container" 
+            style={styles.credentialsGrid}
+          >
+            {credentialsData.concat(credentialsData).map((cred, idx) => (
+              <div 
+                key={idx} 
+                className="cred-slide-card"
+                style={styles.credCard}
+              >
+                <img 
+                  src={formatImageUrl(cred.src)} 
+                  alt={cred.alt} 
+                  style={styles.credImage}
+                />
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -254,7 +282,7 @@ export default function GeneralHomePage() {
       {/* Author Intro Teaser */}
       <section style={styles.aboutSection}>
         <div style={styles.container}>
-          <div style={styles.aboutWrapper}>
+          <div className="about-biography-grid" style={styles.aboutWrapper}>
             <div style={styles.aboutTextContent}>
               <span style={styles.sectionLabel}>Biography</span>
               <h2 style={styles.aboutHeader}>Radheshyam Das</h2>
@@ -298,9 +326,12 @@ export default function GeneralHomePage() {
             </Link>
           </div>
 
-          <div style={styles.booksGrid}>
-            {FEATURED_BOOKS.map((book) => (
-              <div key={book.id} style={styles.bookCard}>
+          <div 
+            className="books-scroll-container" 
+            style={styles.booksGrid}
+          >
+            {FEATURED_BOOKS.map((book, idx) => (
+              <div key={idx} style={styles.bookCard}>
                 <div style={styles.bookImgWrapper}>
                   <img src={book.image} alt={book.title} style={styles.bookImage} />
                 </div>
@@ -343,37 +374,49 @@ const styles = {
   heroSection: {
     position: 'relative',
     background: 'linear-gradient(135deg, #1A1B4B 0%, #0F1035 60%, #2D1B69 100%)',
-    padding: '40px 24px 40px',
+    padding: '0 0 40px',
     textAlign: 'center',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+    width: '100%',
   },
   heroSliderContainer: {
-    maxWidth: '850px',
     width: '100%',
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: '20px',
   },
   slideImageWrapper: {
     width: '100%',
-    height: '420px',
-    borderRadius: '16px',
+    height: '500px',
     overflow: 'hidden',
     boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-    background: '#000',
+    background: '#1A1B4B',
+    position: 'relative',
+  },
+  heroPosterBlurredBg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    filter: 'blur(15px) brightness(0.6)',
+    transform: 'scale(1.1)', // Prevents blurred white edges
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 1,
   },
   heroPosterImage: {
     width: '100%',
     height: '100%',
     objectFit: 'contain',
+    position: 'relative',
+    zIndex: 2,
   },
   sliderArrowLeft: {
     position: 'absolute',
-    left: '-24px',
+    left: '24px',
     background: 'rgba(26, 27, 75, 0.85)',
     border: 'none',
     borderRadius: '50%',
@@ -389,7 +432,7 @@ const styles = {
   },
   sliderArrowRight: {
     position: 'absolute',
-    right: '-24px',
+    right: '24px',
     background: 'rgba(26, 27, 75, 0.85)',
     border: 'none',
     borderRadius: '50%',
@@ -664,7 +707,7 @@ const styles = {
   },
   booksGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '24px',
   },
   bookCard: {

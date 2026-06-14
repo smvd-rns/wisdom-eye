@@ -864,6 +864,9 @@ button, input, select, textarea {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
+  .books-scroll-container {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -916,6 +919,31 @@ button, input, select, textarea {
 }
 
 @media (max-width: 576px) {
+  .footer-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 32px 20px !important;
+  }
+  .footer-grid > div:first-child {
+    grid-column: span 2 !important;
+  }
+  .footer-grid > div:nth-child(2) {
+    grid-column: span 1 !important;
+  }
+  .footer-grid > div:nth-child(3) {
+    grid-column: span 1 !important;
+  }
+  .footer-grid > div:last-child {
+    grid-column: span 2 !important;
+  }
+  .footer-bottom {
+    justify-content: center !important;
+    text-align: center !important;
+  }
+  .footer-bottom p {
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    letter-spacing: -0.2px !important;
+  }
   .container {
     padding: 0 16px;
   }
@@ -1033,3 +1061,144 @@ button, input, select, textarea {
   }
 }
 
+/* Global Responsive Design Support for all Screens */
+@media (max-width: 991px) {
+  /* Toggle navbar burger menu button */
+  header button[style*="display: none"] {
+    display: block !important;
+  }
+  /* Hide default desktop links */
+  header nav[style*="display: flex"] {
+    display: none !important;
+  }
+  
+  /* Hero slide height adjustment */
+  div[style*="height: 500px"] {
+    height: 320px !important;
+  }
+
+  /* About section collapse */
+  .about-biography-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    text-align: center !important;
+  }
+  .about-biography-grid > div:last-child {
+    order: -1 !important; /* Move photo to top */
+  }
+  .about-biography-grid div {
+    align-items: center !important;
+  }
+  .about-biography-grid p {
+    text-align: center !important;
+  }
+}
+
+@media (max-width: 480px) {
+  div[style*="height: 320px"] {
+    height: 220px !important;
+  }
+  /* Slide Arrow adjustments */
+  button[style*="left: 24px"] {
+    left: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+  }
+  button[style*="right: 24px"] {
+    right: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+  }
+}
+
+/* continuous scrolling marquee with manual scroll & 3D tilt effects for credentials */
+@media (max-width: 576px) {
+  section[style*="padding: 60px 24px"] {
+    padding: 16px 0 !important;
+  }
+  .credentials-scroll-container {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important; /* Allow manual drag/scroll */
+    scroll-behavior: smooth !important;
+    gap: 20px !important;
+    padding: 32px 24px !important;
+    width: 100% !important;
+    animation: marquee 20s linear infinite !important;
+    perspective: 1200px !important; /* Enable 3D depth */
+    transform-style: preserve-3d !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Pause animation when user touches or hovers */
+  .credentials-scroll-container:hover,
+  .credentials-scroll-container:active {
+    animation-play-state: paused !important;
+  }
+  .cred-slide-card {
+    flex: 0 0 240px !important;
+    padding: 16px !important;
+    margin: 0 !important;
+    background: #FFFFFF !important;
+    border-radius: 16px !important;
+    /* 3D drop shadow + physical thick border look */
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1), 0 3px 10px rgba(0,0,0,0.05), inset 0 -4px 0 rgba(26,27,75,0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    opacity: 0.9 !important;
+    /* True 3D cylinder layout placement */
+    transform: rotateY(-12deg) translateZ(-20px) !important; 
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s ease, opacity 0.4s ease !important;
+    backface-visibility: hidden;
+  }
+  .cred-slide-card:hover {
+    opacity: 1 !important;
+    /* Bring card forward in 3D space and center tilt */
+    transform: rotateY(0deg) translateZ(40px) scale(1.06) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.16), 0 5px 15px rgba(0,0,0,0.08) !important;
+  }
+  .credentials-scroll-container img {
+    max-height: 180px !important;
+    width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+}
+
+/* continuous scrolling marquee with manual scroll & 3D tilt effects for books */
+@media (max-width: 576px) {
+  .books-scroll-container {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important; /* Allow manual drag/scroll */
+    scroll-behavior: smooth !important;
+    gap: 20px !important;
+    padding: 32px 24px !important;
+    width: 100% !important;
+    animation: marquee 25s linear infinite !important;
+    perspective: 1200px !important; /* Enable 3D depth */
+    transform-style: preserve-3d !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Pause animation on touch/hover */
+  .books-scroll-container:hover,
+  .books-scroll-container:active {
+    animation-play-state: paused !important;
+  }
+  .books-scroll-container > div {
+    flex: 0 0 250px !important;
+    margin: 0 !important;
+    background: #FFFFFF !important;
+    border-radius: 16px !important;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1), 0 3px 10px rgba(0,0,0,0.05), inset 0 -4px 0 rgba(26,27,75,0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    opacity: 0.9 !important;
+    /* True 3D cylinder layout placement */
+    transform: rotateY(-12deg) translateZ(-20px) !important; 
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s ease, opacity 0.4s ease !important;
+    backface-visibility: hidden;
+  }
+  .books-scroll-container > div:hover {
+    opacity: 1 !important;
+    transform: rotateY(0deg) translateZ(40px) scale(1.06) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.16), 0 5px 15px rgba(0,0,0,0.08) !important;
+  }
+}

@@ -5,11 +5,11 @@ import { Mail, Phone, MapPin, Facebook, Youtube, Instagram, Linkedin } from 'luc
 
 export default function Footer() {
   return (
-    <footer style={styles.footer}>
-      <div style={styles.container}>
-        <div style={styles.footerGrid}>
+    <footer className="footer" style={styles.footer}>
+      <div className="container" style={styles.container}>
+        <div className="footer-grid">
           <div>
-            <h3 style={styles.footerLogo}>🕉 Radheshyam Das</h3>
+            <h3 style={styles.footerLogo}>Radheshyam Das</h3>
             <p style={styles.footerDesc}>
               Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.
             </p>
@@ -50,9 +50,8 @@ export default function Footer() {
             </ul>
           </div>
         </div>
-        <div style={styles.footerBottom}>
+        <div className="footer-bottom">
           <p>&copy; {new Date().getFullYear()} Radheshyam Das / VOICE Publications. All rights reserved.</p>
-          <Link href="/admin" style={styles.staffPortalLink}>Staff Dashboard</Link>
         </div>
       </div>
     </footer>

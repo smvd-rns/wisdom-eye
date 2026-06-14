@@ -48,7 +48,6 @@ export default function Navbar() {
       }}>
         <div style={styles.navContainer}>
           <Link href="/" style={styles.logo}>
-            <div style={styles.logoIcon}>🕉</div>
             <div style={styles.logoTextContainer}>
               <span style={styles.logoText}>Radheshyam Das</span>
               <span style={styles.logoSubtext}>IIT Bombay Topper • Author • Monk</span>
