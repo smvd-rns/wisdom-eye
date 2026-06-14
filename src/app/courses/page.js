@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, BookOpen, Clock, Award, ChevronRight, Loader2, Filter } from 'lucide-react';
 import { formatImageUrl } from '@/lib/utils';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 const CATEGORIES = ['All', 'Spirituality', 'Philosophy', 'Values Education', 'Meditation', 'General'];
-const LEVELS = ['All', 'Beginner', 'Intermediate', 'Advanced'];
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState([]);
@@ -37,7 +38,9 @@ export default function CoursesPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F0F2F5' }}>
+    <div style={{ minHeight: '100vh', background: '#f5f3eb', display: 'flex', flexDirection: 'column' }}>
+      <Navbar />
+
       {/* Hero */}
       <div style={styles.hero}>
         <div style={styles.heroContent}>
@@ -167,6 +170,7 @@ export default function CoursesPage() {
         )}
       </div>
 
+      <Footer />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -185,7 +189,7 @@ const styles = {
   searchWrap: { position: 'relative', maxWidth: '440px', margin: '0 auto' },
   searchIcon: { position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' },
   searchInput: { width: '100%', padding: '14px 20px 14px 46px', borderRadius: '12px', border: 'none', fontSize: '15px', background: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', boxSizing: 'border-box' },
-  container: { maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' },
+  container: { maxWidth: '1200px', margin: '0 auto', padding: '32px 24px', flex: 1 },
   filters: { marginBottom: '24px' },
   filterGroup: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' },
   chip: { padding: '7px 16px', borderRadius: '9999px', border: '1.5px solid #E5E7EB', background: '#fff', fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: '#6B7280', fontFamily: 'inherit' },
@@ -204,7 +208,7 @@ const styles = {
   cardDesc: { fontSize: '13px', color: '#6B7280', lineHeight: 1.5, marginBottom: '12px', flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
   cardMeta: { display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' },
   metaItem: { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#6B7280' },
-  cardFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F3F4F6', paddingTop: '12px', marginTop: 'auto' },
+  cardFooter: { display: 'flex', alignItems: 'center', justifycontent: 'space-between', borderTop: '1px solid #F3F4F6', paddingTop: '12px', marginTop: 'auto' },
   priceBlock: { display: 'flex', alignItems: 'baseline', gap: '8px' },
   price: { fontSize: '20px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif' },
   originalPrice: { fontSize: '13px', color: '#9CA3AF', textDecoration: 'line-through' },

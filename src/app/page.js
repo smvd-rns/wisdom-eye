@@ -7,705 +7,730 @@ import {
   Sparkles, 
   ArrowRight, 
   Award, 
-  Clock, 
-  ChevronRight, 
-  Mail, 
-  Phone, 
   Users, 
   BookCheck, 
-  GraduationCap 
+  GraduationCap,
+  ChevronRight,
+  ChevronLeft,
+  Play,
+  ExternalLink,
+  BookOpenCheck,
+  Building,
+  CheckCircle,
+  Briefcase
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import { formatImageUrl } from '@/lib/utils';
 
+// Google Drive uploaded poster images
+const POSTER_IMAGES = [
+  'https://lh3.googleusercontent.com/d/1Bpk-lc_U4E2Gxo8_9b-43X-fHbrYWwrU',
+  'https://lh3.googleusercontent.com/d/1MN4z91XjyCUFfuOPKDCeBse8TwAfJRVg',
+  'https://lh3.googleusercontent.com/d/1O3fWg2DJQe9OjftyazsN51GsieQlFHTI',
+  'https://lh3.googleusercontent.com/d/11w6VyjYDU2nnpu2dCZxmEI1J6CIknPd2',
+  'https://lh3.googleusercontent.com/d/1TyVI1qZG_H-_sV4AMjx4s0KMK9uL9OZ9',
+  'https://lh3.googleusercontent.com/d/1vLIoTs884mJS5e_X0TElAwSFqtCFPzxt',
+  'https://lh3.googleusercontent.com/d/1Rf589EQudojyzXvW-VoslX9-85tlcZYY',
+  'https://lh3.googleusercontent.com/d/1xiif-If20kRnW9Y_uLyu97L9dNLAOi1d',
+  'https://lh3.googleusercontent.com/d/1bMzO5xj3RjhY-yzWvblG1TIHSklYEjsw',
+  'https://lh3.googleusercontent.com/d/1bj0d9uI_GxIiOxnWDZ8NGRkqxd8J-Jrt',
+  'https://lh3.googleusercontent.com/d/10mK9cOKdMWbFdY6-54eMf8k8NttVQvqT',
+  'https://lh3.googleusercontent.com/d/1V2dkDXRKYxUnhr6svJku7bFeqsvDEgzE',
+  'https://lh3.googleusercontent.com/d/1EiBnGGZEEbhHbEAtKrkWaxVj2rjssowf',
+  'https://lh3.googleusercontent.com/d/1gh3Xk7FzDUldPCd99ZtrE9PH6H93guN_',
+  'https://lh3.googleusercontent.com/d/1CXURMsM6guqQh9zT_RxeNOJGZbGBrI-3'
+];
+
+const FEATURED_BOOKS = [
+  {
+    id: 1,
+    title: 'The Happiness Paradox (SS Series - Book 1)',
+    price: '₹170.00',
+    url: 'https://voicepublication.in/products/the-happiness-paradox',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/TheHappinessParadox-cover.jpg?v=1780304890'
+  },
+  {
+    id: 3,
+    title: 'Decoding the Self (CC Series - Book 1)',
+    price: '₹200.00',
+    url: 'https://voicepublication.in/products/decoding-the-self',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/TCCDecodingtheself-cover.jpg?v=1780305591'
+  },
+  {
+    id: 5,
+    title: 'Your Best Friend',
+    price: '₹280.00',
+    url: 'https://voicepublication.in/products/your-best-friend',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/YourBestFriend-front.jpg?v=1764746523'
+  },
+  {
+    id: 6,
+    title: 'Wisdom Eye (Course 1) - Laying the Foundation for Success',
+    price: '₹150.00',
+    originalPrice: '₹200.00',
+    url: 'https://voicepublication.in/products/wisdom-eye',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483'
+  }
+];
+
+const COMPANIES = [
+  { name: 'Amazon', logo: 'https://lh3.googleusercontent.com/d/1DF9uSwnpkjGQ9OXDNGDR8B-dCiuJaPX4' },
+  { name: 'Infosys', logo: 'https://lh3.googleusercontent.com/d/1oFHK0JU99lHxpGuqwiXqox-Nm6BhFxqx' },
+  { name: 'Microsoft', logo: 'https://lh3.googleusercontent.com/d/1Sr0qsDkIeZMEw3u2oTZh_RM8qbsFMhFs' },
+  { name: 'Copart', logo: 'https://lh3.googleusercontent.com/d/1iL1K0SP21l_qL6Kk6ffnLIadsd-jZuwY' },
+  { name: 'Cognizant', logo: 'https://lh3.googleusercontent.com/d/1vUpMGwycvntOjh3tAgaeO7lMLqB6SdJ_' },
+  { name: 'Tata Technologies', logo: 'https://lh3.googleusercontent.com/d/1-3jI0h1ee7fKUs_P2LB_xAqrqSKm5ZNE' },
+  { name: 'Bank of America', logo: 'https://lh3.googleusercontent.com/d/1OEC-o5xewzCsEU-MzH2Hs07_I6EHpfTI' },
+  { name: 'Deutsche Bank', logo: 'https://lh3.googleusercontent.com/d/13i_fpLr15wL6Y3LeTwzMjDftxMR-Y1WX' },
+  { name: 'Persistent', logo: 'https://lh3.googleusercontent.com/d/1-9Qxn6bc__GW5b3v3GEQdU4EukG9THUK' }
+];
+
 export default function GeneralHomePage() {
-  const [courses, setCourses] = useState([]);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [activeSlide, setActiveSlide] = useState(0);
 
+  // Auto-scroll Hero Poster Slider
   useEffect(() => {
-    const init = async () => {
-      try {
-        // Fetch session
-        const meRes = await fetch('/api/auth/me');
-        if (meRes.ok) {
-          const data = await meRes.json();
-          if (data.authenticated) {
-            setUser(data.user);
-          }
-        }
-
-        // Fetch courses list
-        const coursesRes = await fetch('/api/courses');
-        if (coursesRes.ok) {
-          const data = await coursesRes.json();
-          setCourses(data.courses || []);
-        }
-      } catch (err) {
-        console.error('Home initialization failed:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
+    const timer = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % POSTER_IMAGES.length);
+    }, 5000);
+    return () => clearInterval(timer);
   }, []);
+
+  const nextSlide = () => setActiveSlide((prev) => (prev + 1) % POSTER_IMAGES.length);
+  const prevSlide = () => setActiveSlide((prev) => (prev - 1 + POSTER_IMAGES.length) % POSTER_IMAGES.length);
 
   return (
     <div style={styles.page}>
-      {/* 1. Header / Navbar */}
-      <header style={styles.header}>
-        <div style={styles.navContainer}>
-          <Link href="/" style={styles.logo}>
-            <div style={styles.logoIcon}>👁</div>
-            <span style={styles.logoText}>Radheshyam Das</span>
-          </Link>
-          
-          <nav style={styles.navLinks}>
-            <a href="#about" style={styles.navLink}>Why Us</a>
-            <a href="#courses" style={styles.navLink}>Courses</a>
-            {user ? (
-              <Link 
-                href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
-                style={styles.navBtnPrimary}
-              >
-                Go to Dashboard
-              </Link>
-            ) : (
-              <div style={styles.authGroup}>
-                <Link href="/login" style={styles.navLink}>
-                  Sign In
-                </Link>
-                <Link href="/signup" style={styles.navBtnSecondary}>
-                  Sign Up Free
-                </Link>
-              </div>
-            )}
-          </nav>
-        </div>
-      </header>
+      
+      {/* Shared Header & Navbar */}
+      <Navbar />
 
-      {/* 2. Hero Section */}
+      {/* Premium Hero Image Slider Section */}
       <section style={styles.heroSection}>
-        <div style={styles.heroContainer}>
-          <div style={styles.heroTagBlock}>
-            <Sparkles size={14} color="var(--secondary)" />
-            <span>Spiritual Wisdom & Vedic Science Platform</span>
+        <div style={styles.heroSliderContainer}>
+          <button onClick={prevSlide} style={styles.sliderArrowLeft}>
+            <ChevronLeft size={24} />
+          </button>
+          
+          <div style={styles.slideImageWrapper}>
+            <img 
+              src={formatImageUrl(POSTER_IMAGES[activeSlide])} 
+              alt={`Wisdom Poster ${activeSlide + 1}`} 
+              style={styles.heroPosterImage}
+            />
           </div>
-          <h1 style={styles.heroTitle}>
-            Expand Your Mind with <span style={styles.heroGradient}>Transformative Wisdom</span>
-          </h1>
-          <p style={styles.heroSubtitle}>
-            Unlock character, determination, and spiritual growth. Access timed quizzes, certifications, physical books, and interactive discussion panels for a comprehensive learning experience.
-          </p>
-          <div style={styles.heroCtaRow}>
-            <a href="#courses" style={styles.heroBtnPrimary}>
-              Explore Courses <ArrowRight size={16} />
-            </a>
-            {!user && (
-              <Link href="/signup" style={styles.heroBtnSecondary}>
-                Create Free Account
-              </Link>
-            )}
+
+          <button onClick={nextSlide} style={styles.sliderArrowRight}>
+            <ChevronRight size={24} />
+          </button>
+        </div>
+        
+        {/* Slide Indicator Dots */}
+        <div style={styles.dotsContainer}>
+          {POSTER_IMAGES.map((_, idx) => (
+            <span 
+              key={idx} 
+              onClick={() => setActiveSlide(idx)}
+              style={{
+                ...styles.dot,
+                background: activeSlide === idx ? '#FF9F1C' : 'rgba(255,255,255,0.4)',
+                width: activeSlide === idx ? '16px' : '8px',
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* 4 Separate Sections Segment (IIT, ISKCON Pune, Abids, Global Duty Officer) */}
+      <section style={styles.credentialsSection}>
+        <div style={styles.container}>
+          <div style={styles.credentialsGrid}>
+            <div style={styles.credCard}>
+              <img 
+                src={formatImageUrl("https://lh3.googleusercontent.com/d/19yYbEATwSgrOVfuKk339h6j6qVNY48Nw")} 
+                alt="IIT Mumbai Topper" 
+                style={styles.credImage}
+              />
+            </div>
+
+            <div style={styles.credCard}>
+              <img 
+                src={formatImageUrl("https://lh3.googleusercontent.com/d/1zHSviGsVWpcjqEEcDClEht0qNihIQ8qp")} 
+                alt="Temple President ISKCON Pune" 
+                style={styles.credImage}
+              />
+            </div>
+
+            <div style={styles.credCard}>
+              <img 
+                src={formatImageUrl("https://lh3.googleusercontent.com/d/1etXzaXu2p4rmW81PrMW6T-bHRfKIZzSQ")} 
+                alt="Temple Management Council Member ISKCON Abids" 
+                style={styles.credImage}
+              />
+            </div>
+
+            <div style={styles.credCard}>
+              <img 
+                src={formatImageUrl("https://lh3.googleusercontent.com/d/1vu3f15JL_oJ8LAiYq4WItoVSH4Of5uEz")} 
+                alt="Global Duty Officer Youth Training ISKCON" 
+                style={styles.credImage}
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 3. Core Features / Why Us */}
-      <section id="about" style={styles.featuresSection}>
+      {/* Company Visited Slider Segment */}
+      <section style={styles.logoSliderSection}>
         <div style={styles.container}>
-          <div style={styles.sectionHeader}>
-            <span style={styles.sectionTag}>FEATURES</span>
-            <h2 style={styles.sectionTitle}>Built for Deep Spiritual Progress</h2>
-            <p style={styles.sectionSubtitle}>Combining modern learning features with timeless Vedic intelligence.</p>
+          <h4 style={styles.visitedTitle}>Corporate Trainer</h4>
+          <div style={styles.sliderContainer}>
+            <div style={styles.sliderTrack}>
+              {COMPANIES.concat(COMPANIES).map((comp, idx) => (
+                <div key={idx} style={styles.logoItem}>
+                  <img 
+                    src={comp.logo} 
+                    alt={comp.name} 
+                    style={styles.logoImage}
+                    onError={(e) => {
+                      e.target.style.display = 'none'; // Fallback if logo fails
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Section */}
+      <section style={styles.featuredSection}>
+        <div style={styles.container}>
+          <div style={styles.featuredGrid}>
+            <div style={styles.featuredCard}>
+              <span style={styles.featuredTag}>Featured Book</span>
+              <img 
+                src="https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483" 
+                alt="Wisdom Eye" 
+                style={styles.featuredImage}
+              />
+              <h3 style={styles.featuredCardTitle}>Wisdom Eye</h3>
+              <p style={styles.featuredCardDesc}>Laying the foundation for character and personal leadership success.</p>
+              <Link href="/books" style={styles.featuredCta}>
+                View All Books <ExternalLink size={14} />
+              </Link>
+            </div>
+
+            <div style={styles.featuredCard}>
+              <span style={styles.featuredTag}>Scripture Academy</span>
+              <img 
+                src="https://gaurangadarshandas.com/images/courses/8aab8f0c77c546568fd0c9c430ef6547_dw6z4v.png" 
+                alt="Wisdom Eye Course" 
+                style={styles.featuredImage}
+              />
+              <h3 style={styles.featuredCardTitle}>Certified Courses</h3>
+              <p style={styles.featuredCardDesc}>Auto-graded quizzes, certification, and discussions under the guidance of Radheshyam Das.</p>
+              <Link href="/courses" style={styles.featuredCta}>
+                Explore Academy <ChevronRight size={14} />
+              </Link>
+            </div>
+
+            <div style={styles.featuredCard}>
+              <span style={styles.featuredTag}>Daily Reading</span>
+              <div style={{ ...styles.featuredImage, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eadecd', borderRadius: '8px' }}>
+                <BookOpenCheck size={48} color="#1A1B4B" />
+              </div>
+              <h3 style={styles.featuredCardTitle}>Daily Reading Wisdom</h3>
+              <p style={styles.featuredCardDesc}>Start your day with spiritual inspiration and logical insights from timeless scriptures.</p>
+              <Link href="/daily-reading" style={styles.featuredCta}>
+                Read Daily Verse <ChevronRight size={14} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Author Intro Teaser */}
+      <section style={styles.aboutSection}>
+        <div style={styles.container}>
+          <div style={styles.aboutWrapper}>
+            <div style={styles.aboutTextContent}>
+              <span style={styles.sectionLabel}>Biography</span>
+              <h2 style={styles.aboutHeader}>Radheshyam Das</h2>
+              <div style={styles.divider} />
+              
+              <p style={styles.aboutText}>
+                <strong>Radheshyam Das</strong> is an IIT Mumbai Topper who dedicated his life as a full-time monk, youth educator, and author. Born in a devout family near Madurai, his childhood was fascinated by Vedic chants and philosophical classics.
+              </p>
+              
+              <p style={styles.aboutText}>
+                After top ranking at IIT Mumbai, working as a Senior Research Fellow and mechanical engineer at top companies, he took up the role of a celibate monk. He designed the DYS (Discover Your Self) and GAME (Gita for All Made Easy) course structures which are taught across leading universities.
+              </p>
+
+              <Link href="/about" style={styles.heroBtnPrimary}>
+                Read Full Biography <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <div style={styles.aboutVisualContent}>
+              <div style={styles.imageCardDecoration} />
+              <img 
+                src="https://gdo.radheshyamdas.com/favicon.png" 
+                alt="Radheshyam Das" 
+                style={styles.aboutPhoto}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* VOICE Publication Books Teaser */}
+      <section style={styles.booksSection}>
+        <div style={styles.container}>
+          <div style={styles.sectionHeaderRow}>
+            <div>
+              <span style={styles.sectionLabelLight}>Featured Literature</span>
+              <h2 style={styles.sectionTitleLight}>Radheshyam Das Books</h2>
+            </div>
+            <Link href="/books" style={styles.viewAllBtn}>
+              View All Books <ChevronRight size={16} />
+            </Link>
           </div>
 
-          <div style={styles.featuresGrid}>
-            {[
-              { title: 'Physical Books Dispatched', desc: 'Complement your online classes with premium print manuals and scriptures delivered directly to your doorstep.', icon: <BookCheck size={24} /> },
-              { title: 'Interactive Quizzes', desc: 'Auto-graded multiple choice assessments and personalized evaluator grading for subjective questions.', icon: <Award size={24} /> },
-              { title: 'Discussion Boards', desc: 'Connect with evaluators and peers. Ask doubts and get logical answers directly under each lesson topic.', icon: <Users size={24} /> },
-            ].map((f, i) => (
-              <div key={i} style={styles.featureCard}>
-                <div style={styles.featureIcon}>{f.icon}</div>
-                <h3 style={styles.featureTitle}>{f.title}</h3>
-                <p style={styles.featureDesc}>{f.desc}</p>
+          <div style={styles.booksGrid}>
+            {FEATURED_BOOKS.map((book) => (
+              <div key={book.id} style={styles.bookCard}>
+                <div style={styles.bookImgWrapper}>
+                  <img src={book.image} alt={book.title} style={styles.bookImage} />
+                </div>
+                <div style={styles.bookDetails}>
+                  <h3 style={styles.bookTitle}>{book.title}</h3>
+                  <div style={styles.bookPriceBlock}>
+                    <span style={styles.bookPrice}>{book.price}</span>
+                  </div>
+                  <a href={book.url} target="_blank" rel="noopener noreferrer" style={styles.buyBtn}>
+                    Buy on Store <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 4. Course Catalog Section */}
-      <section id="courses" style={styles.coursesSection}>
-        <div style={styles.container}>
-          <div style={styles.sectionHeader}>
-            <span style={styles.sectionTag}>OUR ACADEMY</span>
-            <h2 style={styles.sectionTitle}>Available Courses</h2>
-            <p style={styles.sectionSubtitle}>Enroll in specific programs to activate certificates and receive reading materials.</p>
-          </div>
-
-          {loading ? (
-            <div style={styles.loadingContainer}>
-              <div className="spinner" style={styles.spinner} />
-            </div>
-          ) : courses.length === 0 ? (
-            <div style={styles.emptyContainer}>
-              <BookOpen size={48} style={{ color: '#9CA3AF', marginBottom: '16px' }} />
-              <h3 style={{ color: '#1A1B4B' }}>No courses published yet</h3>
-              <p style={{ color: '#6B7280' }}>Check back later or register an account to receive alerts.</p>
-            </div>
-          ) : (
-            <div style={styles.coursesGrid}>
-              {courses.map((course) => {
-                // Wisdom Eye gets its own dedicated layout override page
-                const detailsLink = course.slug === 'wisdom-eye' 
-                  ? '/courses/wisdom-eye' 
-                  : `/courses/${course.slug}`;
-
-                return (
-                  <div key={course.id} style={styles.courseCard}>
-                    <div style={{ ...styles.courseThumbnail, overflow: 'hidden' }}>
-                      {course.thumbnail_url ? (
-                        <>
-                          {/* Ambient background blur */}
-                          <div style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundImage: `url(${formatImageUrl(course.thumbnail_url)})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            filter: 'blur(10px) brightness(0.5)',
-                            transform: 'scale(1.15)',
-                            opacity: 0.8,
-                          }} />
-                          {/* Crisp contained foreground image */}
-                          <img 
-                            src={formatImageUrl(course.thumbnail_url)} 
-                            alt={course.title} 
-                            style={{ 
-                              position: 'relative',
-                              width: '100%', 
-                              height: '100%', 
-                              objectFit: 'contain',
-                              zIndex: 1
-                            }} 
-                          />
-                        </>
-                      ) : (
-                        <div style={styles.thumbnailPlaceholder}>
-                          <BookOpen size={36} color="#9CA3AF" />
-                        </div>
-                      )}
-                      <span style={{ ...styles.levelBadge, zIndex: 2 }}>{course.level}</span>
-                    </div>
-
-                    <div style={styles.courseCardBody}>
-                      <span style={styles.courseCategory}>{course.category}</span>
-                      <h3 style={styles.courseTitle}>{course.title}</h3>
-                      <p style={styles.courseDesc}>{course.short_description}</p>
-
-                      <div style={styles.courseMeta}>
-                        {course.total_lessons > 0 && (
-                          <span style={styles.metaItem}><BookOpen size={12} /> {course.total_lessons} lessons</span>
-                        )}
-                        {course.has_certificate && (
-                          <span style={styles.metaItem}><GraduationCap size={12} /> Certificate</span>
-                        )}
-                      </div>
-
-                      <div style={styles.courseFooter}>
-                        <div style={styles.priceContainer}>
-                          <span style={styles.price}>{course.price === 0 ? 'Free' : `₹${course.price}`}</span>
-                          {course.original_price && course.original_price > course.price && (
-                            <span style={styles.originalPrice}>₹{course.original_price}</span>
-                          )}
-                        </div>
-                        <Link href={detailsLink} style={styles.courseLink}>
-                          View Course <ChevronRight size={14} />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 5. Footer */}
-      <footer style={styles.footer}>
-        <div style={styles.container}>
-          <div style={styles.footerGrid}>
-            <div>
-              <h3 style={styles.footerLogo}>👁 Radheshyam Das</h3>
-              <p style={styles.footerDesc}>
-                Vedic Character & Leadership Training by VOICE Publication, ISKCON Pune.
-              </p>
-            </div>
-            <div>
-              <h4 style={styles.footerSectionTitle}>Quick Links</h4>
-              <ul style={styles.footerLinks}>
-                <li><Link href="/login" style={styles.footerLink}>Login / Sign In</Link></li>
-                <li><Link href="/signup" style={styles.footerLink}>Sign Up Free</Link></li>
-                <li><Link href="/track" style={styles.footerLink}>Track Order 🚚</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 style={styles.footerSectionTitle}>Policies</h4>
-              <ul style={styles.footerLinks}>
-                <li><Link href="/terms" style={styles.footerLink}>Terms & Conditions</Link></li>
-                <li><Link href="/privacy" style={styles.footerLink}>Privacy Policy</Link></li>
-                <li><Link href="/refund-policy" style={styles.footerLink}>Refund Policy</Link></li>
-                <li><Link href="/shipping-policy" style={styles.footerLink}>Shipping Policy</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 style={styles.footerSectionTitle}>Support</h4>
-              <ul style={styles.footerLinks}>
-                <li><Link href="/contact" style={styles.footerLink}>Contact Support</Link></li>
-                <li style={styles.footerInfo}><Mail size={12} /> manager@voicepune.com</li>
-                <li style={styles.footerInfo}><Phone size={12} /> +91 8605036000</li>
-              </ul>
-            </div>
-          </div>
-          <div style={styles.footerBottom}>
-            <p>&copy; {new Date().getFullYear()} Radheshyam Das / VOICE Publication. All rights reserved.</p>
-            <Link href="/admin" style={styles.staffPortalLink}>Staff Dashboard</Link>
-          </div>
-        </div>
-      </footer>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner {
-          width: 32px;
-          height: 32px;
-          border: 4px solid #E5E7EB;
-          border-top-color: var(--secondary);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
+      {/* Shared Footer */}
+      <Footer />
     </div>
   );
 }
 
 const styles = {
   page: {
-    background: '#F9FAFB',
+    background: '#f5f3eb',
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
     fontFamily: 'Inter, sans-serif',
   },
-  header: {
-    background: '#FFFFFF',
-    borderBottom: '1px solid #E5E7EB',
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-    padding: '16px 24px',
-  },
-  navContainer: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  logo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    textDecoration: 'none',
-  },
-  logoIcon: {
-    width: '32px',
-    height: '32px',
-    background: '#1A1B4B',
-    color: 'var(--secondary)',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '16px',
-    fontWeight: 'bold',
-  },
-  logoText: {
-    fontFamily: 'Outfit, sans-serif',
-    fontSize: '18px',
-    fontWeight: '800',
-    color: '#1A1B4B',
-  },
-  navLinks: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '24px',
-  },
-  navLink: {
-    textDecoration: 'none',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#4B5563',
-    transition: 'color 0.2s',
-  },
-  authGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '18px',
-  },
-  navBtnPrimary: {
-    background: '#1A1B4B',
-    color: '#FFFFFF',
-    textDecoration: 'none',
-    padding: '8px 20px',
-    borderRadius: '9999px',
-    fontSize: '13px',
-    fontWeight: '700',
-    fontFamily: 'Outfit, sans-serif',
-  },
-  navBtnSecondary: {
-    background: 'transparent',
-    color: '#1A1B4B',
-    border: '1.5px solid #1A1B4B',
-    textDecoration: 'none',
-    padding: '8px 20px',
-    borderRadius: '9999px',
-    fontSize: '13px',
-    fontWeight: '700',
-    fontFamily: 'Outfit, sans-serif',
-  },
-  heroSection: {
-    background: 'radial-gradient(circle at 80% 20%, rgba(255, 159, 28, 0.08) 0%, rgba(26, 27, 75, 0.01) 60%), #1A1B4B',
-    color: '#FFFFFF',
-    padding: '120px 24px 100px',
-    textAlign: 'center',
-  },
-  heroContainer: {
-    maxWidth: '800px',
-    margin: '0 auto',
-  },
-  heroTagBlock: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    background: 'rgba(255,159,28,0.15)',
-    color: 'var(--secondary)',
-    padding: '6px 16px',
-    borderRadius: '9999px',
-    fontSize: '12px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: '24px',
-  },
-  heroTitle: {
-    fontFamily: 'Outfit, sans-serif',
-    fontSize: '48px',
-    fontWeight: '900',
-    lineHeight: 1.2,
-    marginBottom: '20px',
-    color: '#FFFFFF',
-  },
-  heroGradient: {
-    background: 'linear-gradient(135deg, #FFE066 0%, var(--secondary) 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  heroSubtitle: {
-    fontSize: '18px',
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: 1.6,
-    marginBottom: '40px',
-  },
-  heroCtaRow: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '16px',
-    flexWrap: 'wrap',
-  },
-  heroBtnPrimary: {
-    background: 'var(--secondary)',
-    color: '#1A1B4B',
-    textDecoration: 'none',
-    padding: '14px 32px',
-    borderRadius: '9999px',
-    fontWeight: '700',
-    fontSize: '15px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    fontFamily: 'Outfit, sans-serif',
-  },
-  heroBtnSecondary: {
-    background: 'rgba(255,255,255,0.08)',
-    color: '#FFFFFF',
-    border: '1px solid rgba(255,255,255,0.2)',
-    textDecoration: 'none',
-    padding: '14px 32px',
-    borderRadius: '9999px',
-    fontWeight: '700',
-    fontSize: '15px',
-    fontFamily: 'Outfit, sans-serif',
-  },
   container: {
     maxWidth: '1200px',
     margin: '0 auto',
+    width: '100%',
   },
-  featuresSection: {
-    padding: '80px 24px',
-    background: '#FFFFFF',
-  },
-  sectionHeader: {
+
+  // Hero Section with Image Slider
+  heroSection: {
+    position: 'relative',
+    background: 'linear-gradient(135deg, #1A1B4B 0%, #0F1035 60%, #2D1B69 100%)',
+    padding: '40px 24px 40px',
     textAlign: 'center',
-    marginBottom: '48px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
   },
-  sectionTag: {
+  heroSliderContainer: {
+    maxWidth: '850px',
+    width: '100%',
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: '20px',
+  },
+  slideImageWrapper: {
+    width: '100%',
+    height: '420px',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+    background: '#000',
+  },
+  heroPosterImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+  },
+  sliderArrowLeft: {
+    position: 'absolute',
+    left: '-24px',
+    background: 'rgba(26, 27, 75, 0.85)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '48px',
+    height: '48px',
+    color: '#FFF',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+  },
+  sliderArrowRight: {
+    position: 'absolute',
+    right: '-24px',
+    background: 'rgba(26, 27, 75, 0.85)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '48px',
+    height: '48px',
+    color: '#FFF',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+  },
+  dotsContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '6px',
+    marginTop: '20px',
+  },
+  dot: {
+    height: '8px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+  },
+
+  // Credentials Segment
+  credentialsSection: {
+    padding: '60px 24px',
+    background: '#FFF',
+    borderBottom: '1px solid #E5E7EB',
+  },
+  credentialsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '32px',
+  },
+  credCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    padding: '16px',
+  },
+  credImage: {
+    maxHeight: '260px',
+    width: 'auto',
+    maxWidth: '100%',
+    objectFit: 'contain',
+    borderRadius: '8px',
+  },
+
+  // Logo Ticker/Slider
+  logoSliderSection: {
+    padding: '40px 24px',
+    background: '#FAF8F5',
+    borderBottom: '1px solid #E5E7EB',
+  },
+  visitedTitle: {
+    fontFamily: 'Outfit, sans-serif',
+    fontSize: '18px',
+    fontWeight: '700',
+    color: '#1A1B4B',
+    textAlign: 'center',
+    marginBottom: '24px',
+  },
+  sliderContainer: {
+    overflow: 'hidden',
+    width: '100%',
+    position: 'relative',
+  },
+  sliderTrack: {
+    display: 'flex',
+    gap: '40px',
+    width: 'max-content',
+    animation: 'marquee 25s linear infinite',
+  },
+  logoItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    background: '#FFF',
+    padding: '12px 24px',
+    borderRadius: '12px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+  },
+  logoImage: {
+    height: '36px',
+    maxWidth: '120px',
+    objectFit: 'contain',
+  },
+
+  // Featured Section
+  featuredSection: {
+    padding: '60px 24px',
+    background: '#FFF',
+    borderBottom: '1px solid #E5E7EB',
+  },
+  featuredGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '32px',
+  },
+  featuredCard: {
+    background: '#FAF8F5',
+    borderRadius: '16px',
+    padding: '32px 24px',
+    textAlign: 'center',
+    border: '1px solid rgba(26,27,75,0.06)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+    transition: 'transform 0.2s',
+  },
+  featuredTag: {
+    fontSize: '11px',
+    fontWeight: '800',
+    color: '#FF9F1C',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    marginBottom: '16px',
+    display: 'block',
+  },
+  featuredImage: {
+    width: '100%',
+    height: '180px',
+    objectFit: 'contain',
+    borderRadius: '8px',
+    marginBottom: '16px',
+  },
+  featuredCardTitle: {
+    fontSize: '18px',
+    fontWeight: '700',
+    color: '#1A1B4B',
+    marginBottom: '8px',
+  },
+  featuredCardDesc: {
+    fontSize: '13px',
+    color: '#6B7280',
+    lineHeight: '1.5',
+    marginBottom: '16px',
+  },
+  featuredCta: {
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#FF9F1C',
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+
+  // About Biography Section
+  aboutSection: {
+    padding: '80px 24px',
+    background: '#FAF8F5',
+  },
+  aboutWrapper: {
+    display: 'grid',
+    gridTemplateColumns: '1.2fr 0.8fr',
+    gap: '48px',
+    alignItems: 'center',
+  },
+  aboutTextContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  sectionLabel: {
     fontSize: '11px',
     fontWeight: '800',
     color: '#FF9F1C',
     letterSpacing: '1px',
     textTransform: 'uppercase',
+    marginBottom: '8px',
   },
-  sectionTitle: {
+  aboutHeader: {
+    fontSize: '36px',
+    fontWeight: '900',
+    color: '#1A1B4B',
     fontFamily: 'Outfit, sans-serif',
+  },
+  divider: {
+    height: '4px',
+    width: '60px',
+    background: '#FF9F1C',
+    margin: '16px 0 24px',
+    borderRadius: '2px',
+  },
+  aboutText: {
+    fontSize: '15px',
+    lineHeight: '1.65',
+    color: '#4B5563',
+    marginBottom: '20px',
+    textAlign: 'left',
+  },
+  heroBtnPrimary: {
+    background: '#FF9F1C',
+    color: '#1A1B4B',
+    textDecoration: 'none',
+    padding: '12px 28px',
+    borderRadius: '9999px',
+    fontWeight: '700',
+    fontSize: '14px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  aboutVisualContent: {
+    position: 'relative',
+    textAlign: 'center',
+  },
+  imageCardDecoration: {
+    position: 'absolute',
+    top: '20px',
+    left: '20px',
+    right: '20px',
+    bottom: '-20px',
+    background: '#DA9B5B',
+    borderRadius: '16px',
+    zIndex: 1,
+  },
+  aboutPhoto: {
+    position: 'relative',
+    width: '100%',
+    maxWidth: '320px',
+    borderRadius: '16px',
+    boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+    zIndex: 2,
+    margin: '0 auto',
+  },
+
+  // Books Section
+  booksSection: {
+    padding: '80px 24px',
+    background: '#DA9B5B',
+    color: '#FFFFFF',
+  },
+  sectionHeaderRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'end',
+    marginBottom: '40px',
+    borderBottom: '2px solid rgba(255,255,255,0.2)',
+    paddingBottom: '20px',
+  },
+  sectionLabelLight: {
+    fontSize: '11px',
+    fontWeight: '800',
+    color: '#FFF8E2',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    marginBottom: '8px',
+    display: 'block',
+  },
+  sectionTitleLight: {
     fontSize: '32px',
     fontWeight: '800',
-    color: '#1A1B4B',
-    marginTop: '8px',
+    color: '#FFFFFF',
+    fontFamily: 'Outfit, sans-serif',
   },
-  sectionSubtitle: {
-    fontSize: '15px',
-    color: '#6B7280',
-    marginTop: '6px',
-  },
-  featuresGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '24px',
-  },
-  featureCard: {
-    border: '1px solid #E5E7EB',
-    borderRadius: '16px',
-    padding: '32px 24px',
-    transition: 'transform 0.2s',
-  },
-  featureIcon: {
-    width: '48px',
-    height: '48px',
-    background: 'rgba(26,27,75,0.05)',
-    color: '#1A1B4B',
-    borderRadius: '12px',
+  viewAllBtn: {
+    background: 'rgba(255,255,255,0.2)',
+    color: '#FFF',
+    border: 'none',
+    borderRadius: '9999px',
+    padding: '10px 24px',
+    fontWeight: '700',
+    fontSize: '13px',
+    textDecoration: 'none',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: '20px',
+    gap: '6px',
   },
-  featureTitle: {
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#1A1B4B',
-    marginBottom: '10px',
-  },
-  featureDesc: {
-    fontSize: '14px',
-    color: '#6B7280',
-    lineHeight: 1.5,
-  },
-  coursesSection: {
-    padding: '80px 24px',
-    background: '#F4F6F9',
-  },
-  loadingContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '80px 0',
-  },
-  emptyContainer: {
-    textAlign: 'center',
-    padding: '60px 0',
-  },
-  coursesGrid: {
+  booksGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-    gap: '28px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '24px',
   },
-  courseCard: {
-    background: '#FFFFFF',
-    borderRadius: '20px',
+  bookCard: {
+    background: '#FFF',
+    borderRadius: '16px',
     overflow: 'hidden',
-    boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-    border: '1px solid rgba(26,27,75,0.04)',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
     display: 'flex',
     flexDirection: 'column',
   },
-  courseThumbnail: {
-    height: '180px',
+  bookImgWrapper: {
     position: 'relative',
-    background: '#EAEAEA',
-  },
-  thumbnailPlaceholder: {
-    width: '100%',
-    height: '100%',
+    height: '220px',
+    background: '#FAF8F5',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: '16px',
   },
-  levelBadge: {
-    position: 'absolute',
-    bottom: '10px',
-    left: '10px',
-    background: 'rgba(26,27,75,0.85)',
-    color: '#FFFFFF',
-    fontSize: '10px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    padding: '4px 8px',
-    borderRadius: '4px',
+  bookImage: {
+    maxHeight: '100%',
+    maxWidth: '100%',
+    objectFit: 'contain',
   },
-  courseCardBody: {
-    padding: '24px',
+  bookDetails: {
+    padding: '20px',
     display: 'flex',
     flexDirection: 'column',
     flex: 1,
   },
-  courseCategory: {
-    fontSize: '10px',
-    fontWeight: '800',
-    color: '#FF9F1C',
-    textTransform: 'uppercase',
-    letterSpacing: '0.8px',
-    marginBottom: '8px',
-  },
-  courseTitle: {
-    fontSize: '18px',
+  bookTitle: {
+    fontSize: '14px',
     fontWeight: '700',
     color: '#1A1B4B',
-    marginBottom: '10px',
-    lineHeight: 1.3,
-  },
-  courseDesc: {
-    fontSize: '13px',
-    color: '#6B7280',
-    lineHeight: 1.5,
-    marginBottom: '16px',
+    marginBottom: '8px',
+    lineHeight: '1.35',
+    height: '38px',
+    overflow: 'hidden',
     display: '-webkit-box',
     WebkitLineClamp: 2,
     WebkitBoxOrient: 'vertical',
-    overflow: 'hidden',
   },
-  courseMeta: {
-    display: 'flex',
-    gap: '12px',
-    marginBottom: '20px',
-  },
-  metaItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    fontSize: '12px',
-    color: '#888',
-    fontWeight: '500',
-  },
-  courseFooter: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTop: '1px solid #F3F4F6',
-    paddingTop: '16px',
-    marginTop: 'auto',
-  },
-  priceContainer: {
+  bookPriceBlock: {
     display: 'flex',
     alignItems: 'baseline',
-    gap: '6px',
+    gap: '8px',
+    marginBottom: '16px',
   },
-  price: {
-    fontSize: '20px',
+  bookPrice: {
+    fontSize: '16px',
     fontWeight: '800',
     color: '#1A1B4B',
-    fontFamily: 'Outfit, sans-serif',
   },
-  originalPrice: {
-    fontSize: '12px',
-    textDecoration: 'line-through',
-    color: '#9CA3AF',
-  },
-  courseLink: {
+  buyBtn: {
+    background: '#FF9F1C',
+    color: '#1A1B4B',
+    textDecoration: 'none',
+    textAlign: 'center',
+    padding: '10px',
+    borderRadius: '8px',
     fontSize: '13px',
     fontWeight: '700',
-    color: '#FF9F1C',
-    textDecoration: 'none',
     display: 'flex',
     alignItems: 'center',
-    gap: '2px',
-  },
-  footer: {
-    background: '#1A1B4B',
-    color: '#FFFFFF',
-    padding: '60px 24px 30px',
-    marginTop: 'auto',
-  },
-  footerGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '32px',
-    marginBottom: '40px',
-  },
-  footerLogo: {
-    fontFamily: 'Outfit, sans-serif',
-    fontSize: '20px',
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: '16px',
-  },
-  footerDesc: {
-    fontSize: '13px',
-    lineHeight: 1.6,
-    color: 'rgba(255,255,255,0.6)',
-  },
-  footerSectionTitle: {
-    fontSize: '15px',
-    fontWeight: '700',
-    color: 'var(--secondary)',
-    marginBottom: '16px',
-  },
-  footerLinks: {
-    listStyle: 'none',
-    padding: 0,
-    margin: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
-  footerLink: {
-    color: 'rgba(255,255,255,0.7)',
-    textDecoration: 'none',
-    fontSize: '13px',
-    transition: 'color 0.2s',
-  },
-  footerInfo: {
-    fontSize: '13px',
-    color: 'rgba(255,255,255,0.7)',
-    display: 'flex',
-    alignItems: 'center',
+    justifyContent: 'center',
     gap: '6px',
-  },
-  footerBottom: {
-    borderTop: '1px solid rgba(255,255,255,0.1)',
-    paddingTop: '20px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '12px',
-    fontSize: '12px',
-    color: 'rgba(255,255,255,0.4)',
-  },
-  staffPortalLink: {
-    color: 'rgba(255,255,255,0.4)',
-    textDecoration: 'none',
+    marginTop: 'auto',
   },
 };
