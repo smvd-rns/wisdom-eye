@@ -1209,3 +1209,34 @@ button, input, select, textarea {
     box-shadow: 0 25px 50px rgba(0,0,0,0.16), 0 5px 15px rgba(0,0,0,0.08) !important;
   }
 }
+
+/* YouTube layout & playlist styling */
+.youtube-layout {
+  display: grid;
+  grid-template-columns: 1.6fr 0.9fr;
+  gap: 32px;
+  background: #FFF;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  border: 1px solid rgba(26,27,75,0.06);
+}
+
+.playlist-item-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.playlist-item-card:hover {
+  background: rgba(255, 159, 28, 0.08) !important;
+  border-color: #FF9F1C !important;
+  transform: translateX(4px);
+}
+
+@media (max-width: 991px) {
+  .youtube-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 16px;
+  }
+}
+

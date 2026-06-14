@@ -116,6 +116,30 @@ const COMPANIES = [
 
 export default function GeneralHomePage() {
   const [activeSlide, setActiveSlide] = useState(0);
+  const [youtubeVideos, setYoutubeVideos] = useState([]);
+  const [activeVideo, setActiveVideo] = useState(null);
+  const [ytLoading, setYtLoading] = useState(true);
+
+  // Fetch YouTube Videos
+  useEffect(() => {
+    async function fetchVideos() {
+      try {
+        const res = await fetch('/api/youtube');
+        if (res.ok) {
+          const data = await res.json();
+          setYoutubeVideos(data);
+          if (data.length > 0) {
+            setActiveVideo(data[0]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load YouTube videos', err);
+      } finally {
+        setYtLoading(false);
+      }
+    }
+    fetchVideos();
+  }, []);
 
   // Auto-scroll Hero Poster Slider
   useEffect(() => {
@@ -347,6 +371,94 @@ export default function GeneralHomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* YouTube Channel Section */}
+      <section style={styles.youtubeSection}>
+        <div style={styles.container}>
+          <div style={styles.sectionHeaderRow}>
+            <div>
+              <span style={styles.sectionLabel}>Video Channel</span>
+              <h2 style={styles.sectionTitle}>Radheshyam Das YouTube Lectures</h2>
+            </div>
+            <a 
+              href="https://www.youtube.com/channel/UC9Pap1xwEQAo7X1tKqpcpWg" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={styles.youtubeChannelBtn}
+            >
+              Subscribe on YouTube <Play size={14} fill="#FFF" style={{ marginLeft: '4px' }} />
+            </a>
+          </div>
+
+          {ytLoading ? (
+            <div style={styles.youtubeLoading}>
+              <div>Loading latest lectures...</div>
+            </div>
+          ) : youtubeVideos.length > 0 ? (
+            <div className="youtube-layout">
+              {/* Active Player */}
+              <div style={styles.youtubePlayerContainer}>
+                {activeVideo && (
+                  <>
+                    <div style={styles.iframeWrapper}>
+                      <iframe
+                        src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}`}
+                        title={activeVideo.title}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        style={styles.youtubeIframe}
+                      />
+                    </div>
+                    <h3 style={styles.activeVideoTitle}>{activeVideo.title}</h3>
+                    <p style={styles.activeVideoMeta}>
+                      Published: {new Date(activeVideo.publishedAt).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Scrollable Playlist */}
+              <div style={styles.youtubePlaylistContainer}>
+                <h4 style={styles.playlistHeader}>Recent Lectures ({youtubeVideos.length})</h4>
+                <div style={styles.playlistScroll}>
+                  {youtubeVideos.map((video) => (
+                    <div 
+                      key={video.id}
+                      onClick={() => setActiveVideo(video)}
+                      style={{
+                        ...styles.playlistItem,
+                        background: activeVideo?.id === video.id ? 'rgba(255, 159, 28, 0.15)' : 'transparent',
+                        borderColor: activeVideo?.id === video.id ? '#FF9F1C' : 'rgba(26, 27, 75, 0.08)'
+                      }}
+                      className="playlist-item-card"
+                    >
+                      <img src={video.thumbnail} alt={video.title} style={styles.playlistThumb} />
+                      <div style={styles.playlistItemDetails}>
+                        <h5 style={{
+                          ...styles.playlistItemTitle,
+                          color: activeVideo?.id === video.id ? '#FF9F1C' : '#1A1B4B'
+                        }}>{video.title}</h5>
+                        <p style={styles.playlistItemDate}>
+                          {new Date(video.publishedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={styles.youtubeLoading}>
+              <p>No videos available. Visit the YouTube channel to watch more.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -775,5 +887,117 @@ const styles = {
     justifyContent: 'center',
     gap: '6px',
     marginTop: 'auto',
+  },
+  youtubeSection: {
+    padding: '80px 24px',
+    background: '#FAF8F5',
+    borderBottom: '1px solid #E5E7EB',
+  },
+  youtubeChannelBtn: {
+    background: '#FF0000',
+    color: '#FFF',
+    borderRadius: '9999px',
+    padding: '10px 24px',
+    fontWeight: '700',
+    fontSize: '13px',
+    textDecoration: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    boxShadow: '0 4px 12px rgba(255,0,0,0.2)',
+  },
+  youtubePlayerContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  iframeWrapper: {
+    position: 'relative',
+    width: '100%',
+    paddingBottom: '56.25%',
+    height: 0,
+    borderRadius: '12px',
+    overflow: 'hidden',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+    background: '#000',
+  },
+  youtubeIframe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  activeVideoTitle: {
+    fontSize: '18px',
+    fontWeight: '800',
+    color: '#1A1B4B',
+    marginTop: '16px',
+    marginBottom: '8px',
+    lineHeight: 1.4,
+  },
+  activeVideoMeta: {
+    fontSize: '12px',
+    color: '#6B7280',
+  },
+  youtubePlaylistContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    maxHeight: '450px',
+  },
+  playlistHeader: {
+    fontSize: '16px',
+    fontWeight: '800',
+    color: '#1A1B4B',
+    marginBottom: '16px',
+  },
+  playlistScroll: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    overflowY: 'auto',
+    flex: 1,
+    paddingRight: '8px',
+  },
+  playlistItem: {
+    display: 'flex',
+    gap: '12px',
+    padding: '8px',
+    borderRadius: '8px',
+    border: '1px solid rgba(26, 27, 75, 0.08)',
+    cursor: 'pointer',
+  },
+  playlistThumb: {
+    width: '100px',
+    height: '60px',
+    objectFit: 'cover',
+    borderRadius: '6px',
+  },
+  playlistItemDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  playlistItemTitle: {
+    fontSize: '13px',
+    fontWeight: '700',
+    lineHeight: 1.35,
+    marginBottom: '4px',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  },
+  playlistItemDate: {
+    fontSize: '11px',
+    color: '#6B7280',
+  },
+  youtubeLoading: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '300px',
+    fontSize: '15px',
+    color: '#6B7280',
   },
 };
