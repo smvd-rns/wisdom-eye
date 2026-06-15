@@ -76,6 +76,8 @@ export default function LmsAdminDashboard() {
         <div style={styles.actionsGrid}>
           {[
             { label: 'Create Course', desc: 'Add new course with modules & lessons', href: '/lms-admin/courses/new', icon: '📚', color: '#1A1B4B' },
+            { label: 'Manage Packages', desc: 'Create course bundles and link courses manually', href: '/lms-admin/packages', icon: '📦', color: '#10B981' },
+            { label: 'Database Setup', desc: 'Verify connection & copy SQL migration scripts', href: '/lms-admin/database-setup', icon: '🗄️', color: '#EF4444' },
             { label: 'Manage Coupons', desc: 'Create discount or free coupon codes', href: '/lms-admin/coupons', icon: '🏷️', color: '#D97706' },
             { label: 'Grading Queue', desc: 'Review and grade subjective answers', href: '/lms-admin/grading', icon: '✍️', color: '#7C3AED' },
             { label: 'View Reports', desc: 'Student progress and revenue data', href: '/lms-admin/reports', icon: '📊', color: '#0891B2' },

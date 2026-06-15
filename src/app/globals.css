@@ -1127,19 +1127,16 @@ button, input, select, textarea {
     display: flex !important;
     flex-direction: row !important;
     overflow-x: auto !important; /* Allow manual drag/scroll */
-    scroll-behavior: smooth !important;
+    scroll-behavior: auto !important; /* Changed to auto for smooth JS animation scrolling */
     gap: 20px !important;
-    padding: 32px 24px !important;
+    padding: 24px 16px !important;
     width: 100% !important;
-    animation: marquee 20s linear infinite !important;
-    perspective: 1200px !important; /* Enable 3D depth */
-    transform-style: preserve-3d !important;
     -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
-  /* Pause animation when user touches or hovers */
-  .credentials-scroll-container:hover,
-  .credentials-scroll-container:active {
-    animation-play-state: paused !important;
+  .credentials-scroll-container::-webkit-scrollbar {
+    display: none !important; /* Hide scrollbar for Chrome, Safari and Opera */
   }
   .cred-slide-card {
     flex: 0 0 240px !important;
@@ -1147,20 +1144,13 @@ button, input, select, textarea {
     margin: 0 !important;
     background: #FFFFFF !important;
     border-radius: 16px !important;
-    /* 3D drop shadow + physical thick border look */
-    box-shadow: 0 15px 35px rgba(0,0,0,0.1), 0 3px 10px rgba(0,0,0,0.05), inset 0 -4px 0 rgba(26,27,75,0.08) !important;
-    border: 1px solid rgba(255, 255, 255, 0.8) !important;
-    opacity: 0.9 !important;
-    /* True 3D cylinder layout placement */
-    transform: rotateY(-12deg) translateZ(-20px) !important; 
-    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s ease, opacity 0.4s ease !important;
-    backface-visibility: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease !important;
   }
   .cred-slide-card:hover {
-    opacity: 1 !important;
-    /* Bring card forward in 3D space and center tilt */
-    transform: rotateY(0deg) translateZ(40px) scale(1.06) !important;
-    box-shadow: 0 25px 50px rgba(0,0,0,0.16), 0 5px 15px rgba(0,0,0,0.08) !important;
+    transform: translateY(-4px) scale(1.02) !important;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
   }
   .credentials-scroll-container img {
     max-height: 180px !important;
@@ -1176,37 +1166,29 @@ button, input, select, textarea {
     display: flex !important;
     flex-direction: row !important;
     overflow-x: auto !important; /* Allow manual drag/scroll */
-    scroll-behavior: smooth !important;
+    scroll-behavior: auto !important;
     gap: 20px !important;
-    padding: 32px 24px !important;
+    padding: 24px 16px !important;
     width: 100% !important;
-    animation: marquee 25s linear infinite !important;
-    perspective: 1200px !important; /* Enable 3D depth */
-    transform-style: preserve-3d !important;
     -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
-  /* Pause animation on touch/hover */
-  .books-scroll-container:hover,
-  .books-scroll-container:active {
-    animation-play-state: paused !important;
+  .books-scroll-container::-webkit-scrollbar {
+    display: none !important; /* Hide scrollbar */
   }
   .books-scroll-container > div {
     flex: 0 0 250px !important;
     margin: 0 !important;
     background: #FFFFFF !important;
     border-radius: 16px !important;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.1), 0 3px 10px rgba(0,0,0,0.05), inset 0 -4px 0 rgba(26,27,75,0.08) !important;
-    border: 1px solid rgba(255, 255, 255, 0.8) !important;
-    opacity: 0.9 !important;
-    /* True 3D cylinder layout placement */
-    transform: rotateY(-12deg) translateZ(-20px) !important; 
-    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s ease, opacity 0.4s ease !important;
-    backface-visibility: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease !important;
   }
   .books-scroll-container > div:hover {
-    opacity: 1 !important;
-    transform: rotateY(0deg) translateZ(40px) scale(1.06) !important;
-    box-shadow: 0 25px 50px rgba(0,0,0,0.16), 0 5px 15px rgba(0,0,0,0.08) !important;
+    transform: translateY(-4px) scale(1.02) !important;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
   }
 }
 

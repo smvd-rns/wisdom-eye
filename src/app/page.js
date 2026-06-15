@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -17,10 +17,12 @@ import {
   BookOpenCheck,
   Building,
   CheckCircle,
-  Briefcase
+  Briefcase,
+  Loader2
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import SpecialCourseLanding from '@/components/SpecialCourseLanding';
 import { formatImageUrl } from '@/lib/utils';
 
 // Google Drive uploaded poster images
@@ -121,12 +123,151 @@ export default function GeneralHomePage() {
   const [ytLoading, setYtLoading] = useState(true);
   const [homeConfig, setHomeConfig] = useState(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  
+  // Custom visual page builder homepage support
+  const [sitePage, setSitePage] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
-  // Load home config from API
+  const credsScrollRef = useRef(null);
+
   useEffect(() => {
-    fetch('/api/home-config').then(r => r.ok ? r.json() : null).then(data => {
-      if (data) setHomeConfig(data);
-    }).catch(() => {});
+    const el = credsScrollRef.current;
+    if (!el) return;
+
+    let animationFrameId;
+    let isMoving = true;
+    let lastTime = 0;
+    const speed = 0.6; // slow moving speed in pixels per frame
+
+    const scroll = (timestamp) => {
+      if (window.innerWidth > 576) {
+        lastTime = timestamp;
+        animationFrameId = requestAnimationFrame(scroll);
+        return;
+      }
+
+      if (!lastTime) lastTime = timestamp;
+      
+      if (isMoving) {
+        el.scrollLeft -= speed;
+        if (el.scrollLeft <= 0) {
+          el.scrollLeft += el.scrollWidth / 2;
+        }
+      }
+      
+      lastTime = timestamp;
+      animationFrameId = requestAnimationFrame(scroll);
+    };
+
+    const handleTouchStart = () => { isMoving = false; };
+    const handleTouchEnd = () => { isMoving = true; lastTime = 0; };
+    const handleMouseDown = () => { isMoving = false; };
+    const handleMouseUp = () => { isMoving = true; lastTime = 0; };
+    const handleMouseEnter = () => { isMoving = false; };
+    const handleMouseLeave = () => { isMoving = true; lastTime = 0; };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    el.addEventListener('mousedown', handleMouseDown, { passive: true });
+    el.addEventListener('mouseup', handleMouseUp, { passive: true });
+    el.addEventListener('mouseenter', handleMouseEnter);
+    el.addEventListener('mouseleave', handleMouseLeave);
+
+    animationFrameId = requestAnimationFrame(scroll);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchend', handleTouchEnd);
+      el.removeEventListener('mousedown', handleMouseDown);
+      el.removeEventListener('mouseup', handleMouseUp);
+      el.removeEventListener('mouseenter', handleMouseEnter);
+      el.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [homeConfig]);
+
+  const booksScrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = booksScrollRef.current;
+    if (!el) return;
+
+    let animationFrameId;
+    let isMoving = true;
+    let lastTime = 0;
+    const speed = 0.5; // slow moving speed in pixels per frame
+
+    const scroll = (timestamp) => {
+      if (window.innerWidth > 576) {
+        lastTime = timestamp;
+        animationFrameId = requestAnimationFrame(scroll);
+        return;
+      }
+
+      if (!lastTime) lastTime = timestamp;
+      
+      if (isMoving) {
+        el.scrollLeft -= speed;
+        if (el.scrollLeft <= 0) {
+          el.scrollLeft += el.scrollWidth / 2;
+        }
+      }
+      
+      lastTime = timestamp;
+      animationFrameId = requestAnimationFrame(scroll);
+    };
+
+    const handleTouchStart = () => { isMoving = false; };
+    const handleTouchEnd = () => { isMoving = true; lastTime = 0; };
+    const handleMouseDown = () => { isMoving = false; };
+    const handleMouseUp = () => { isMoving = true; lastTime = 0; };
+    const handleMouseEnter = () => { isMoving = false; };
+    const handleMouseLeave = () => { isMoving = true; lastTime = 0; };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    el.addEventListener('mousedown', handleMouseDown, { passive: true });
+    el.addEventListener('mouseup', handleMouseUp, { passive: true });
+    el.addEventListener('mouseenter', handleMouseEnter);
+    el.addEventListener('mouseleave', handleMouseLeave);
+
+    animationFrameId = requestAnimationFrame(scroll);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchend', handleTouchEnd);
+      el.removeEventListener('mousedown', handleMouseDown);
+      el.removeEventListener('mouseup', handleMouseUp);
+      el.removeEventListener('mouseenter', handleMouseEnter);
+      el.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [homeConfig]);
+
+  // Load home config or site builder homepage
+  useEffect(() => {
+    async function loadHomepage() {
+      try {
+        const pageRes = await fetch('/api/site-pages/%2F'); // slug: '/'
+        if (pageRes.ok) {
+          const pageData = await pageRes.json();
+          if (pageData.page && pageData.page.is_published) {
+            setSitePage(pageData.page);
+            setPageLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
+      // Fallback to config-driven homepage
+      fetch('/api/home-config').then(r => r.ok ? r.json() : null).then(data => {
+        if (data) setHomeConfig(data);
+      }).catch(() => {});
+      setPageLoading(false);
+    }
+    loadHomepage();
   }, []);
 
   // Helper: get section config
@@ -247,7 +388,7 @@ export default function GeneralHomePage() {
     return (
       <section key="credentials" style={styles.credentialsSection}>
         <div style={styles.container}>
-          <div className="credentials-scroll-container" style={styles.credentialsGrid}>
+          <div ref={credsScrollRef} className="credentials-scroll-container" style={styles.credentialsGrid}>
             {credentialsData.concat(credentialsData).map((cred, idx) => (
               <div key={idx} className={`cred-slide-card ${idx >= credentialsData.length ? 'duplicate' : ''}`} style={styles.credCard}>
                 <img src={formatImageUrl(cred.src)} alt={cred.alt} style={styles.credImage} />
@@ -339,15 +480,15 @@ export default function GeneralHomePage() {
     return (
       <section key="books" style={styles.booksSection}>
         <div style={styles.container}>
-          <div style={styles.sectionHeaderRow}>
+          <div style={{ ...styles.sectionHeaderRow, flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <span style={styles.sectionLabelLight}>Featured Literature</span>
               <h2 style={styles.sectionTitleLight}>Radheshyam Das Books</h2>
             </div>
-            <Link href="/books" style={styles.viewAllBtn}>View All Books <ChevronRight size={16} /></Link>
+            <Link href="/books" style={{ ...styles.viewAllBtn, whiteSpace: 'nowrap' }}>View All Books <ChevronRight size={16} /></Link>
           </div>
-          <div className="books-scroll-container" style={styles.booksGrid}>
-            {FEATURED_BOOKS_LIVE.map((book, idx) => (
+          <div ref={booksScrollRef} className="books-scroll-container" style={styles.booksGrid}>
+            {FEATURED_BOOKS_LIVE.concat(FEATURED_BOOKS_LIVE).map((book, idx) => (
               <div key={idx} style={styles.bookCard}>
                 <div style={styles.bookImgWrapper}>
                   <img src={book.image} alt={book.title} style={styles.bookImage} />
@@ -420,6 +561,30 @@ export default function GeneralHomePage() {
 
 
 
+  if (pageLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f3eb' }}>
+        <Loader2 size={36} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (sitePage) {
+    return (
+      <div style={styles.page}>
+        <Navbar />
+        <SpecialCourseLanding
+          course={sitePage}
+          isEnrolled={false}
+          onEnroll={() => {}}
+          slug="/"
+        />
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div style={styles.page}>
       <Navbar />
@@ -439,7 +604,7 @@ export default function GeneralHomePage() {
             <span>{banner.text}</span>
           )}
           {banner.dismissable && (
-            <button onClick={() => setBannerDismissed(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', marginLeft: '8px', opacity: 0.7, fontSize: '18px', lineHeight: 1 }}>Ã—</button>
+            <button onClick={() => setBannerDismissed(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', marginLeft: '8px', opacity: 0.7, fontSize: '18px', lineHeight: 1 }}>×</button>
           )}
         </div>
       )}

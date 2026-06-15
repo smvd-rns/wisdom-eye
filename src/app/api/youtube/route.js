@@ -15,8 +15,8 @@ export async function GET() {
   }
   
   try {
-    const apiKey = 'AIzaSyBMh3y_e7r18Dr7JSOoZGPYIe-ZZ7mp3zc';
-    const playlistId = 'UU9Pap1xwEQAo7X1tKqpcpWg';
+    const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyBMh3y_e7r18Dr7JSOoZGPYIe-ZZ7mp3zc';
+    const playlistId = process.env.YOUTUBE_PLAYLIST_ID || 'UU9Pap1xwEQAo7X1tKqpcpWg';
     const url = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${playlistId}&part=snippet&maxResults=50&key=${apiKey}`;
     
     const res = await fetch(url, { next: { revalidate: 86400 } });

@@ -6,17 +6,19 @@ import Link from 'next/link';
 import {
   LayoutDashboard, BookOpen, Users, Tag, CreditCard,
   BarChart2, LogOut, ChevronRight, Menu, X, BookMarked,
-  GraduationCap, ClipboardCheck, Settings, Loader2, Home
+  GraduationCap, ClipboardCheck, Settings, Loader2, Home, Globe, Layers, Database
 } from 'lucide-react';
 
 const NAV = [
   { href: '/lms-admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/lms-admin/courses', label: 'Courses', icon: BookOpen },
+  { href: '/lms-admin/packages', label: 'Packages', icon: Layers },
   { href: '/lms-admin/users', label: 'Users', icon: Users },
   { href: '/lms-admin/coupons', label: 'Coupons', icon: Tag },
   { href: '/lms-admin/payments', label: 'Payments', icon: CreditCard },
   { href: '/lms-admin/reports', label: 'Reports', icon: BarChart2 },
   { href: '/lms-admin/grading', label: 'Grading Queue', icon: ClipboardCheck },
+  { href: '/lms-admin/database-setup', label: 'Database Setup', icon: Database },
 ];
 
 export default function LmsAdminLayout({ children }) {
@@ -56,8 +58,11 @@ export default function LmsAdminLayout({ children }) {
     return pathname.startsWith(item.href);
   };
 
-  // Page builder gets its own full-screen layout (no sidebar/topbar)
-  if (pathname.includes('/page-builder')) {
+  // Page builder & site-builder subpath get their own full-screen layout (no sidebar/topbar)
+  const isFullScreenBuilder = pathname.includes('/page-builder') || 
+    (pathname.startsWith('/lms-admin/site-builder/') && pathname !== '/lms-admin/site-builder');
+
+  if (isFullScreenBuilder) {
     return (
       <>
         {user ? children : (
@@ -101,6 +106,12 @@ export default function LmsAdminLayout({ children }) {
           })}
 
           <p style={{ ...styles.navSection, marginTop: '20px' }}>WEBSITE</p>
+          <Link href="/lms-admin/site-builder"
+            style={{ ...styles.navItem, ...(pathname.startsWith('/lms-admin/site-builder') ? styles.navActive : {}) }}
+            onClick={() => setSidebarOpen(false)}>
+            <Globe size={17} /> <span>Site Builder</span>
+            {pathname.startsWith('/lms-admin/site-builder') && <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.6 }} />}
+          </Link>
           <Link href="/lms-admin/home-editor"
             style={{ ...styles.navItem, ...(pathname.startsWith('/lms-admin/home-editor') ? styles.navActive : {}) }}
             onClick={() => setSidebarOpen(false)}>

@@ -27,5 +27,12 @@ export function formatImageUrl(url, width = 600) {
     }
   }
 
+  // Handle direct Google User Content thumbnail URLs
+  if (url.includes('lh3.googleusercontent.com')) {
+    if (!url.includes('=w') && !url.includes('=s')) {
+      return `${url}=w${width}`;
+    }
+  }
+
   return url;
 }

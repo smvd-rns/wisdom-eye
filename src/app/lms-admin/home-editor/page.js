@@ -574,6 +574,92 @@ export default function HomeEditorPage() {
         </div>
       </div>
 
+      {/* Visual Editor Override Promo Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1A1B4B, #2D1B69)',
+        border: '1px solid rgba(255,159,28,0.3)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        marginBottom: '24px',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px',
+        boxShadow: '0 8px 32px rgba(26,27,75,0.15)',
+        animation: 'slideUpFade 0.4s ease'
+      }}>
+        <div style={{ flex: 1, minWidth: '280px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,159,28,0.15)', color: '#FF9F1C', padding: '4px 12px', borderRadius: '9999px', fontSize: '11px', fontWeight: '800', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            ✨ Premium Feature
+          </div>
+          <h3 style={{ fontSize: '17px', fontWeight: '800', margin: '0 0 6px', fontFamily: 'Outfit, sans-serif', color: '#fff' }}>
+            Design Your Homepage with the Drag & Drop Visual Editor
+          </h3>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.5 }}>
+            Unlock free-hand column resizing, 20+ custom sections, testimonial carousels, maps, countdown timers, and block layouts by switching the homepage to the visual site builder mode.
+          </p>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const checkRes = await fetch('/api/site-pages/%2F');
+              if (checkRes.ok) {
+                window.location.href = '/lms-admin/site-builder/%252F';
+              } else {
+                const createRes = await fetch('/api/site-pages', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    title: 'Home Page',
+                    slug: '/',
+                    meta_description: 'Welcome to Wisdom Eye website.',
+                    is_published: true,
+                    blocks: [
+                      { id: 'sys_hero', type: 'system_hero_slides', props: {} },
+                      { id: 'sys_creds', type: 'system_credentials', props: {} },
+                      { id: 'sys_logos', type: 'system_logos', props: {} },
+                      { id: 'sys_feat', type: 'system_featured', props: {} },
+                      { id: 'sys_about', type: 'system_about', props: {} },
+                      { id: 'sys_books', type: 'system_books', props: {} },
+                      { id: 'sys_yt', type: 'system_youtube', props: {} }
+                    ]
+                  })
+                });
+                if (createRes.ok) {
+                  window.location.href = '/lms-admin/site-builder/%252F';
+                } else {
+                  const data = await createRes.json();
+                  alert(data.error || 'Failed to initialize homepage visual page.');
+                }
+              }
+            } catch (err) {
+              console.error(err);
+              alert('An error occurred. Please try again.');
+            }
+          }}
+          style={{
+            background: 'linear-gradient(135deg, #FF9F1C, #E07A5F)',
+            color: '#1A1B4B',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '14px 28px',
+            fontSize: '14px',
+            fontWeight: '800',
+            cursor: 'pointer',
+            fontFamily: 'Outfit, sans-serif',
+            boxShadow: '0 8px 20px rgba(255,159,28,0.35)',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          Open Visual Homepage Editor →
+        </button>
+      </div>
+
       {/* Tab Navigation */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', background: '#F9FAFB', padding: '6px', borderRadius: '12px', border: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
         {TABS.map(tab => (

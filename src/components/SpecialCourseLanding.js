@@ -1,12 +1,104 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
   ChevronDown, ChevronUp, Play, FileText, Lock, CheckCircle, 
-  Loader2, Star, Users, BookOpen, Clock, Award, Quote
+  Loader2, Star, Users, BookOpen, Clock, Award, Quote,
+  ChevronLeft, ChevronRight, ExternalLink, BookOpenCheck
 } from 'lucide-react';
 import { formatImageUrl } from '@/lib/utils';
+
+// Google Drive uploaded poster images
+const POSTER_IMAGES = [
+  'https://lh3.googleusercontent.com/d/1Bpk-lc_U4E2Gxo8_9b-43X-fHbrYWwrU',
+  'https://lh3.googleusercontent.com/d/1MN4z91XjyCUFfuOPKDCeBse8TwAfJRVg',
+  'https://lh3.googleusercontent.com/d/1O3fWg2DJQe9OjftyazsN51GsieQlFHTI',
+  'https://lh3.googleusercontent.com/d/11w6VyjYDU2nnpu2dCZxmEI1J6CIknPd2',
+  'https://lh3.googleusercontent.com/d/1TyVI1qZG_H-_sV4AMjx4s0KMK9uL9OZ9',
+  'https://lh3.googleusercontent.com/d/1vLIoTs884mJS5e_X0TElAwSFqtCFPzxt',
+  'https://lh3.googleusercontent.com/d/1Rf589EQudojyzXvW-VoslX9-85tlcZYY',
+  'https://lh3.googleusercontent.com/d/1xiif-If20kRnW9Y_uLyu97L9dNLAOi1d',
+  'https://lh3.googleusercontent.com/d/1bMzO5xj3RjhY-yzWvblG1TIHSklYEjsw',
+  'https://lh3.googleusercontent.com/d/1bj0d9uI_GxIiOxnWDZ8NGRkqxd8J-Jrt',
+  'https://lh3.googleusercontent.com/d/10mK9cOKdMWbFdY6-54eMf8k8NttVQvqT',
+  'https://lh3.googleusercontent.com/d/1V2dkDXRKYxUnhr6svJku7bFeqsvDEgzE',
+  'https://lh3.googleusercontent.com/d/1EiBnGGZEEbhHbEAtKrkWaxVj2rjssowf',
+  'https://lh3.googleusercontent.com/d/1gh3Xk7FzDUldPCd99ZtrE9PH6H93guN_',
+  'https://lh3.googleusercontent.com/d/1CXURMsM6guqQh9zT_RxeNOJGZbGBrI-3'
+];
+
+const FEATURED_BOOKS = [
+  {
+    id: 1,
+    title: 'The Happiness Paradox (SS Series - Book 1)',
+    price: '₹170.00',
+    url: 'https://voicepublication.in/products/the-happiness-paradox',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/TheHappinessParadox-cover.jpg?v=1780304890'
+  },
+  {
+    id: 3,
+    title: 'Decoding the Self (CC Series - Book 1)',
+    price: '₹200.00',
+    url: 'https://voicepublication.in/products/decoding-the-self',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/TCCDecodingtheself-cover.jpg?v=1780305591'
+  },
+  {
+    id: 5,
+    title: 'Your Best Friend',
+    price: '₹280.00',
+    url: 'https://voicepublication.in/products/your-best-friend',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/YourBestFriend-front.jpg?v=1764746523'
+  },
+  {
+    id: 6,
+    title: 'Wisdom Eye (Course 1) - Laying the Foundation for Success',
+    price: '₹150.00',
+    originalPrice: '₹200.00',
+    url: 'https://voicepublication.in/products/wisdom-eye',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483'
+  },
+  {
+    id: 12,
+    title: 'GAME Positive Thinker (Course 1, 2, 4 & 6)',
+    price: '₹120.00 - ₹280.00',
+    url: 'https://voicepublication.in/products/game-positive-thinker-course-1-2-6',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/GAME-PT-12.png?v=1764741397'
+  },
+  {
+    id: 14,
+    title: 'Discover Yourself',
+    price: '₹160.00',
+    url: 'https://voicepublication.in/products/discover-yourself',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/DYS-front.jpg?v=1764332893'
+  },
+  {
+    id: 16,
+    title: 'Art of Smart Work',
+    price: '₹70.00',
+    url: 'https://voicepublication.in/products/art-of-smart-work',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/ArtofSmartWork-Front.jpg?v=1756533599'
+  },
+  {
+    id: 4,
+    title: 'Your Secret Journey',
+    price: '₹200.00',
+    url: 'https://voicepublication.in/products/your-secret-journey',
+    image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/YSJ-front.jpg?v=1764746566'
+  }
+];
+
+const COMPANIES = [
+  { name: 'Amazon', logo: 'https://lh3.googleusercontent.com/d/1DF9uSwnpkjGQ9OXDNGDR8B-dCiuJaPX4' },
+  { name: 'Infosys', logo: 'https://lh3.googleusercontent.com/d/1oFHK0JU99lHxpGuqwiXqox-Nm6BhFxqx' },
+  { name: 'Microsoft', logo: 'https://lh3.googleusercontent.com/d/1Sr0qsDkIeZMEw3u2oTZh_RM8qbsFMhFs' },
+  { name: 'Copart', logo: 'https://lh3.googleusercontent.com/d/1iL1K0SP21l_qL6Kk6ffnLIadsd-jZuwY' },
+  { name: 'Cognizant', logo: 'https://lh3.googleusercontent.com/d/1vUpMGwycvntOjh3tAgaeO7lMLqB6SdJ_' },
+  { name: 'Tata Technologies', logo: 'https://lh3.googleusercontent.com/d/1-3jI0h1ee7fKUs_P2LB_xAqrqSKm5ZNE' },
+  { name: 'Bank of America', logo: 'https://lh3.googleusercontent.com/d/1OEC-o5xewzCsEU-MzH2Hs07_I6EHpfTI' },
+  { name: 'Deutsche Bank', logo: 'https://lh3.googleusercontent.com/d/13i_fpLr15wL6Y3LeTwzMjDftxMR-Y1WX' },
+  { name: 'Persistent', logo: 'https://lh3.googleusercontent.com/d/1-9Qxn6bc__GW5b3v3GEQdU4EukG9THUK' }
+];
 
 /* ─────────────────────────────────────────────────────────────────
    SpecialCourseLanding
@@ -28,7 +120,7 @@ export default function SpecialCourseLanding({
   slug,
 }) {
   const layout = course.custom_layout;
-  const blocks = layout?.blocks || [];
+  const blocks = layout?.blocks || course.blocks || [];
 
   // Accordion state for curriculum + FAQ blocks
   const [expandedModules, setExpandedModules] = useState({});
@@ -37,6 +129,186 @@ export default function SpecialCourseLanding({
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [timeLeft, setTimeLeft] = useState({});
   const [imageErrors, setImageErrors] = useState({});
+
+  // System blocks homepage states
+  const [homeConfig, setHomeConfig] = useState(null);
+  const [heroActiveSlide, setHeroActiveSlide] = useState(0);
+  const [youtubeVideos, setYoutubeVideos] = useState([]);
+  const [activeVideo, setActiveVideo] = useState(null);
+  const [ytLoading, setYtLoading] = useState(true);
+
+  const credsScrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = credsScrollRef.current;
+    if (!el) return;
+
+    let animationFrameId;
+    let isMoving = true;
+    let lastTime = 0;
+    const speed = 0.6; // slow moving speed in pixels per frame
+
+    const scroll = (timestamp) => {
+      if (window.innerWidth > 576) {
+        lastTime = timestamp;
+        animationFrameId = requestAnimationFrame(scroll);
+        return;
+      }
+
+      if (!lastTime) lastTime = timestamp;
+      
+      if (isMoving) {
+        el.scrollLeft -= speed;
+        // Loop seamlessly using half scroll width (since creds are duplicated)
+        if (el.scrollLeft <= 0) {
+          el.scrollLeft += el.scrollWidth / 2;
+        }
+      }
+      
+      lastTime = timestamp;
+      animationFrameId = requestAnimationFrame(scroll);
+    };
+
+    const handleTouchStart = () => { isMoving = false; };
+    const handleTouchEnd = () => { isMoving = true; lastTime = 0; };
+    const handleMouseDown = () => { isMoving = false; };
+    const handleMouseUp = () => { isMoving = true; lastTime = 0; };
+    const handleMouseEnter = () => { isMoving = false; };
+    const handleMouseLeave = () => { isMoving = true; lastTime = 0; };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    el.addEventListener('mousedown', handleMouseDown, { passive: true });
+    el.addEventListener('mouseup', handleMouseUp, { passive: true });
+    el.addEventListener('mouseenter', handleMouseEnter);
+    el.addEventListener('mouseleave', handleMouseLeave);
+
+    animationFrameId = requestAnimationFrame(scroll);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchend', handleTouchEnd);
+      el.removeEventListener('mousedown', handleMouseDown);
+      el.removeEventListener('mouseup', handleMouseUp);
+      el.removeEventListener('mouseenter', handleMouseEnter);
+      el.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [homeConfig]);
+
+  const booksScrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = booksScrollRef.current;
+    if (!el) return;
+
+    let animationFrameId;
+    let isMoving = true;
+    let lastTime = 0;
+    const speed = 0.5; // slow moving speed in pixels per frame
+
+    const scroll = (timestamp) => {
+      if (window.innerWidth > 576) {
+        lastTime = timestamp;
+        animationFrameId = requestAnimationFrame(scroll);
+        return;
+      }
+
+      if (!lastTime) lastTime = timestamp;
+      
+      if (isMoving) {
+        el.scrollLeft -= speed;
+        if (el.scrollLeft <= 0) {
+          el.scrollLeft += el.scrollWidth / 2;
+        }
+      }
+      
+      lastTime = timestamp;
+      animationFrameId = requestAnimationFrame(scroll);
+    };
+
+    const handleTouchStart = () => { isMoving = false; };
+    const handleTouchEnd = () => { isMoving = true; lastTime = 0; };
+    const handleMouseDown = () => { isMoving = false; };
+    const handleMouseUp = () => { isMoving = true; lastTime = 0; };
+    const handleMouseEnter = () => { isMoving = false; };
+    const handleMouseLeave = () => { isMoving = true; lastTime = 0; };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    el.addEventListener('mousedown', handleMouseDown, { passive: true });
+    el.addEventListener('mouseup', handleMouseUp, { passive: true });
+    el.addEventListener('mouseenter', handleMouseEnter);
+    el.addEventListener('mouseleave', handleMouseLeave);
+
+    animationFrameId = requestAnimationFrame(scroll);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchend', handleTouchEnd);
+      el.removeEventListener('mousedown', handleMouseDown);
+      el.removeEventListener('mouseup', handleMouseUp);
+      el.removeEventListener('mouseenter', handleMouseEnter);
+      el.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [homeConfig]);
+
+  useEffect(() => {
+    const hasSystem = blocks.some(b => b.type && b.type.startsWith('system_')) || 
+      (blocks.some(b => b.type === '__row__' && b.columns.some(c => c.block.type && c.block.type.startsWith('system_'))));
+    if (!hasSystem) return;
+
+    fetch('/api/home-config')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) setHomeConfig(data);
+      })
+      .catch(err => console.error(err));
+
+    async function fetchVideos() {
+      try {
+        const res = await fetch('/api/youtube');
+        if (res.ok) {
+          const data = await res.json();
+          setYoutubeVideos(data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setYtLoading(false);
+      }
+    }
+    fetchVideos();
+  }, [blocks]);
+
+  // Sync active video when youtube videos and config are loaded
+  useEffect(() => {
+    if (youtubeVideos.length > 0) {
+      const pinned = homeConfig?.pinnedVideos || [];
+      const pinnedList = pinned.map(id => youtubeVideos.find(v => v.id === id)).filter(Boolean);
+      const rest = youtubeVideos.filter(v => !pinned.includes(v.id));
+      const ordered = [...pinnedList, ...rest];
+      if (ordered.length > 0) {
+        setActiveVideo(ordered[0]);
+      }
+    }
+  }, [youtubeVideos, homeConfig]);
+
+  // Hero auto-slider
+  useEffect(() => {
+    const heroSliderBlock = blocks.find(b => b.type === 'system_hero_slides');
+    if (!heroSliderBlock) return;
+
+    const slidesCount = heroSliderBlock.props?.heroSlides?.length > 0 ? heroSliderBlock.props.heroSlides.length : (homeConfig?.heroSlides?.length || POSTER_IMAGES.length);
+    const speed = heroSliderBlock.props?.autoplayInterval !== undefined ? Number(heroSliderBlock.props.autoplayInterval) : 5000;
+    if (speed <= 0) return;
+
+    const timer = setInterval(() => {
+      setHeroActiveSlide(prev => (prev + 1) % slidesCount);
+    }, speed);
+    return () => clearInterval(timer);
+  }, [homeConfig, blocks]);
 
   // Countdown timer engine
   useEffect(() => {
@@ -66,11 +338,15 @@ export default function SpecialCourseLanding({
 
   // Testimonial auto-slider
   useEffect(() => {
+    const testimonialBlock = blocks.find(b => b.type === 'testimonials');
+    const speed = testimonialBlock?.props?.autoplayInterval !== undefined ? Number(testimonialBlock.props.autoplayInterval) : 5000;
+    if (speed <= 0) return;
+
     const interval = setInterval(() => {
       setActiveTestimonial(prev => prev + 1);
-    }, 5000);
+    }, speed);
     return () => clearInterval(interval);
-  }, []);
+  }, [blocks]);
 
   const getYouTubeId = (url) => {
     if (!url) return null;
@@ -224,18 +500,22 @@ export default function SpecialCourseLanding({
     );
   }
 
-  function renderText(block) {
+  function renderText(block, isNested = false) {
     const p = block.props;
+    const padding = isNested ? '24px' : `${p.paddingY || 48}px 24px`;
+    const borderRadius = isNested ? '12px' : '0px';
+    const border = isNested ? '1px solid rgba(26,27,75,0.06)' : 'none';
+    const boxShadow = isNested ? '0 4px 12px rgba(0,0,0,0.03)' : 'none';
     return (
-      <div key={block.id} style={{ background: p.background || '#fff', padding: `${p.paddingY || 48}px 24px` }}>
-        <div style={{ maxWidth: p.maxWidth || '800px', margin: '0 auto', textAlign: p.align || 'left' }}>
+      <div key={block.id} style={{ background: p.background || '#fff', padding, borderRadius, border, boxShadow, height: isNested ? '100%' : undefined, boxSizing: 'border-box', display: isNested ? 'flex' : undefined, flexDirection: isNested ? 'column' : undefined, justifyContent: isNested ? 'center' : undefined }}>
+        <div style={{ maxWidth: p.maxWidth || '800px', margin: '0 auto', textAlign: p.align || 'left', width: '100%' }}>
           {p.eyebrow && (
             <p style={{ fontSize: '12px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
               {p.eyebrow}
             </p>
           )}
           {p.heading && (
-            <h2 style={{ fontSize: `${p.headingSize || 32}px`, fontWeight: '800', color: p.headingColor || '#1A1B4B', marginBottom: '16px', fontFamily: 'Outfit, sans-serif', lineHeight: 1.2 }}>
+            <h2 style={{ fontSize: `${p.headingSize || (isNested ? 22 : 32)}px`, fontWeight: '800', color: p.headingColor || '#1A1B4B', marginBottom: '16px', fontFamily: 'Outfit, sans-serif', lineHeight: 1.2 }}>
               {p.heading}
             </h2>
           )}
@@ -249,19 +529,23 @@ export default function SpecialCourseLanding({
     );
   }
 
-  function renderVideo(block) {
+  function renderVideo(block, isNested = false) {
     const p = block.props;
     const ytId = getYouTubeId(p.url);
     if (!ytId) return null;
+    const padding = isNested ? '24px' : `${p.paddingY || 48}px 24px`;
+    const borderRadius = isNested ? '12px' : '0px';
+    const border = isNested ? '1px solid rgba(26,27,75,0.06)' : 'none';
+    const boxShadow = isNested ? '0 4px 12px rgba(0,0,0,0.03)' : 'none';
     return (
-      <div key={block.id} style={{ background: p.background || '#0F0F0F', padding: `${p.paddingY || 48}px 24px` }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+      <div key={block.id} style={{ background: p.background || '#0F0F0F', padding, borderRadius, border, boxShadow, height: isNested ? '100%' : undefined, boxSizing: 'border-box', display: isNested ? 'flex' : undefined, flexDirection: isNested ? 'column' : undefined, justifyContent: isNested ? 'center' : undefined }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto', width: '100%' }}>
           {p.title && (
-            <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '24px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>
+            <h2 style={{ fontSize: isNested ? '20px' : '28px', fontWeight: '800', color: '#fff', marginBottom: '24px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>
               {p.title}
             </h2>
           )}
-          <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+          <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <iframe
               src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0`}
               title={p.title || 'Course Video'}
@@ -800,24 +1084,514 @@ export default function SpecialCourseLanding({
     </div>
   );
 
+  function renderRichText(block, isNested = false) {
+    const p = block.props;
+    const padding = isNested ? '24px' : `${p.paddingY || 48}px 24px`;
+    const borderRadius = isNested ? '12px' : '0px';
+    const border = isNested ? '1px solid rgba(26,27,75,0.06)' : 'none';
+    const boxShadow = isNested ? '0 4px 12px rgba(0,0,0,0.03)' : 'none';
+    return (
+      <div key={block.id} style={{ background: p.background || '#fff', padding, borderRadius, border, boxShadow, height: isNested ? '100%' : undefined, boxSizing: 'border-box', display: isNested ? 'flex' : undefined, flexDirection: isNested ? 'column' : undefined, justifyContent: isNested ? 'center' : undefined }}>
+        <div 
+          style={{ maxWidth: p.maxWidth || '900px', margin: '0 auto', textAlign: p.align || 'left', color: p.textColor || '#1f2937', width: '100%' }}
+          dangerouslySetInnerHTML={{ __html: p.content || '' }}
+        />
+      </div>
+    );
+  }
+
+  function renderThreeColumn(block) {
+    const p = block.props;
+    return (
+      <div key={block.id} style={{ background: p.background || '#fff', padding: `${p.paddingY || 60}px 24px` }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: `${p.gap || 24}px` }} className="special-two-col">
+          {[1, 2, 3].map(n => {
+            const heading = p[`col${n}Heading`];
+            const content = p[`col${n}Content`];
+            const img = p[`col${n}Image`];
+            return (
+              <div key={n} style={{ color: p.textColor || '#4b5563' }}>
+                {img && (
+                  <img 
+                    src={formatImageUrl(img)} 
+                    alt={heading || ''} 
+                    style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '12px', marginBottom: '12px' }} 
+                  />
+                )}
+                {heading && <h3 style={{ fontSize: '18px', fontWeight: '800', color: p.headingColor || '#1a1b4b', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>{heading}</h3>}
+                {content && <p style={{ fontSize: '14px', lineHeight: 1.6, margin: 0 }}>{content}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  function renderFourColumn(block) {
+    const p = block.props;
+    return (
+      <div key={block.id} style={{ background: p.background || '#fafafa', padding: `${p.paddingY || 50}px 24px` }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: `${p.gap || 16}px` }} className="special-stats">
+          {[1, 2, 3, 4].map(n => {
+            const title = p[`col${n}Title`];
+            const text = p[`col${n}Text`];
+            return (
+              <div key={n} style={{ background: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.02)' }}>
+                {title && <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#1a1b4b', marginBottom: '6px', fontFamily: 'Outfit, sans-serif' }}>{title}</h3>}
+                {text && <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: 1.5, margin: 0 }}>{text}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  function renderGallery(block) {
+    const p = block.props;
+    return (
+      <div key={block.id} style={{ background: p.background || '#fff', padding: `${p.paddingY || 48}px 24px` }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          {p.title && <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1A1B4B', marginBottom: '24px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>{p.title}</h2>}
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${p.columns || 3}, 1fr)`, gap: '16px' }} className="special-two-col">
+            {(p.images || []).map((img, i) => (
+              <div key={i} style={{ borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <img 
+                  src={formatImageUrl(img.src)} 
+                  alt={img.caption || ''} 
+                  style={{ width: '100%', height: p.imageHeight ? `${p.imageHeight}px` : '250px', objectFit: 'cover' }} 
+                />
+                {img.caption && (
+                  <div style={{ background: '#fff', padding: '10px 14px', fontSize: '12px', color: '#4B5563', borderTop: '1px solid #F3F4F6' }}>
+                    {img.caption}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderTeamCards(block) {
+    const p = block.props;
+    return (
+      <div key={block.id} style={{ background: p.background || '#fff', padding: `${p.paddingY || 60}px 24px` }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          {p.heading && <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1A1B4B', marginBottom: '32px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>{p.heading}</h2>}
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${(p.items || []).length || 3}, 1fr)`, gap: '24px' }} className="special-instructor-card">
+            {(p.items || []).map((item, i) => (
+              <div key={i} style={{ background: '#F8F9FE', border: '1px solid rgba(26,27,75,0.06)', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+                {item.avatar ? (
+                  <img src={formatImageUrl(item.avatar)} alt={item.name} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px', border: '3px solid #FF9F1C' }} />
+                ) : (
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #1A1B4B, #2D1B69)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '28px', color: '#fff', fontWeight: '700' }}>
+                    {(item.name || 'T')[0]}
+                  </div>
+                )}
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#1A1B4B', margin: '0 0 4px', fontFamily: 'Outfit, sans-serif' }}>{item.name}</h3>
+                {item.title && <p style={{ fontSize: '12px', color: '#FF9F1C', fontWeight: '600', textTransform: 'uppercase', margin: '0 0 8px' }}>{item.title}</p>}
+                {item.bio && <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: 1.5, margin: 0 }}>{item.bio}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderTimeline(block) {
+    const p = block.props;
+    return (
+      <div key={block.id} style={{ background: p.background || '#fafafa', padding: `${p.paddingY || 60}px 24px` }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          {p.heading && <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1A1B4B', marginBottom: '32px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>{p.heading}</h2>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
+            {(p.items || []).map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                <div style={{ background: '#FF9F1C', color: '#1A1B4B', fontWeight: '800', padding: '6px 14px', borderRadius: '8px', fontSize: '14px', minWidth: '70px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>
+                  {item.date}
+                </div>
+                <div style={{ flex: 1, background: '#fff', padding: '16px 20px', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+                  {item.title && <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1A1B4B', marginBottom: '6px', fontFamily: 'Outfit, sans-serif' }}>{item.title}</h3>}
+                  {item.text && <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: 1.6, margin: 0 }}>{item.text}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderAccordion(block, isNested = false) {
+    const p = block.props;
+    const items = p.items || [];
+    const padding = isNested ? '24px' : `${p.paddingY || 60}px 24px`;
+    const borderRadius = isNested ? '12px' : '0px';
+    const border = isNested ? '1px solid rgba(26,27,75,0.06)' : 'none';
+    const boxShadow = isNested ? '0 4px 12px rgba(0,0,0,0.03)' : 'none';
+    return (
+      <div key={block.id} style={{ background: p.background || '#fff', padding, borderRadius, border, boxShadow, height: isNested ? '100%' : undefined, boxSizing: 'border-box' }}>
+        <div style={{ maxWidth: '760px', margin: '0 auto', width: '100%' }}>
+          {p.heading && (
+            <h2 style={{ fontSize: isNested ? '22px' : '28px', fontWeight: '800', color: '#1A1B4B', marginBottom: '24px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>{p.heading}</h2>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {items.map((item, i) => (
+              <div key={i} style={{ border: '1.5px solid', borderColor: expandedFaqs[`${block.id}-${i}`] ? '#FF9F1C' : '#E5E7EB', borderRadius: '12px', overflow: 'hidden', background: '#fff', transition: 'border-color 0.2s' }}>
+                <button
+                  onClick={() => setExpandedFaqs(prev => ({ ...prev, [`${block.id}-${i}`]: !prev[`${block.id}-${i}`] }))}
+                  style={{ width: '100%', textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', fontFamily: 'inherit' }}
+                >
+                  <span style={{ fontSize: '14px', fontWeight: '700', color: '#1A1B4B' }}>{item.q}</span>
+                  {expandedFaqs[`${block.id}-${i}`] ? <ChevronUp size={16} color="#FF9F1C" /> : <ChevronDown size={16} color="#9CA3AF" />}
+                </button>
+                {expandedFaqs[`${block.id}-${i}`] && (
+                  <div style={{ padding: '0 16px 14px', fontSize: '13px', color: '#4B5563', lineHeight: 1.6, borderTop: '1px solid #F3F4F6', paddingTop: '10px' }}>
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderBanner(block) {
+    const p = block.props;
+    const isLink = p.linkUrl && p.linkText;
+    const content = (
+      <>
+        <span>{p.text}</span>
+        {isLink && (
+          <span style={{ textDecoration: 'underline', marginLeft: '8px', fontWeight: '800' }}>
+            {p.linkText}
+          </span>
+        )}
+      </>
+    );
+
+    return (
+      <div 
+        key={block.id} 
+        style={{ 
+          background: p.background || '#FF9F1C', 
+          color: p.textColor || '#1A1B4B', 
+          padding: `${p.paddingY || 12}px 24px`, 
+          textAlign: 'center',
+          fontSize: '14px',
+          fontWeight: '600',
+        }}
+      >
+        {isLink ? (
+          <Link href={p.linkUrl} style={{ color: 'inherit', textDecoration: 'none' }}>
+            {content}
+          </Link>
+        ) : content}
+      </div>
+    );
+  }
+
+  function renderHtmlEmbed(block) {
+    const p = block.props;
+    return (
+      <div 
+        key={block.id} 
+        style={{ background: p.background || '#ffffff', padding: `${p.paddingY || 24}px 24px` }}
+        dangerouslySetInnerHTML={{ __html: p.html || '' }}
+      />
+    );
+  }
+
+  // ─── Homepage System Blocks Renderers ─────────────────────────────
+  function renderSystemHeroSlides(block) {
+    const posterImages = block.props?.heroSlides?.length > 0 ? block.props.heroSlides : (homeConfig?.heroSlides?.length > 0 ? homeConfig.heroSlides : POSTER_IMAGES);
+    
+    const nextSlide = () => setHeroActiveSlide((prev) => (prev + 1) % posterImages.length);
+    const prevSlide = () => setHeroActiveSlide((prev) => (prev - 1 + posterImages.length) % posterImages.length);
+
+    const activeIndex = heroActiveSlide % posterImages.length;
+
+    return (
+      <section key={block.id} style={{
+        position: 'relative',
+        background: 'linear-gradient(135deg, #1A1B4B 0%, #0F1035 60%, #2D1B69 100%)',
+        padding: '0 0 40px',
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        width: '100%',
+      }}>
+        <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={prevSlide} style={{
+            position: 'absolute', left: '24px', background: 'rgba(26, 27, 75, 0.85)', border: 'none', borderRadius: '50%',
+            width: '48px', height: '48px', color: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+          }}>
+            <ChevronLeft size={24} />
+          </button>
+          <div style={{ width: '100%', height: '500px', overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', background: '#1A1B4B', position: 'relative' }}>
+            <img src={formatImageUrl(posterImages[activeIndex])} alt="" style={{
+              width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(15px) brightness(0.6)', transform: 'scale(1.1)', position: 'absolute', top: 0, left: 0, zIndex: 1
+            }} />
+            <img src={formatImageUrl(posterImages[activeIndex])} alt="" style={{
+              width: '100%', height: '100%', objectFit: 'contain', position: 'relative', zIndex: 2
+            }} />
+          </div>
+          <button onClick={nextSlide} style={{
+            position: 'absolute', right: '24px', background: 'rgba(26, 27, 75, 0.85)', border: 'none', borderRadius: '50%',
+            width: '48px', height: '48px', color: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+          }}>
+            <ChevronRight size={24} />
+          </button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '20px' }}>
+          {posterImages.map((_, idx) => (
+            <span key={idx} onClick={() => setHeroActiveSlide(idx)}
+              style={{ height: '8px', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.3s ease', background: activeIndex === idx ? '#FF9F1C' : 'rgba(255,255,255,0.4)', width: activeIndex === idx ? '16px' : '8px' }}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  function renderSystemCredentials(block) {
+    const creds = homeConfig?.credentials?.length > 0 ? homeConfig.credentials : [
+      { src: "https://lh3.googleusercontent.com/d/19yYbEATwSgrOVfuKk339h6j6qVNY48Nw", alt: "IIT Mumbai Topper" },
+      { src: "https://lh3.googleusercontent.com/d/1zHSviGsVWpcjqEEcDClEht0qNihIQ8qp", alt: "Temple President ISKCON Pune" },
+      { src: "https://lh3.googleusercontent.com/d/1etXzaXu2p4rmW81PrMW6T-bHRfKIZzSQ", alt: "Temple Management Council Member ISKCON Abids" },
+      { src: "https://lh3.googleusercontent.com/d/1vu3f15JL_oJ8LAiYq4WItoVSH4Of5uEz", alt: "Global Duty Officer Youth Training ISKCON" },
+    ];
+    return (
+      <section key={block.id} style={{ padding: '60px 24px', background: '#FFF', borderBottom: '1px solid #E5E7EB' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+          <div ref={credsScrollRef} className="credentials-scroll-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '32px' }}>
+            {creds.concat(creds).map((cred, idx) => (
+              <div key={idx} className={`cred-slide-card ${idx >= creds.length ? 'duplicate' : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '16px' }}>
+                <img src={formatImageUrl(cred.src)} alt={cred.alt} style={{ maxHeight: '260px', width: 'auto', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderSystemLogos(block) {
+    const marqueeDuration = block.props?.autoplayInterval !== undefined ? Number(block.props.autoplayInterval) : 25;
+    return (
+      <section key={block.id} style={{ padding: '40px 24px', background: '#FAF8F5', borderBottom: '1px solid #E5E7EB', overflow: 'hidden' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+          <h4 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '18px', fontWeight: '700', color: '#1A1B4B', textAlign: 'center', marginBottom: '24px' }}>Corporate Trainer</h4>
+          <div style={{ overflow: 'hidden', width: '100%', position: 'relative' }}>
+            <div style={{ display: 'flex', gap: '40px', width: 'max-content', animation: `marquee ${marqueeDuration}s linear infinite` }}>
+              {COMPANIES.concat(COMPANIES).map((comp, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#FFF', padding: '12px 24px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+                  <img src={comp.logo} alt={comp.name} style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }} onError={e => { e.target.style.display = 'none'; }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderSystemFeatured(block) {
+    return (
+      <section key={block.id} style={{ padding: '60px 24px', background: '#FFF', borderBottom: '1px solid #E5E7EB' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px' }}>
+            <div style={{ background: '#FAF8F5', borderRadius: '16px', padding: '32px 24px', textAlign: 'center', border: '1px solid rgba(26,27,75,0.06)', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px', display: 'block' }}>Featured Book</span>
+              <img src="https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483" alt="" style={{ width: '100%', height: '180px', objectFit: 'contain', borderRadius: '8px', marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A1B4B', marginBottom: '8px' }}>Wisdom Eye</h3>
+              <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.5', marginBottom: '16px' }}>Laying the foundation for character and personal leadership success.</p>
+              <Link href="/books" style={{ fontSize: '13px', fontWeight: '700', color: '#FF9F1C', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>View All Books <ExternalLink size={14} /></Link>
+            </div>
+            <div style={{ background: '#FAF8F5', borderRadius: '16px', padding: '32px 24px', textAlign: 'center', border: '1px solid rgba(26,27,75,0.06)', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px', display: 'block' }}>Scripture Academy</span>
+              <img src="https://gaurangadarshandas.com/images/courses/8aab8f0c77c546568fd0c9c430ef6547_dw6z4v.png" alt="" style={{ width: '100%', height: '180px', objectFit: 'contain', borderRadius: '8px', marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A1B4B', marginBottom: '8px' }}>Certified Courses</h3>
+              <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.5', marginBottom: '16px' }}>Auto-graded quizzes, certification, and discussions under the guidance of Radheshyam Das.</p>
+              <Link href="/courses" style={{ fontSize: '13px', fontWeight: '700', color: '#FF9F1C', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Explore Academy <ChevronRight size={14} /></Link>
+            </div>
+            <div style={{ background: '#FAF8F5', borderRadius: '16px', padding: '32px 24px', textAlign: 'center', border: '1px solid rgba(26,27,75,0.06)', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px', display: 'block' }}>Daily Reading</span>
+              <div style={{ width: '100%', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eadecd', borderRadius: '8px', marginBottom: '16px' }}>
+                <BookOpenCheck size={48} color="#1A1B4B" />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A1B4B', marginBottom: '8px' }}>Daily Reading Wisdom</h3>
+              <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.5', marginBottom: '16px' }}>Start your day with spiritual inspiration and logical insights from timeless scriptures.</p>
+              <Link href="/daily-reading" style={{ fontSize: '13px', fontWeight: '700', color: '#FF9F1C', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Read Daily Verse <ChevronRight size={14} /></Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderSystemAbout(block) {
+    return (
+      <section key={block.id} style={{ padding: '80px 24px', background: '#FAF8F5' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '48px', alignItems: 'center' }} className="special-two-col">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#FF9F1C', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>Biography</span>
+              <h2 style={{ fontSize: '36px', fontWeight: '900', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif' }}>Radheshyam Das</h2>
+              <div style={{ height: '4px', width: '60px', background: '#FF9F1C', margin: '16px 0 24px', borderRadius: '2px' }} />
+              <p style={{ fontSize: '15px', lineHeight: '1.65', color: '#4B5563', marginBottom: '20px', textAlign: 'left' }}><strong>Radheshyam Das</strong> is an IIT Mumbai Topper who dedicated his life as a full-time monk, youth educator, and author. Born in a devout family near Madurai, his childhood was fascinated by Vedic chants and philosophical classics.</p>
+              <p style={{ fontSize: '15px', lineHeight: '1.65', color: '#4B5563', marginBottom: '20px', textAlign: 'left' }}>After top ranking at IIT Mumbai, working as a Senior Research Fellow and mechanical engineer at top companies, he took up the role of a celibate monk. He designed the DYS (Discover Your Self) and GAME (Gita for All Made Easy) course structures which are taught across leading universities.</p>
+            </div>
+            <div style={{ position: 'relative', textAlign: 'center' }}>
+              <div style={{ position: 'absolute', top: '20px', left: '20px', right: '20px', bottom: '-20px', background: '#DA9B5B', borderRadius: '16px', zIndex: 1 }} />
+              <img src="https://lh3.googleusercontent.com/d/1MN4z91XjyCUFfuOPKDCeBse8TwAfJRVg" alt="" style={{ position: 'relative', width: '100%', maxWidth: '320px', borderRadius: '16px', boxShadow: '0 8px 30px rgba(0,0,0,0.15)', zIndex: 2, margin: '0 auto' }} />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderSystemBooks(block) {
+    const liveBooks = homeConfig?.featuredBooks?.length > 0 ? homeConfig.featuredBooks : FEATURED_BOOKS;
+    return (
+      <section key={block.id} style={{ padding: '80px 24px', background: '#DA9B5B', color: '#FFFFFF' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px', borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#FFF8E2', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Publications</span>
+              <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#FFFFFF', fontFamily: 'Outfit, sans-serif', margin: 0 }}>Featured Books</h2>
+            </div>
+            <a href="https://voicepublication.in" target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(255,255,255,0.2)', color: '#FFF', border: 'none', borderRadius: '9999px', padding: '10px 24px', fontWeight: '700', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+              View All Books <ExternalLink size={14} />
+            </a>
+          </div>
+          <div ref={booksScrollRef} className="books-scroll-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+            {liveBooks.concat(liveBooks).map((book, idx) => (
+              <div key={idx} style={{ background: '#FFF', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ position: 'relative', height: '220px', background: '#FAF8F5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                  <img src={book.image} alt="" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                </div>
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#1A1B4B', marginBottom: '8px', lineHeight: '1.35', height: '38px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{book.title}</h3>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '16px', fontWeight: '800', color: '#1A1B4B' }}>{book.price}</span>
+                  </div>
+                  <a href={book.url} target="_blank" rel="noopener noreferrer" style={{ background: '#FF9F1C', color: '#1A1B4B', textDecoration: 'none', textAlign: 'center', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: 'auto' }}>
+                    Buy Now <ExternalLink size={12} />
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderSystemYoutube(block) {
+    const pinned = homeConfig?.pinnedVideos || [];
+    const pinnedList = pinned.map(id => youtubeVideos.find(v => v.id === id)).filter(Boolean);
+    const rest = youtubeVideos.filter(v => !pinned.includes(v.id));
+    const liveVideos = [...pinnedList, ...rest];
+
+    return (
+      <section key={block.id} style={{ padding: '80px 24px', background: '#FAF8F5', borderBottom: '1px solid #E5E7EB' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '2px solid rgba(26,27,75,0.1)', paddingBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#FF9F1C', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Media Lectures</span>
+              <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', margin: 0 }}>Radheshyam Das YouTube Lectures</h2>
+            </div>
+            <a href="https://www.youtube.com/channel/UC9Pap1xwEQAo7X1tKqpcpWg" target="_blank" rel="noopener noreferrer" style={{ background: '#FF0000', color: '#FFF', borderRadius: '9999px', padding: '10px 24px', fontWeight: '700', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(255,0,0,0.2)' }}>
+              Subscribe on YouTube <Play size={14} fill="#FFF" style={{ marginLeft: '4px' }} />
+            </a>
+          </div>
+          {ytLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', fontSize: '15px', color: '#6B7280' }}>
+              <div>Loading latest lectures...</div>
+            </div>
+          ) : liveVideos.length > 0 ? (
+            <div className="youtube-layout">
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {activeVideo && (
+                  <>
+                    <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', background: '#000' }}>
+                      <iframe src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}`} title={activeVideo.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+                    </div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', marginTop: '16px', marginBottom: '8px', lineHeight: 1.4 }}>{activeVideo.title}</h3>
+                    <p style={{ fontSize: '12px', color: '#6B7280' }}>Published: {new Date(activeVideo.publishedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '450px' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#1A1B4B', marginBottom: '16px' }}>Recent Lectures ({liveVideos.length})</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
+                  {liveVideos.map((video) => (
+                    <div key={video.id} onClick={() => setActiveVideo(video)} style={{ display: 'flex', gap: '12px', padding: '8px', borderRadius: '8px', border: '1px solid rgba(26, 27, 75, 0.08)', cursor: 'pointer', background: activeVideo?.id === video.id ? 'rgba(255, 159, 28, 0.15)' : 'transparent', borderColor: activeVideo?.id === video.id ? '#FF9F1C' : 'rgba(26, 27, 75, 0.08)' }}>
+                      <img src={video.thumbnail} alt="" style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
+                        <h5 style={{ fontSize: '13px', fontWeight: '700', lineHeight: 1.35, marginBottom: '4px', color: activeVideo?.id === video.id ? '#FF9F1C' : '#1A1B4B' }}>{video.title}</h5>
+                        <p style={{ fontSize: '11px', color: '#6B7280' }}>{new Date(video.publishedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', fontSize: '15px', color: '#6B7280' }}>
+              <p>No videos available. Visit the YouTube channel to watch more.</p>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   // ─── Main Render ─────────────────────────────────────────────────
-  const renderBlock = (block) => {
+  const renderBlock = (block, isNested = false) => {
     switch (block.type) {
       case 'hero': return renderHero(block);
-      case 'text': return renderText(block);
-      case 'video': return renderVideo(block);
-      case 'image': return renderImage(block);
+      case 'text': return renderText(block, isNested);
+      case 'rich_text': return renderRichText(block, isNested);
+      case 'video': return renderVideo(block, isNested);
+      case 'image': return renderImage(block, isNested);
+      case 'gallery': return renderGallery(block);
       case 'features': return renderFeatures(block);
       case 'stats': return renderStats(block);
       case 'testimonials': return renderTestimonials(block);
+      case 'team_cards': return renderTeamCards(block);
+      case 'timeline': return renderTimeline(block);
+      case 'accordion': return renderAccordion(block, isNested);
       case 'faq': return renderFaq(block);
       case 'instructor': return renderInstructor(block);
       case 'curriculum': return renderCurriculum(block);
       case 'enroll_card': return renderEnrollCard(block);
       case 'countdown': return renderCountdown(block);
       case 'two_column': return renderTwoColumn(block);
+      case 'three_column': return renderThreeColumn(block);
+      case 'four_column': return renderFourColumn(block);
       case 'divider': return renderDivider(block);
       case 'cta': return renderCta(block);
+      case 'banner': return renderBanner(block);
+      case 'html_embed': return renderHtmlEmbed(block);
+      case 'system_hero_slides': return renderSystemHeroSlides(block);
+      case 'system_credentials': return renderSystemCredentials(block);
+      case 'system_logos': return renderSystemLogos(block);
+      case 'system_featured': return renderSystemFeatured(block);
+      case 'system_about': return renderSystemAbout(block);
+      case 'system_books': return renderSystemBooks(block);
+      case 'system_youtube': return renderSystemYoutube(block);
       case '__row__': return renderRow(block);
       default: return null;
     }
@@ -825,23 +1599,36 @@ export default function SpecialCourseLanding({
 
   function renderRow(row) {
     const cols = row.columns || [];
+    const gap = row.rowGap ?? 16;
     return (
       <div
         key={row.id}
         className="special-row"
         style={{
           display: 'flex',
-          gap: `${row.rowGap ?? 0}px`,
+          gap: `${gap}px`,
           alignItems: row.rowAlign ?? 'stretch',
           background: row.rowBackground && row.rowBackground !== 'transparent' ? row.rowBackground : undefined,
           padding: row.rowPadding ? `${row.rowPadding}px` : undefined,
         }}
       >
-        {cols.map((col, i) => (
-          <div key={col.block.id} style={{ flex: `0 0 ${col.width}%`, width: `${col.width}%`, minWidth: 0, boxSizing: 'border-box' }}>
-            {renderBlock(col.block)}
-          </div>
-        ))}
+        {cols.map((col, i) => {
+          const gapReduction = ((cols.length - 1) * gap) / cols.length;
+          const finalWidth = `calc(${col.width}% - ${gapReduction}px)`;
+          return (
+            <div 
+              key={col.block.id} 
+              style={{ 
+                flex: `0 0 ${finalWidth}`, 
+                width: finalWidth, 
+                minWidth: 0, 
+                boxSizing: 'border-box' 
+              }}
+            >
+              {renderBlock(col.block, true)}
+            </div>
+          );
+        })}
       </div>
     );
   }
