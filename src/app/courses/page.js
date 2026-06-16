@@ -202,7 +202,7 @@ export default function CoursesPage() {
                   </h2>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+                <div className="packages-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
                   {packages.map(pkg => (
                     <div key={pkg.id} className="package-card" style={styles.packageCard}>
                       <div className="package-thumb-wrapper" style={styles.packageThumbWrapper}>
@@ -214,33 +214,38 @@ export default function CoursesPage() {
                           <span style={styles.cardCategory}>PACKAGE BUNDLE</span>
                           {pkg.courses_count > 0 && (
                             <span style={{ fontSize: '11px', fontWeight: '700', color: '#1A1B4B', background: 'rgba(26,27,75,0.08)', padding: '2px 8px', borderRadius: '4px' }}>
-                              {pkg.courses_count} Courses Included
+                              {pkg.courses_count} Courses
                             </span>
                           )}
                         </div>
 
-                        <h3 style={{ ...styles.cardTitle, fontSize: '20px', marginBottom: '12px' }}>{pkg.title}</h3>
-                        <p style={{ ...styles.cardDesc, flex: 'none', marginBottom: '16px' }}>{pkg.short_description}</p>
+                        <h3 style={{ ...styles.cardTitle, fontSize: '18px', marginBottom: '8px' }}>{pkg.title}</h3>
+                        <p style={{ ...styles.cardDesc, flex: 'none', marginBottom: '12px', WebkitLineClamp: 2 }}>{pkg.short_description}</p>
 
                         {pkg.included_courses && pkg.included_courses.length > 0 && (
-                          <div style={{ marginBottom: '20px' }}>
-                            <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#1A1B4B', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              Courses in this Package:
+                          <div style={{ marginBottom: '16px' }}>
+                            <h4 style={{ fontSize: '11px', fontWeight: '700', color: '#1A1B4B', textTransform: 'uppercase', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              Included Courses:
                             </h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '6px' }}>
-                              {pkg.included_courses.map((cName, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#4B5563' }}>
-                                  <CheckCircle size={14} color="#10B981" style={{ flexShrink: 0 }} />
-                                  <span>{cName}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {pkg.included_courses.slice(0, 3).map((cName, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#4B5563' }}>
+                                  <CheckCircle size={13} color="#10B981" style={{ flexShrink: 0 }} />
+                                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cName}</span>
                                 </div>
                               ))}
+                              {pkg.included_courses.length > 3 && (
+                                <span style={{ fontSize: '11px', color: '#FF9F1C', fontWeight: '600', paddingLeft: '19px' }}>
+                                  + {pkg.included_courses.length - 3} more courses
+                                </span>
+                              )}
                             </div>
                           </div>
                         )}
 
-                        <div className="package-card-footer" style={{ ...styles.cardFooter, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '16px', marginTop: 'auto' }}>
+                        <div className="package-card-footer" style={{ ...styles.cardFooter, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '12px', marginTop: 'auto' }}>
                           <div style={styles.priceBlock}>
-                            <span style={{ ...styles.price, fontSize: '24px' }}>
+                            <span style={{ ...styles.price, fontSize: '20px' }}>
                               {pkg.price === 0 ? 'Free' : `₹${pkg.price.toLocaleString('en-IN')}`}
                             </span>
                             {pkg.original_price && pkg.original_price > pkg.price && (
@@ -248,7 +253,7 @@ export default function CoursesPage() {
                             )}
                           </div>
                           <Link href={`/courses/package/${pkg.slug}`} style={{ ...styles.navBtnPrimary, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
-                            Buy Package <ChevronRight size={16} />
+                            Buy Package <ChevronRight size={14} />
                           </Link>
                         </div>
                       </div>
@@ -332,15 +337,35 @@ export default function CoursesPage() {
             white-space: nowrap !important;
           }
 
+          /* Packages horizontal scrolling in mobile view */
+          .packages-grid {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            scrollbar-width: none !important;
+            margin-left: -12px !important;
+            margin-right: -12px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            gap: 16px !important;
+          }
+          .packages-grid::-webkit-scrollbar {
+            display: none !important;
+          }
+
           /* Package Card Responsive Grid layout */
           .package-card {
             flex-direction: column !important;
             margin: 0 !important;
-            width: 100% !important;
+            width: 290px !important;
+            flex-shrink: 0 !important;
+            border-radius: 18px !important;
           }
           .package-thumb-wrapper {
             width: 100% !important;
-            height: 180px !important;
+            height: 140px !important;
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
@@ -353,16 +378,18 @@ export default function CoursesPage() {
             padding: 0 !important;
           }
           .package-body {
-            padding: 20px 16px !important;
+            padding: 16px !important;
             min-width: 0 !important;
             width: 100% !important;
             box-sizing: border-box !important;
+            flex: 1 !important;
           }
           .package-card-footer {
             flex-wrap: nowrap !important;
             justify-content: space-between !important;
             align-items: center !important;
-            gap: 12px !important;
+            gap: 8px !important;
+            padding-top: 8px !important;
           }
         }
       `}</style>
