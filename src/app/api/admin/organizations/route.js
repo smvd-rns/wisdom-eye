@@ -15,6 +15,14 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'active'; // 'active' or 'requests'
 
+    // Fetch routing mode setting
+    const { data: routingModeSetting } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'tenant_routing_mode')
+      .maybeSingle();
+    const routingMode = routingModeSetting ? routingModeSetting.value : 'simulation';
+
     if (type === 'requests') {
       const { data: requests, error } = await supabase
         .from('organization_requests')
@@ -22,7 +30,7 @@ export async function GET(req) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return NextResponse.json({ requests: requests || [] });
+      return NextResponse.json({ requests: requests || [], routingMode });
     } else {
       const { data: orgs, error } = await supabase
         .from('organizations')
@@ -30,7 +38,7 @@ export async function GET(req) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return NextResponse.json({ organizations: orgs || [] });
+      return NextResponse.json({ organizations: orgs || [], routingMode });
     }
   } catch (err) {
     console.error('Superadmin GET error:', err);
@@ -47,7 +55,19 @@ export async function POST(req) {
     }
 
     const body = await req.json();
-    const { requestId, action } = body; // action: 'approve' | 'reject'
+    const { requestId, action, routingMode: newRoutingMode } = body; // action: 'approve' | 'reject' | 'set_routing_mode'
+
+    if (action === 'set_routing_mode') {
+      if (!newRoutingMode || !['simulation', 'custom_domain'].includes(newRoutingMode)) {
+        return NextResponse.json({ error: 'Invalid routing mode.' }, { status: 400 });
+      }
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'tenant_routing_mode', value: newRoutingMode });
+
+      if (error) throw error;
+      return NextResponse.json({ success: true });
+    }
 
     if (!requestId || !action) {
       return NextResponse.json({ error: 'requestId and action are required.' }, { status: 400 });
@@ -77,21 +97,40 @@ export async function POST(req) {
     }
 
     // 2. Action is 'approve' -> Register the new Organization (Tenant)
+    const { data: routingModeSetting } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'tenant_routing_mode')
+      .maybeSingle();
+    const routingMode = routingModeSetting ? routingModeSetting.value : 'simulation';
+
     const hostHeader = req.headers.get('host') || 'wisdom-eye.in';
     let baseDomain = 'wisdom-eye.in';
     let protocol = 'https';
+    let loginUrl = '';
 
-    if (hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1')) {
-      baseDomain = hostHeader; // matches "localhost:3001" or similar
-      protocol = 'http';
+    if (routingMode === 'simulation') {
+      // In simulation mode (Free Vercel mode), use the query parameter override
+      const cleanHost = hostHeader.split(':')[0];
+      if (cleanHost.includes('localhost') || cleanHost.includes('127.0.0.1')) {
+        loginUrl = `http://${hostHeader}/login?tenant=${request.subdomain_slug}`;
+      } else {
+        loginUrl = `https://wisdom-eye.vercel.app/login?tenant=${request.subdomain_slug}`;
+      }
     } else {
-      const parts = hostHeader.split('.');
-      if (parts.length >= 2) {
-        baseDomain = parts.slice(-2).join('.');
+      // In Custom Domain / Production mode, use the subdomain pattern
+      if (hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1')) {
+        baseDomain = hostHeader; // matches "localhost:3001" or similar
+        protocol = 'http';
+        loginUrl = `${protocol}://${request.subdomain_slug}.${baseDomain}/login`;
+      } else {
+        const parts = hostHeader.split('.');
+        if (parts.length >= 2) {
+          baseDomain = parts.slice(-2).join('.');
+        }
+        loginUrl = `${protocol}://${request.subdomain_slug}.${baseDomain}/login`;
       }
     }
-
-    const subdomain = `${request.subdomain_slug}.${baseDomain}`;
     
     const { data: newOrg, error: orgErr } = await supabase
       .from('organizations')
@@ -142,7 +181,6 @@ export async function POST(req) {
       .eq('id', requestId);
 
     // Send email containing login details automatically to the new admin
-    const loginUrl = `${protocol}://${request.subdomain_slug}.${baseDomain}/login`;
     let emailSent = false;
     try {
       emailSent = await sendOrganizationApprovalEmail({

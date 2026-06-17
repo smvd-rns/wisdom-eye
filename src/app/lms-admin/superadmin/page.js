@@ -11,12 +11,16 @@ export default function SuperadminPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successCreds, setSuccessCreds] = useState(null);
   const [deleteOrg, setDeleteOrg] = useState(null); // stores { id, name } or null
+  const [routingMode, setRoutingMode] = useState('simulation');
 
   const fetchTab = async (type) => {
     try {
       const res = await fetch(`/api/admin/organizations?type=${type}`);
       if (res.ok) {
         const data = await res.json();
+        if (data.routingMode) {
+          setRoutingMode(data.routingMode);
+        }
         if (type === 'requests') {
           setRequests(data.requests || []);
         } else {
@@ -25,6 +29,32 @@ export default function SuperadminPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleToggleRoutingMode = async (mode) => {
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const res = await fetch('/api/admin/organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_routing_mode', routingMode: mode })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMessage(data.error || 'Failed to update routing mode.');
+      } else {
+        setRoutingMode(mode);
+        await Promise.all([
+          fetchTab('requests'),
+          fetchTab('active')
+        ]);
+      }
+    } catch (err) {
+      setErrorMessage('Network error occurred.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,6 +130,20 @@ export default function SuperadminPage() {
     }
   };
 
+  const getOrgUrl = (org) => {
+    if (routingMode === 'simulation') {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? `http://${window.location.host}` : 'https://wisdom-eye.vercel.app';
+      return `${base}/login?tenant=${org.slug}`;
+    } else {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      if (isLocal) {
+        return `http://${org.slug}.localhost:3000/login`;
+      }
+      return `https://${org.custom_domain || `${org.slug}.wisdom-eye.in`}/login`;
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', flexDirection: 'column', gap: '12px' }}>
@@ -117,6 +161,63 @@ export default function SuperadminPage() {
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#111827', margin: 0, fontFamily: 'Outfit, sans-serif' }}>Superadmin Settings</h1>
           <p style={{ fontSize: '14px', color: '#6B7280', margin: '4px 0 0 0' }}>Manage registered organizations and pending signups.</p>
+        </div>
+      </div>
+
+      {/* Routing Mode Settings Card */}
+      <div style={{
+        background: '#FAF9F6',
+        borderRadius: '16px',
+        border: '1.5px solid #FF9F1C',
+        padding: '20px',
+        marginBottom: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px'
+      }}>
+        <div>
+          <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#1A1B4B', margin: 0, fontFamily: 'Outfit, sans-serif' }}>Tenant Routing Mode</h3>
+          <p style={{ fontSize: '12px', color: '#6B7280', margin: '4px 0 0 0' }}>
+            Toggle between Vercel Simulation (custom query parameter overrides) and Custom Subdomains.
+          </p>
+        </div>
+        <div style={{ display: 'inline-flex', background: '#E5E7EB', borderRadius: '8px', padding: '4px' }}>
+          <button
+            onClick={() => handleToggleRoutingMode('simulation')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: '700',
+              fontSize: '12px',
+              fontFamily: 'Outfit, sans-serif',
+              background: routingMode === 'simulation' ? '#FF9F1C' : 'transparent',
+              color: routingMode === 'simulation' ? '#1A1B4B' : '#4B5563',
+              transition: 'all 0.15s'
+            }}
+          >
+            Free Vercel Simulation
+          </button>
+          <button
+            onClick={() => handleToggleRoutingMode('custom_domain')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: '700',
+              fontSize: '12px',
+              fontFamily: 'Outfit, sans-serif',
+              background: routingMode === 'custom_domain' ? '#FF9F1C' : 'transparent',
+              color: routingMode === 'custom_domain' ? '#1A1B4B' : '#4B5563',
+              transition: 'all 0.15s'
+            }}
+          >
+            Custom Subdomain
+          </button>
         </div>
       </div>
 
@@ -213,7 +314,9 @@ export default function SuperadminPage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{org.name}</div>
-                  <div style={{ fontSize: '11px', color: '#6B7280' }}>Host: {org.custom_domain}</div>
+                  <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                    Link: <a href={getOrgUrl(org)} target="_blank" style={{ color: '#FF9F1C', textDecoration: 'underline', fontWeight: '600' }}>{getOrgUrl(org)}</a>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ display: 'flex', gap: '4px' }}>
