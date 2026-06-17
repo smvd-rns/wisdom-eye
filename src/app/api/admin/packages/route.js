@@ -9,9 +9,17 @@ export async function GET(req) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
+  // Resolve active tenant
+  const { getActiveTenant } = await import('@/lib/tenant');
+  const tenant = await getActiveTenant(req);
+
+  // If superadmin, can query everything, otherwise filter strictly by active tenant
+  const queryTenantId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
+
   const { data, error } = await supabase
     .from('packages')
     .select('*')
+    .eq('organization_id', queryTenantId)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -29,6 +37,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
+  // Enforce tenant boundary
+  const { getActiveTenant } = await import('@/lib/tenant');
+  const tenant = await getActiveTenant(req);
+  const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
+
   const body = await req.json();
   const { title, short_description, description, thumbnail_url, price, original_price, status, course_ids } = body;
 
@@ -43,7 +56,7 @@ export async function POST(req) {
     .replace(/-+/g, '-')
     .trim() + '-' + Date.now().toString(36);
 
-  // 1. Insert package
+  // 1. Insert package with organization ID
   const { data: pkg, error: pkgError } = await supabase
     .from('packages')
     .insert({
@@ -54,7 +67,8 @@ export async function POST(req) {
       thumbnail_url,
       price: price || 0,
       original_price: original_price || null,
-      status: status || 'draft'
+      status: status || 'draft',
+      organization_id: targetOrgId
     })
     .select()
     .single();

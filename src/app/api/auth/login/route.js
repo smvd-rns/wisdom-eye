@@ -5,7 +5,7 @@ import { createSession } from '@/lib/session';
 
 export async function POST(req) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, organizationCode } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
@@ -13,11 +13,32 @@ export async function POST(req) {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    // 1. Fetch user profile
+    // Resolve active tenant
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+    let targetOrgId = tenant.id;
+
+    // If student explicitly provided an organization code/slug (useful on shared/main domain)
+    if (organizationCode) {
+      const cleanOrgCode = organizationCode.toLowerCase().trim();
+      const { data: org, error: orgErr } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', cleanOrgCode)
+        .maybeSingle();
+      
+      if (orgErr || !org) {
+        return NextResponse.json({ error: 'Invalid organization code.' }, { status: 400 });
+      }
+      targetOrgId = org.id;
+    }
+
+    // 1. Fetch user profile matching organization_id context
     const { data: user, error } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('email', cleanEmail)
+      .eq('organization_id', targetOrgId)
       .maybeSingle();
 
     if (error) {
@@ -25,45 +46,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Database error occurred. Please try again.' }, { status: 500 });
     }
 
-    // 2. If user does not exist, automatically register them!
+    // 2. If user does not exist, ask them to sign up
     if (!user) {
-      if (password.length < 8) {
-        return NextResponse.json({ 
-          error: 'Your email was not found. To register a new account, the password must be at least 8 characters long.' 
-        }, { status: 400 });
-      }
-
-      // Generate a default name from email
-      const defaultName = cleanEmail.split('@')[0];
-      const passwordHash = await bcrypt.hash(password, 12);
-      const userId = crypto.randomUUID();
-
-      // Insert new profile
-      const { data: newUser, error: insertError } = await supabase
-        .from('user_profiles')
-        .insert({
-          user_id: userId,
-          name: defaultName,
-          email: cleanEmail,
-          password_hash: passwordHash,
-          role: 'student',
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Auto-registration insertion failed:', insertError);
-        return NextResponse.json({ error: 'Failed to create a new account automatically.' }, { status: 500 });
-      }
-
-      // Create session cookie
-      await createSession(newUser);
-
-      return NextResponse.json({
-        success: true,
-        user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role },
-        is_new: true,
-      });
+      return NextResponse.json({ 
+        error: 'User account does not exist. Please sign up to create an account.' 
+      }, { status: 404 });
     }
 
     // 3. User exists: Perform regular authentication checks
@@ -81,7 +68,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, organization_id: user.organization_id },
       is_new: false,
     });
   } catch (err) {

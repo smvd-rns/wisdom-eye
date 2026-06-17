@@ -594,3 +594,47 @@ export async function sendForgotPasswordEmail({ email, name, resetLink }) {
     return false;
   }
 }
+
+/**
+ * Sends login credentials to the newly approved organization admin.
+ */
+export async function sendOrganizationApprovalEmail({ email, name, orgName, loginUrl, password }) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log('SMTP config missing. Skipping organization approval credentials email.');
+    return false;
+  }
+
+  const fromEmail = process.env.SMTP_FROM_EMAIL || 'manager@voicepune.com';
+  const fromName = 'VOICE Pune';
+
+  const mailOptions = {
+    from: `"${fromName}" <${fromEmail}>`,
+    to: email,
+    subject: `🎉 Organization Approved: ${orgName} - VOICE Pune`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 10px; padding: 24px; background: #fff;">
+        <h2 style="color: #1A1B4B; margin-top: 0;">Organization Onboarded Successfully!</h2>
+        <p>Hare Krishna, ${name},</p>
+        <p>Your request to register <strong>${orgName}</strong> on the VOICE Pune platform has been approved!</p>
+        <p>Here are your admin login credentials to access the learning management system dashboard:</p>
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 8px 0;"><strong>Login URL:</strong> <a href="${loginUrl}" style="color: #FF9F1C; font-weight: bold;">${loginUrl}</a></p>
+          <p style="margin: 0 0 8px 0;"><strong>Admin Email:</strong> ${email}</p>
+          <p style="margin: 0;"><strong>Temporary Password:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${password}</code></p>
+        </div>
+        <p style="font-size: 14px; color: #4B5563;">Please log in using the credentials above and update your password from the dashboard settings for security.</p>
+        <p style="font-size: 13px; color: #6B7280; margin-top: 24px;">Thank you for partnering with VOICE Pune to spread value education.</p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return true;
+  } catch (error) {
+    console.error('Error sending organization approval email:', error);
+    return false;
+  }
+}
+

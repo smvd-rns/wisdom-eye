@@ -2,7 +2,74 @@ let cachedVideos = null;
 let lastFetched = 0;
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-export async function GET() {
+function extractVideoId(url) {
+  if (!url) return null;
+  const regExp = /^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  if (match && match[1]) {
+    const id = match[1].substring(0, 11);
+    if (id.length === 11) return id;
+  }
+  return null;
+}
+
+function parseISO8601Duration(duration) {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const hours = parseInt(match[1] || 0, 10);
+  const minutes = parseInt(match[2] || 0, 10);
+  const seconds = parseInt(match[3] || 0, 10);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const videoUrl = searchParams.get('url');
+
+  if (videoUrl) {
+    try {
+      const videoId = extractVideoId(videoUrl);
+      if (videoId) {
+        // Fetch via YouTube Data API (unblocked domain 'googleapis.com') to get both title and duration
+        const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyBMh3y_e7r18Dr7JSOoZGPYIe-ZZ7mp3zc';
+        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails&key=${apiKey}`;
+        const apiRes = await fetch(apiUrl);
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          if (apiData.items && apiData.items.length > 0) {
+            const item = apiData.items[0];
+            const title = item.snippet.title;
+            const isoDuration = item.contentDetails?.duration || '';
+            const durationSeconds = parseISO8601Duration(isoDuration);
+            return Response.json({
+              title,
+              duration: durationSeconds || null,
+              thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url
+            });
+          }
+        }
+      }
+
+      // Fallback: Fetch via noembed.com (unblocked proxy service) to resolve at least the title
+      const noembedUrl = `https://noembed.com/embed?url=${encodeURIComponent(videoUrl)}`;
+      const res = await fetch(noembedUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.title) {
+          return Response.json({
+            title: data.title,
+            duration: null,
+            thumbnail: data.thumbnail_url
+          });
+        }
+      }
+
+      return Response.json({ error: 'Failed to retrieve video metadata' }, { status: 400 });
+    } catch (err) {
+      return Response.json({ error: err.message }, { status: 500 });
+    }
+  }
+
   const now = Date.now();
   
   // Return in-memory cache if fresh

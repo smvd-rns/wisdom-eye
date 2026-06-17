@@ -10,14 +10,20 @@ export async function GET(req) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  // Fetch payments
-  const { data: payments, error } = await supabase
+  // Fetch payments (isolated by organization courses)
+  let query = supabase
     .from('lms_payments')
     .select(`
       *,
-      courses(title)
+      courses!inner(title, organization_id)
     `)
     .order('created_at', { ascending: false });
+
+  if (session.role !== 'superadmin') {
+    query = query.eq('courses.organization_id', session.organizationId);
+  }
+
+  const { data: payments, error } = await query;
 
   if (error) {
     console.error('Fetch payments error:', error);

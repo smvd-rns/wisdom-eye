@@ -1,18 +1,56 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Facebook, Youtube, Instagram, Linkedin } from 'lucide-react';
 
 export default function Footer() {
+  const [tenant, setTenant] = useState({
+    name: 'Radheshyam Das',
+    description: 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
+    address: 'Govardhan Ecovillage, Wada, Maharashtra',
+    email: 'manager@voicepune.com',
+    phone: '+91 8605036000'
+  });
+
+  const [navLinks, setNavLinks] = useState([]);
+
+  useEffect(() => {
+    const fetchFooterBranding = async () => {
+      try {
+        const res = await fetch('/api/tenant/metadata');
+        if (res.ok) {
+          const data = await res.json();
+          setTenant(data);
+        }
+      } catch (err) {}
+    };
+
+    const loadNavLinks = async () => {
+      try {
+        const res = await fetch('/api/site-pages/navigation');
+        if (res.ok) {
+          const data = await res.json();
+          // Filter to only visible links
+          const visible = (data.links || []).filter(l => l.is_visible !== false);
+          setNavLinks(visible);
+        }
+      } catch (err) {
+        console.error('Failed to load footer navigation links', err);
+      }
+    };
+
+    fetchFooterBranding();
+    loadNavLinks();
+  }, []);
+
   return (
     <footer className="footer" style={styles.footer}>
       <div className="container" style={styles.container}>
         <div className="footer-grid">
           <div>
-            <h3 style={styles.footerLogo}>Radheshyam Das</h3>
-            <p style={styles.footerDesc}>
-              Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.
-            </p>
+            <h3 style={styles.footerLogo}>{tenant.name}</h3>
+            <p style={styles.footerDesc}>{tenant.description}</p>
             <div style={styles.socialRow}>
               <a href="https://facebook.com" style={styles.socialLinkIcon}><Facebook size={16} /></a>
               <a href="https://youtube.com" style={styles.socialLinkIcon}><Youtube size={16} /></a>
@@ -24,11 +62,19 @@ export default function Footer() {
           <div>
             <h4 style={styles.footerSectionTitle}>Core Links</h4>
             <ul style={styles.footerLinks}>
-              <li><Link href="/about" style={styles.footerLink}>About Radheshyam Das</Link></li>
-              <li><Link href="/books" style={styles.footerLink}>Books Store</Link></li>
-              <li><Link href="/courses" style={styles.footerLink}>Scripture Academy</Link></li>
-              <li><Link href="/media" style={styles.footerLink}>Media Library</Link></li>
-              <li><Link href="/daily-reading" style={styles.footerLink}>Daily Reading</Link></li>
+              {navLinks.length > 0 ? (
+                navLinks.map((link, idx) => (
+                  <li key={idx}><Link href={link.url} style={styles.footerLink}>{link.label}</Link></li>
+                ))
+              ) : (
+                <>
+                  <li><Link href="/about" style={styles.footerLink}>About</Link></li>
+                  <li><Link href="/books" style={styles.footerLink}>Books Store</Link></li>
+                  <li><Link href="/courses" style={styles.footerLink}>Scripture Academy</Link></li>
+                  <li><Link href="/media" style={styles.footerLink}>Media Library</Link></li>
+                  <li><Link href="/daily-reading" style={styles.footerLink}>Daily Reading</Link></li>
+                </>
+              )}
             </ul>
           </div>
 
@@ -44,14 +90,14 @@ export default function Footer() {
           <div>
             <h4 style={styles.footerSectionTitle}>Contact Info</h4>
             <ul style={styles.footerLinks}>
-              <li style={styles.footerInfo}><MapPin size={12} /> Govardhan Ecovillage, Wada, Maharashtra</li>
-              <li style={styles.footerInfo}><Mail size={12} /> manager@voicepune.com</li>
-              <li style={styles.footerInfo}><Phone size={12} /> +91 8605036000</li>
+              <li style={styles.footerInfo}><MapPin size={12} /> {tenant.address}</li>
+              <li style={styles.footerInfo}><Mail size={12} /> {tenant.email}</li>
+              <li style={styles.footerInfo}><Phone size={12} /> {tenant.phone}</li>
             </ul>
           </div>
         </div>
-        <div className="footer-bottom">
-          <p>&copy; {new Date().getFullYear()} Radheshyam Das / VOICE Publications. All rights reserved.</p>
+        <div style={styles.footerBottom} className="footer-bottom">
+          <p>&copy; {new Date().getFullYear()} {tenant.name}. All rights reserved.</p>
         </div>
       </div>
     </footer>

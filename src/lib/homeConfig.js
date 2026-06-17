@@ -85,3 +85,29 @@ export const DEFAULT_HOME_CONFIG = {
   ],
   announcements: [],
 };
+
+export const EMPTY_HOME_CONFIG = {
+  notificationBanner: {
+    enabled: false,
+    text: '',
+    link: '',
+    bgColor: '#1A1B4B',
+    textColor: '#FF9F1C',
+    dismissable: true,
+  },
+  sections: [
+    { id: 'hero',        label: 'Hero Slider',      visible: false, order: 1 },
+    { id: 'credentials', label: 'Credentials',       visible: false, order: 2 },
+    { id: 'logos',       label: 'Corporate Logos',   visible: false, order: 3 },
+    { id: 'featured',    label: 'Featured Cards',    visible: false, order: 4 },
+    { id: 'about',       label: 'About Biography',   visible: false, order: 5 },
+    { id: 'books',       label: 'Featured Books',    visible: false, order: 6 },
+    { id: 'youtube',     label: 'YouTube Channel',   visible: false, order: 7 },
+  ],
+  pinnedVideos: [],
+  heroSlides: [],
+  featuredBooks: [],
+  credentials: [],
+  announcements: [],
+};
+

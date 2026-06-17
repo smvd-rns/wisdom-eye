@@ -299,8 +299,27 @@ const ImageInput = ({ field, value, onChange, placeholder = 'https://...' }) => 
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryFiles, setLibraryFiles] = useState([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+
   const currentValue = value !== undefined ? value : (context?.p ? context.p[field] : '');
   const handleChange = onChange || (val => context?.set(field, val));
+
+  const loadLibraryFiles = async () => {
+    setLoadingLibrary(true);
+    try {
+      const res = await fetch('/api/admin/upload-drive');
+      if (res.ok) {
+        const data = await res.json();
+        setLibraryFiles(data.files || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingLibrary(false);
+    }
+  };
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
@@ -335,13 +354,13 @@ const ImageInput = ({ field, value, onChange, placeholder = 'https://...' }) => 
   };
 
   return (
-    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%' }}>
+    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
       <input
         type="text"
         value={currentValue ?? ''}
         onChange={e => handleChange(e.target.value)}
         placeholder={placeholder}
-        style={{ ...inputStyle, flex: 1 }}
+        style={{ ...inputStyle, flex: 1, minWidth: '150px' }}
       />
       <button
         type="button"
@@ -372,6 +391,27 @@ const ImageInput = ({ field, value, onChange, placeholder = 'https://...' }) => 
           <>🖼️ Upload</>
         )}
       </button>
+      <button
+        type="button"
+        onClick={() => { loadLibraryFiles(); setShowLibrary(true); }}
+        style={{
+          background: '#F3F4F6',
+          border: '1.5px solid #D1D5DB',
+          borderRadius: '8px',
+          padding: '8px 12px',
+          fontSize: '11px',
+          fontWeight: '700',
+          color: '#374151',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          transition: 'all 0.15s'
+        }}
+      >
+        🗂️ Library
+      </button>
       <input
         type="file"
         ref={fileInputRef}
@@ -379,6 +419,78 @@ const ImageInput = ({ field, value, onChange, placeholder = 'https://...' }) => 
         accept="image/*"
         style={{ display: 'none' }}
       />
+
+      {/* Media Library Selector Modal */}
+      {showLibrary && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }} onClick={() => setShowLibrary(false)}>
+          <div style={{
+            background: '#FFF',
+            borderRadius: '20px',
+            padding: '28px',
+            width: '100%',
+            maxWidth: '580px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            color: '#1A1B4B'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', margin: 0 }}>Media Library</h3>
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', margin: '4px 0 0 0' }}>Choose a previously uploaded image.</p>
+              </div>
+              <button onClick={() => setShowLibrary(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: '20px' }}>×</button>
+            </div>
+
+            {loadingLibrary ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '160px', color: '#9CA3AF', gap: '8px' }}>
+                <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                Loading media library...
+              </div>
+            ) : libraryFiles.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px 20px', color: '#9CA3AF', fontSize: '13px' }}>
+                No uploaded files found. Upload an image to start your library!
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px', maxHeight: '240px', overflowY: 'auto', padding: '4px' }}>
+                {libraryFiles.map(file => (
+                  <div 
+                    key={file.id} 
+                    onClick={() => {
+                      handleChange(file.url);
+                      setShowLibrary(false);
+                    }}
+                    style={{
+                      border: '1.5px solid #E5E7EB',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: '#FAFAFA'
+                    }}
+                  >
+                    <img src={file.url} alt="" style={{ width: '100%', height: '70px', objectFit: 'cover' }} />
+                    <div style={{ padding: '6px', fontSize: '10px', color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {file.file_name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button type="button" onClick={() => setShowLibrary(false)} style={{ padding: '8px 16px', background: '#F3F4F6', color: '#4B5563', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

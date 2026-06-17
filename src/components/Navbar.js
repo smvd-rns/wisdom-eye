@@ -59,6 +59,41 @@ export default function Navbar() {
     checkUser();
   }, []);
 
+  const [tenant, setTenant] = useState({ name: 'Radheshyam Das', slogan: 'IIT Bombay Topper • Author • Monk' });
+
+  useEffect(() => {
+    const loadTenant = async () => {
+      try {
+        const res = await fetch('/api/auth/me'); // Or resolve context
+        if (res.ok) {
+          const data = await res.json();
+          // We can call a dynamic route or load active tenant from layout context headers
+          const activeRes = await fetch('/api/packages'); // Query package just to trigger middleware headers
+        }
+        // Instead, let's fetch resolved client-side metadata matching hostname
+        const hostRes = await fetch('/api/courses'); // Triggers tenant resolution automatically in API
+        // Fetch current active tenant from session or route
+      } catch (err) {}
+    };
+    loadTenant();
+  }, []);
+
+  useEffect(() => {
+    const fetchTenantInfo = async () => {
+      try {
+        // We can fetch from a generic metadata endpoint or fetch from the headers
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user) {
+            // We can read organization details
+          }
+        }
+      } catch(e){}
+    };
+    fetchTenantInfo();
+  }, []);
+
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -73,6 +108,22 @@ export default function Navbar() {
 
   const visibleLinks = navLinks.slice(0, 5);
   const dropdownLinks = navLinks.slice(5);
+
+  // We can fetch active tenant details dynamically from a custom metadata payload
+  const [tenantDetails, setTenantDetails] = useState({ name: 'Radheshyam Das', slogan: 'Vedic Character & Leadership Mentoring' });
+  
+  useEffect(() => {
+    const fetchActiveTenantDetails = async () => {
+      try {
+        const res = await fetch('/api/tenant/metadata');
+        if (res.ok) {
+          const data = await res.json();
+          setTenantDetails(data);
+        }
+      } catch(e){}
+    };
+    fetchActiveTenantDetails();
+  }, []);
 
   return (
     <>
@@ -194,8 +245,8 @@ export default function Navbar() {
         <div style={styles.navContainer}>
           <Link href="/" style={styles.logo}>
             <div style={styles.logoTextContainer}>
-              <span style={styles.logoText}>Radheshyam Das</span>
-              <span style={styles.logoSubtext}>IIT Bombay Topper • Author • Monk</span>
+              <span style={styles.logoText}>{tenantDetails.name}</span>
+              <span style={styles.logoSubtext}>{tenantDetails.slogan}</span>
             </div>
           </Link>
           
@@ -237,6 +288,9 @@ export default function Navbar() {
               </Link>
             ) : (
               <div style={styles.authGroup}>
+                <Link href="/register-org" style={{ ...styles.navLink, color: '#FF9F1C' }}>
+                  Register Org
+                </Link>
                 <Link href="/login" style={styles.navLink}>
                   Sign In
                 </Link>
@@ -316,6 +370,9 @@ export default function Navbar() {
                 </Link>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <Link href="/register-org" onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: '#FF9F1C', textDecoration: 'none', padding: '8px 0' }}>
+                    Register Org
+                  </Link>
                   <Link href="/login" onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}>
                     Sign In
                   </Link>

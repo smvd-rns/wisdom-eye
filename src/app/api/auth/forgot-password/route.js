@@ -17,16 +17,21 @@ export async function POST(req) {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    // 1. Check if user exists
+    // Resolve active tenant
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+
+    // 1. Check if user exists in the active organization
     const { data: user, error } = await supabase
       .from('user_profiles')
       .select('user_id, name, email')
       .eq('email', cleanEmail)
+      .eq('organization_id', tenant.id)
       .maybeSingle();
 
     if (error || !user) {
       // For security, you can choose to return success, but a descriptive error is helpful for learners
-      return NextResponse.json({ error: 'No account found with this email address.' }, { status: 404 });
+      return NextResponse.json({ error: 'No account found with this email address in this organization.' }, { status: 404 });
     }
 
     // 2. Generate a secure reset token (JWT expiring in 1 hour)

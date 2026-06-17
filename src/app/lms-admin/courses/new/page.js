@@ -6,11 +6,14 @@ import Link from 'next/link';
 import { ArrowLeft, Loader2, BookOpen, Image, Tag, DollarSign, Award } from 'lucide-react';
 import { formatImageUrl } from '@/lib/utils';
 
-const CATEGORIES = ['Spirituality', 'Philosophy', 'Values Education', 'Meditation', 'General', 'Other'];
 const LEVELS = ['beginner', 'intermediate', 'advanced'];
+const DEFAULT_CATEGORIES = ['Spirituality', 'Philosophy', 'Values Education', 'Meditation', 'General', 'Other'];
 
 export default function NewCoursePage() {
   const router = useRouter();
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [newCatName, setNewCatName] = useState('');
+  const [addingCat, setAddingCat] = useState(false);
   const [form, setForm] = useState({
     title: '', short_description: '', description: '',
     thumbnail_url: '', price: '', original_price: '',
@@ -19,6 +22,82 @@ export default function NewCoursePage() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  // Load custom categories on mount
+  useState(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await fetch('/api/admin/categories');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.categories && data.categories.length > 0) {
+            // Merge defaults and tenant-specific categories
+            const merged = Array.from(new Set([...DEFAULT_CATEGORIES, ...data.categories]));
+            setCategories(merged);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load custom categories', err);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  const handleAddCategory = async () => {
+    if (!newCatName.trim()) return;
+    setAddingCat(true);
+    try {
+      const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCatName.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCategories(prev => {
+          const next = [...prev];
+          if (!next.includes(data.category)) {
+            next.push(data.category);
+          }
+          return next;
+        });
+        set('category', data.category);
+        setNewCatName('');
+      } else {
+        setError(data.error || 'Failed to add custom category');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAddingCat(false);
+    }
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/upload-drive', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setForm(p => ({ ...p, thumbnail_url: data.url }));
+      } else {
+        setError(data.error || 'Upload failed');
+      }
+    } catch (err) {
+      setError('Error uploading image: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -44,6 +123,25 @@ export default function NewCoursePage() {
       setError('An unexpected error occurred.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryFiles, setLibraryFiles] = useState([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+
+  const loadLibraryFiles = async () => {
+    setLoadingLibrary(true);
+    try {
+      const res = await fetch('/api/admin/upload-drive');
+      if (res.ok) {
+        const data = await res.json();
+        setLibraryFiles(data.files || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingLibrary(false);
     }
   };
 
@@ -88,9 +186,54 @@ export default function NewCoursePage() {
             <div style={styles.card}>
               <h2 style={styles.cardTitle}><Image size={16} /> Thumbnail</h2>
               <div style={styles.field}>
-                <label style={styles.label}>Thumbnail Image URL</label>
-                <input value={form.thumbnail_url} onChange={e => set('thumbnail_url', e.target.value)}
-                  placeholder="https://… (paste a direct image link)" style={styles.input} type="url" />
+                <label style={styles.label}>Thumbnail Image URL / Upload</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input value={form.thumbnail_url} onChange={e => set('thumbnail_url', e.target.value)}
+                    placeholder="https://… (paste direct image URL or click Upload)" style={{ ...styles.input, flex: 1 }} type="url" />
+                  <label style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    padding: '10px 16px',
+                    background: '#1A1B4B',
+                    color: '#FFF',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    opacity: uploading ? 0.7 : 1,
+                    pointerEvents: uploading ? 'none' : 'auto',
+                    fontFamily: 'Outfit, sans-serif'
+                  }}>
+                    {uploading ? (
+                      <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Uploading...</>
+                    ) : (
+                      '🖼️ Upload'
+                    )}
+                    <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={uploading} />
+                  </label>
+
+                  <button type="button" onClick={() => { loadLibraryFiles(); setShowLibrary(true); }} style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    padding: '10px 16px',
+                    background: '#E5E7EB',
+                    color: '#1F2937',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    border: 'none',
+                    fontFamily: 'Outfit, sans-serif'
+                  }}>
+                    🗂️ Library
+                  </button>
+                </div>
               </div>
               {form.thumbnail_url && (
                 <img src={formatImageUrl(form.thumbnail_url)} alt="Preview"
@@ -108,9 +251,39 @@ export default function NewCoursePage() {
 
               <div style={styles.field}>
                 <label style={styles.label}>Category</label>
-                <select value={form.category} onChange={e => set('category', e.target.value)} style={styles.select}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <select value={form.category} onChange={e => set('category', e.target.value)} style={styles.select}>
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  
+                  {/* Custom Category Input Option */}
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                    <input 
+                      value={newCatName} 
+                      onChange={e => setNewCatName(e.target.value)} 
+                      placeholder="Add custom category..." 
+                      style={{ ...styles.input, padding: '6px 10px', fontSize: '12.5px', flex: 1 }}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleAddCategory} 
+                      disabled={addingCat || !newCatName.trim()}
+                      style={{
+                        padding: '6px 14px',
+                        background: '#1A1B4B',
+                        color: '#FFF',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '12.5px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        opacity: (addingCat || !newCatName.trim()) ? 0.6 : 1
+                      }}
+                    >
+                      {addingCat ? 'Adding...' : 'Add'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div style={styles.field}>
@@ -164,6 +337,63 @@ export default function NewCoursePage() {
         </div>
       </form>
 
+      {/* Media Library Selector Modal */}
+      {showLibrary && (
+        <div style={styles.modalOverlay} onClick={() => setShowLibrary(false)}>
+          <div style={{ ...styles.modalBox, maxWidth: '680px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#111827', fontFamily: 'Outfit, sans-serif' }}>Media Library</h3>
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>Choose a previously uploaded image for your course thumbnail.</p>
+              </div>
+              <button onClick={() => setShowLibrary(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: '20px' }}>×</button>
+            </div>
+
+            {loadingLibrary ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#9CA3AF', gap: '8px' }}>
+                <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: '#FF9F1C' }} />
+                Loading media library...
+              </div>
+            ) : libraryFiles.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF', fontSize: '14px' }}>
+                No uploaded files found in your library yet. Upload your first image above!
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px', maxHeight: '320px', overflowY: 'auto', padding: '4px' }}>
+                {libraryFiles.map(file => (
+                  <div 
+                    key={file.id} 
+                    onClick={() => {
+                      set('thumbnail_url', file.url);
+                      setShowLibrary(false);
+                    }}
+                    style={{
+                      border: '1.5px solid #E5E7EB',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: '#FAFAFA'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.borderColor = '#FF9F1C'}
+                    onMouseOut={e => e.currentTarget.style.borderColor = '#E5E7EB'}
+                  >
+                    <img src={formatImageUrl(file.url)} alt={file.file_name} style={{ width: '100%', height: '90px', objectFit: 'cover' }} />
+                    <div style={{ padding: '8px', fontSize: '11px', color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {file.file_name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button type="button" onClick={() => setShowLibrary(false)} style={styles.btnSecondary}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -191,4 +421,7 @@ const styles = {
   toggleLabel: { fontSize: '13px', color: '#374151', fontWeight: '500' },
   certHint: { fontSize: '12px', color: '#6B7280', marginTop: '10px', background: '#F0FDF4', padding: '8px 12px', borderRadius: '8px' },
   submitBtn: { background: 'linear-gradient(135deg, #1A1B4B, #2D1B69)', color: '#fff', border: 'none', borderRadius: '10px', padding: '14px 20px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', fontFamily: 'Outfit, sans-serif' },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
+  modalBox: { background: '#FFF', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'slideUp 0.25s ease' },
+  btnSecondary: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '9999px', border: '1.5px solid #E5E7EB', cursor: 'pointer', fontSize: '13px', fontWeight: '700', background: '#FFF', color: '#374151', fontFamily: 'Outfit, sans-serif' },
 };

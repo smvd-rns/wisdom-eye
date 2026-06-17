@@ -6,11 +6,16 @@ export const dynamic = 'force-dynamic';
 // GET /api/packages — public list of published packages with associated courses
 export async function GET(req) {
   try {
-    // 1. Fetch published packages
+    // Resolve active tenant
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+
+    // 1. Fetch published packages for the current organization
     const { data: rawPackages, error: pkgError } = await supabase
       .from('packages')
       .select('*')
-      .eq('status', 'published');
+      .eq('status', 'published')
+      .eq('organization_id', tenant.id);
 
     if (pkgError) {
       console.error('Fetch packages DB error:', pkgError);

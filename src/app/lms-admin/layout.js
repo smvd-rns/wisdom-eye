@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard, BookOpen, Users, Tag, CreditCard,
   BarChart2, LogOut, ChevronRight, Menu, X, BookMarked,
-  GraduationCap, ClipboardCheck, Settings, Loader2, Home, Globe, Layers, Database
+  GraduationCap, ClipboardCheck, Settings, Loader2, Home, Globe, Layers, Database, ShieldCheck
 } from 'lucide-react';
 
 const NAV = [
@@ -18,7 +18,6 @@ const NAV = [
   { href: '/lms-admin/payments', label: 'Payments', icon: CreditCard },
   { href: '/lms-admin/reports', label: 'Reports', icon: BarChart2 },
   { href: '/lms-admin/grading', label: 'Grading Queue', icon: ClipboardCheck },
-  { href: '/lms-admin/database-setup', label: 'Database Setup', icon: Database },
 ];
 
 export default function LmsAdminLayout({ children }) {
@@ -27,6 +26,8 @@ export default function LmsAdminLayout({ children }) {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState({ courses: 0, students: 0, revenue: 0, enrollments: 0 });
+
+  const [navItems, setNavItems] = useState(NAV);
 
   useEffect(() => {
     const init = async () => {
@@ -37,6 +38,15 @@ export default function LmsAdminLayout({ children }) {
       const staffRoles = ['superadmin', 'admin', 'course_builder', 'evaluator'];
       if (!staffRoles.includes(role)) { router.push('/dashboard'); return; }
       setUser(data.user);
+
+      if (role === 'superadmin') {
+        setNavItems([
+          ...NAV,
+          { href: '/lms-admin/superadmin', label: 'Superadmin Panel', icon: ShieldCheck }
+        ]);
+      } else {
+        setNavItems(NAV);
+      }
 
       // Fetch stats
       const sRes = await fetch('/api/admin/stats');
@@ -92,7 +102,7 @@ export default function LmsAdminLayout({ children }) {
 
         <nav style={styles.nav}>
           <p style={styles.navSection}>MAIN</p>
-          {NAV.map(item => {
+          {navItems.map(item => {
             const active = isActive(item);
             return (
               <Link key={item.href} href={item.href}

@@ -67,6 +67,25 @@ export default function AdminPackagesPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryFiles, setLibraryFiles] = useState([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+
+  const loadLibraryFiles = async () => {
+    setLoadingLibrary(true);
+    try {
+      const res = await fetch('/api/admin/upload-drive');
+      if (res.ok) {
+        const data = await res.json();
+        setLibraryFiles(data.files || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingLibrary(false);
+    }
+  };
+
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -346,6 +365,26 @@ export default function AdminPackagesPage() {
                     </>
                   )}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => { loadLibraryFiles(); setShowLibrary(true); }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#F3F4F6',
+                    border: '1.5px solid #D1D5DB',
+                    borderRadius: '8px',
+                    padding: '12px 18px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  🗂️ Library
+                </button>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -416,6 +455,84 @@ export default function AdminPackagesPage() {
       ) : (
         /* Package List View */
         <div style={styles.tableCard}>
+      )}
+
+      {/* Media Library Selector Modal */}
+      {showLibrary && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }} onClick={() => setShowLibrary(false)}>
+          <div style={{
+            background: '#FFF',
+            borderRadius: '20px',
+            padding: '28px',
+            width: '100%',
+            maxWidth: '680px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            animation: 'slideUp 0.25s ease'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', margin: 0 }}>Media Library</h3>
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', margin: '4px 0 0 0' }}>Choose a previously uploaded image for your package thumbnail.</p>
+              </div>
+              <button onClick={() => setShowLibrary(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: '20px' }}>×</button>
+            </div>
+
+            {loadingLibrary ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#9CA3AF', gap: '8px' }}>
+                <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: '#FF9F1C' }} />
+                Loading media library...
+              </div>
+            ) : libraryFiles.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF', fontSize: '14px' }}>
+                No uploaded files found in your library yet. Upload your first image above!
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px', maxHeight: '320px', overflowY: 'auto', padding: '4px' }}>
+                {libraryFiles.map(file => (
+                  <div 
+                    key={file.id} 
+                    onClick={() => {
+                      setThumbnailUrl(file.url);
+                      setShowLibrary(false);
+                    }}
+                    style={{
+                      border: '1.5px solid #E5E7EB',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: '#FAFAFA'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.borderColor = '#FF9F1C'}
+                    onMouseOut={e => e.currentTarget.style.borderColor = '#E5E7EB'}
+                  >
+                    <img src={formatImageUrl(file.url)} alt={file.file_name} style={{ width: '100%', height: '90px', objectFit: 'cover' }} />
+                    <div style={{ padding: '8px', fontSize: '11px', color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {file.file_name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button type="button" onClick={() => setShowLibrary(false)} style={styles.cancelBtn}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <style>{`
+        @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
           {packages.length === 0 ? (
             <div style={styles.emptyState}>
               <Layers size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />

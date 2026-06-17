@@ -15,6 +15,8 @@ export async function createSession(user) {
     email: user.email,
     name: user.name,
     role: user.role,
+    organizationId: user.organization_id,
+    organization_id: user.organization_id
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -40,6 +42,15 @@ export async function getSession() {
 
   try {
     const { payload } = await jwtVerify(token, SECRET);
+    if (payload) {
+      // Normalize both casings to prevent API undefined bugs
+      if (payload.organizationId && !payload.organization_id) {
+        payload.organization_id = payload.organizationId;
+      }
+      if (payload.organization_id && !payload.organizationId) {
+        payload.organizationId = payload.organization_id;
+      }
+    }
     return payload;
   } catch {
     return null;

@@ -14,6 +14,18 @@ export async function GET(req) {
   const courseId = searchParams.get('course_id');
 
   if (courseId) {
+    // Check that the requested courseId belongs to the user's organization
+    if (session.role !== 'superadmin') {
+      const { data: courseCheck } = await supabase
+        .from('courses')
+        .select('organization_id')
+        .eq('id', courseId)
+        .single();
+      if (!courseCheck || courseCheck.organization_id !== session.organizationId) {
+        return NextResponse.json({ error: 'Unauthorized: Course belongs to another organization.' }, { status: 403 });
+      }
+    }
+
     // 1. Fetch detailed student progress for specific course
     const { data: enrollments, error } = await supabase
       .from('enrollments')
@@ -78,10 +90,16 @@ export async function GET(req) {
   }
 
   // 2. Summary stats for all courses
-  const { data: courses, error: coursesError } = await supabase
+  let coursesQuery = supabase
     .from('courses')
     .select('id, title, category, status')
     .order('created_at', { ascending: false });
+
+  if (session.role !== 'superadmin') {
+    coursesQuery = coursesQuery.eq('organization_id', session.organizationId);
+  }
+
+  const { data: courses, error: coursesError } = await coursesQuery;
 
   if (coursesError) {
     return NextResponse.json({ error: 'Failed to fetch courses' }, { status: 500 });

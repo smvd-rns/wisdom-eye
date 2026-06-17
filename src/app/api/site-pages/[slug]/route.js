@@ -9,10 +9,14 @@ export async function GET(req, { params }) {
     const rawSlug = decodeURIComponent(params.slug);
     const slug = rawSlug.startsWith('/') ? rawSlug : `/${rawSlug}`;
 
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+
     const { data, error } = await supabase
       .from('site_pages')
       .select('id, slug, title, meta_description, blocks, is_published')
       .eq('slug', slug)
+      .eq('organization_id', tenant.id)
       .single();
 
     if (error || !data) {
@@ -40,6 +44,10 @@ export async function PUT(req, { params }) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+    const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
+
     const rawSlug = decodeURIComponent(params.slug);
     const slug = rawSlug.startsWith('/') ? rawSlug : `/${rawSlug}`;
     const body = await req.json();
@@ -57,7 +65,8 @@ export async function PUT(req, { params }) {
     const { error } = await supabase
       .from('site_pages')
       .update(updateData)
-      .eq('slug', slug);
+      .eq('slug', slug)
+      .eq('organization_id', targetOrgId);
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
 
@@ -75,13 +84,18 @@ export async function DELETE(req, { params }) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+    const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
+
     const rawSlug = decodeURIComponent(params.slug);
     const slug = rawSlug.startsWith('/') ? rawSlug : `/${rawSlug}`;
 
     const { error } = await supabase
       .from('site_pages')
       .delete()
-      .eq('slug', slug);
+      .eq('slug', slug)
+      .eq('organization_id', targetOrgId);
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
 

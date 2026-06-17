@@ -1,4 +1,29 @@
 import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req) {
+  try {
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+
+    const { data, error } = await supabase
+      .from('media_library')
+      .select('*')
+      .eq('organization_id', tenant.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to query media library:', error);
+      return NextResponse.json({ files: [] });
+    }
+
+    return NextResponse.json({ files: data || [] });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
 
 export async function POST(req) {
   try {
@@ -17,6 +42,10 @@ export async function POST(req) {
     if (!clientId || !clientSecret || !refreshToken || !folderId) {
       return NextResponse.json({ error: 'Google Drive configuration is incomplete on server.' }, { status: 500 });
     }
+
+    // Resolve active tenant
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
 
     // 1. Get access token from refresh token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -97,6 +126,19 @@ export async function POST(req) {
 
     // Return the formatted Google CDN direct hotlink
     const directUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+
+    // 4. Save to media_library database table
+    try {
+      await supabase.from('media_library').insert({
+        url: directUrl,
+        file_name: file.name,
+        file_type: file.type || 'image/jpeg',
+        organization_id: tenant.id
+      });
+    } catch (dbErr) {
+      console.error('Failed to log to media library:', dbErr);
+    }
+
     return NextResponse.json({ success: true, url: directUrl, fileId });
   } catch (error) {
     console.error('Upload error:', error);

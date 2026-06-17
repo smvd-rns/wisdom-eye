@@ -1,21 +1,25 @@
 import { supabase } from '@/lib/supabase';
-import { DEFAULT_HOME_CONFIG } from '@/lib/homeConfig';
+import { DEFAULT_HOME_CONFIG, EMPTY_HOME_CONFIG } from '@/lib/homeConfig';
 import { getSession } from '@/lib/session';
 
-const CONFIG_ID = 'homepage_v1';
-
 // GET — returns the current homepage config (public, cached)
-export async function GET() {
+export async function GET(req) {
   try {
+    // Resolve active tenant
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+    const configId = `homepage_${tenant.id}`;
+
     const { data, error } = await supabase
       .from('home_config')
       .select('config, updated_at, updated_by')
-      .eq('id', CONFIG_ID)
+      .eq('id', configId)
       .single();
 
     if (error || !data) {
-      // Return defaults if table doesn't have a row yet
-      return Response.json(DEFAULT_HOME_CONFIG, {
+      // Return defaults for main site, empty config for other tenants
+      const fallbackConfig = tenant.slug === 'wisdom-eye' ? DEFAULT_HOME_CONFIG : EMPTY_HOME_CONFIG;
+      return Response.json(fallbackConfig, {
         headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
       });
     }
@@ -33,7 +37,7 @@ export async function GET() {
   }
 }
 
-// POST — saves a new config (superadmin only)
+// POST — saves a new config
 export async function POST(req) {
   try {
     // Auth check
@@ -41,6 +45,14 @@ export async function POST(req) {
     if (!session || !['superadmin', 'admin'].includes(session.role)) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    // Resolve active tenant boundary
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+
+    // Admins write to their own organization config. Superadmins can write dynamically.
+    const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organizationId;
+    const configId = `homepage_${targetOrgId}`;
 
     const body = await req.json();
 
@@ -52,7 +64,7 @@ export async function POST(req) {
     const { error } = await supabase
       .from('home_config')
       .upsert({
-        id: CONFIG_ID,
+        id: configId,
         config: body,
         updated_at: new Date().toISOString(),
         updated_by: session.name || session.email || session.id,

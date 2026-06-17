@@ -4,16 +4,21 @@ import { getSession } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 
 // GET /api/site-pages — list all pages (admin only)
-export async function GET() {
+export async function GET(req) {
   try {
     const session = await getSession();
     if (!session || !['superadmin', 'admin', 'course_builder'].includes(session.role)) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+    const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
+
     const { data, error } = await supabase
       .from('site_pages')
       .select('id, slug, title, meta_description, is_published, created_at, updated_at, updated_by')
+      .eq('organization_id', targetOrgId)
       .order('created_at', { ascending: false });
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -30,6 +35,10 @@ export async function POST(req) {
     if (!session || !['superadmin', 'admin'].includes(session.role)) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+    const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
 
     const { slug, title, meta_description, blocks } = await req.json();
 
@@ -48,6 +57,7 @@ export async function POST(req) {
         blocks: blocks || [],
         is_published: true,
         updated_by: session.name || session.email || 'admin',
+        organization_id: targetOrgId
       })
       .select()
       .single();

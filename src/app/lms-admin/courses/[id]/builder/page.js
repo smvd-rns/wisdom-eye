@@ -25,6 +25,16 @@ export default function CourseBuilderPage() {
   const [allCourseQuizzes, setAllCourseQuizzes] = useState([]); // All quizzes for this course (library)
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [notification, setNotification] = useState(null); // { message, type }
+  
+  const showNotification = (msg, type = 'success') => setNotification({ message: msg, type });
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // Module form
   const [newModuleTitle, setNewModuleTitle] = useState('');
@@ -90,7 +100,7 @@ export default function CourseBuilderPage() {
       const data = await res.json();
       setModules(p => [...p, { ...data.module, lessons: [], quizzes: [] }]);
       setNewModuleTitle(''); setAddingModule(false);
-    } catch (err) { alert(err.message); } finally { setSaving(false); }
+    } catch (err) { showNotification(err.message, 'error'); } finally { setSaving(false); }
   };
 
   const saveModuleTitle = async (moduleId) => {
@@ -102,7 +112,7 @@ export default function CourseBuilderPage() {
       if (!res.ok) throw new Error('Failed');
       setModules(p => p.map(m => m.id === moduleId ? { ...m, title: editingModuleTitle } : m));
       setEditingModuleId(null);
-    } catch (err) { alert('Failed to save module title.'); }
+    } catch (err) { showNotification('Failed to save module title.', 'error'); }
   };
 
   const deleteModule = async (moduleId) => {
@@ -112,7 +122,7 @@ export default function CourseBuilderPage() {
       if (!res.ok) throw new Error('Failed');
       setModules(p => p.filter(m => m.id !== moduleId));
       setAllCourseQuizzes(p => p.filter(q => q.module_id !== moduleId));
-    } catch (err) { alert('Failed to delete module.'); }
+    } catch (err) { showNotification('Failed to delete module.', 'error'); }
   };
 
   const moveModule = async (index, dir) => {
@@ -125,7 +135,7 @@ export default function CourseBuilderPage() {
         fetch('/api/admin/modules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, order_index: i }) })
       ));
       setModules(newMods);
-    } catch { alert('Failed to reorder.'); }
+    } catch { showNotification('Failed to reorder.', 'error'); }
   };
 
   // ── Lesson operations ─────────────────────────────────────
@@ -155,7 +165,7 @@ export default function CourseBuilderPage() {
         setAddingLesson(null);
       }
       resetLessonForm();
-    } catch (err) { alert(err.message || 'An error occurred.'); } finally { setSaving(false); }
+    } catch (err) { showNotification(err.message || 'An error occurred.', 'error'); } finally { setSaving(false); }
   };
 
   const deleteLesson = async (moduleId, lessonId) => {
@@ -164,7 +174,7 @@ export default function CourseBuilderPage() {
       const res = await fetch(`/api/admin/lessons?id=${lessonId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed');
       setModules(p => p.map(m => m.id === moduleId ? { ...m, lessons: m.lessons?.filter(l => l.id !== lessonId) || [] } : m));
-    } catch (err) { alert('Failed to delete lesson.'); }
+    } catch (err) { showNotification('Failed to delete lesson.', 'error'); }
   };
 
   const moveLesson = async (moduleId, index, dir) => {
@@ -176,7 +186,7 @@ export default function CourseBuilderPage() {
     try {
       await Promise.all(lessons.map((l, i) => fetch('/api/admin/lessons', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: l.id, order_index: i }) })));
       setModules(p => p.map(m => m.id === moduleId ? { ...m, lessons } : m));
-    } catch { alert('Failed to reorder lessons.'); }
+    } catch { showNotification('Failed to reorder lessons.', 'error'); }
   };
 
   // ── Quiz operations ─────────────────────────────────────
@@ -332,7 +342,7 @@ export default function CourseBuilderPage() {
         body: JSON.stringify({ quiz_id: activeQuizForQuestions.id, questions })
       });
       if (res.ok) {
-        alert('✅ Quiz questions saved!');
+        showNotification('Quiz questions saved!');
         // Refresh quiz list to update counts
         const r = await fetch(`/api/admin/quizzes?course_id=${id}`);
         if (r.ok) { const { quizzes } = await r.json(); setAllCourseQuizzes(quizzes || []); }
@@ -340,7 +350,7 @@ export default function CourseBuilderPage() {
         setActiveQuizForQuestions(null);
         setQuestions([]);
       } else {
-        alert('Failed to save questions. Please try again.');
+        showNotification('Failed to save questions. Please try again.', 'error');
       }
     } catch (err) { console.error(err); } finally { setSavingQuestions(false); }
   };
@@ -585,7 +595,38 @@ export default function CourseBuilderPage() {
         </div>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {/* Floating Toast Notification */}
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          backgroundColor: notification.type === 'success' ? '#10B981' : '#EF4444',
+          color: '#fff',
+          padding: '12px 20px',
+          borderRadius: '10px',
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          zIndex: 9999,
+          animation: 'slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          fontSize: '13px',
+          fontWeight: '700',
+          fontFamily: 'Outfit, sans-serif'
+        }}>
+          {notification.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
+          <span>{notification.message}</span>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideIn {
+          from { transform: translateY(20px) scale(0.95); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -838,6 +879,39 @@ function QuestionEditor({ quiz, questions, setQuestions, onAddQuestion, onUpdate
 
 function LessonForm({ form, setForm, onSave, onCancel, saving, isNew }) {
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const [fetchingTitle, setFetchingTitle] = useState(false);
+
+  useEffect(() => {
+    if (form.type !== 'youtube' || !form.content_url) return;
+    
+    const isYoutube = form.content_url.includes('youtube.com') || form.content_url.includes('youtu.be') || form.content_url.includes('youtube-nocookie.com');
+    if (!isYoutube) return;
+
+    const handler = setTimeout(async () => {
+      setFetchingTitle(true);
+      try {
+        const res = await fetch(`/api/youtube?url=${encodeURIComponent(form.content_url)}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Auto fill title if it's empty
+          if (data.title && (!form.title || form.title.trim() === '')) {
+            set('title', data.title);
+          }
+          // Auto fill duration in seconds if empty/unset
+          if (data.duration && (!form.duration_seconds || String(form.duration_seconds).trim() === '')) {
+            set('duration_seconds', String(data.duration));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to auto-fetch youtube title', err);
+      } finally {
+        setFetchingTitle(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(handler);
+  }, [form.content_url, form.type]);
+
   return (
     <div style={lf.wrap}>
       <div style={lf.typeRow}>
@@ -847,7 +921,15 @@ function LessonForm({ form, setForm, onSave, onCancel, saving, isNew }) {
       </div>
       <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Lesson title *" style={lf.input} />
       {(form.type === 'youtube' || form.type === 'gdrive') && (
-        <input value={form.content_url} onChange={e => set('content_url', e.target.value)} placeholder={form.type === 'youtube' ? 'YouTube URL e.g. https://youtu.be/abc' : 'Google Drive share URL'} style={lf.input} type="url" />
+        <div style={{ position: 'relative' }}>
+          <input value={form.content_url} onChange={e => set('content_url', e.target.value)} placeholder={form.type === 'youtube' ? 'YouTube URL e.g. https://youtu.be/abc' : 'Google Drive share URL'} style={lf.input} type="url" />
+          {fetchingTitle && (
+            <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#6B7280' }}>
+              <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Fetching...</span>
+            </div>
+          )}
+        </div>
       )}
       {form.type === 'text' && (
         <textarea value={form.content_text} onChange={e => set('content_text', e.target.value)} placeholder="Lesson notes, text content or instructions…" style={{ ...lf.input, minHeight: '80px', resize: 'vertical' }} />

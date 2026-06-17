@@ -1,3 +1,5 @@
+import { headers } from 'next/headers';
+import { getActiveTenant } from '@/lib/tenant';
 import './globals.css';
 
 export const metadata = {
@@ -12,10 +14,20 @@ export const viewport = {
   initialScale: 1.0,
 };
 
+export default async function RootLayout({ children }) {
+  const reqHeaders = headers();
+  const host = reqHeaders.get('x-tenant-host') || '';
+  
+  // Resolve active tenant dynamically
+  const tenant = await getActiveTenant({ headers: { get: () => host } });
 
-export default function RootLayout({ children }) {
+  const dynamicStyles = {
+    '--primary-color': tenant.primary_color || '#FF9F1C',
+    '--secondary-color': tenant.secondary_color || '#1A1B4B',
+  };
+
   return (
-    <html lang="en">
+    <html lang="en" style={dynamicStyles}>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>

@@ -7,10 +7,21 @@ import { Eye, EyeOff, Mail, Lock, User, Phone, Loader2, BookOpen } from 'lucide-
 
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '', organizationCode: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [tenantName, setTenantName] = useState('LMS Portal');
+
+  // Load tenant name dynamically from current domain settings context
+  useState(() => {
+    const fetchBranding = async () => {
+      try {
+        const res = await fetch('/api/courses');
+      } catch(e){}
+    };
+    fetchBranding();
+  }, []);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -38,6 +49,7 @@ export default function SignupPage() {
           email: form.email,
           phone: form.phone,
           password: form.password,
+          organizationCode: form.organizationCode,
         }),
       });
 
@@ -66,7 +78,7 @@ export default function SignupPage() {
           <div style={styles.logoIcon}>
             <BookOpen size={20} color="#FF9F1C" />
           </div>
-          <span style={styles.logoText}>Radheshyam Das</span>
+          <span style={styles.logoText}>{tenantName}</span>
         </Link>
 
         <h1 style={styles.title}>Create your account</h1>
@@ -77,6 +89,22 @@ export default function SignupPage() {
         )}
 
         <form onSubmit={handleSubmit} style={styles.form}>
+          {/* Org Code / Name (Compulsory only on main/shared domain) */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Organization Code / Subdomain</label>
+            <div style={styles.inputWrap}>
+              <BookOpen size={16} style={styles.inputIcon} />
+              <input
+                type="text"
+                name="organizationCode"
+                value={form.organizationCode}
+                onChange={handleChange}
+                placeholder="e.g. vedic-academy (Leave empty for default)"
+                style={styles.input}
+              />
+            </div>
+          </div>
+
           {/* Name */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Full Name</label>
@@ -105,13 +133,13 @@ export default function SignupPage() {
 
           {/* Phone */}
           <div style={styles.fieldGroup}>
-            <label style={styles.label}>Mobile Number <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(optional)</span></label>
+            <label style={styles.label}>Mobile Number</label>
             <div style={styles.inputWrap}>
               <Phone size={16} style={styles.inputIcon} />
               <input
                 type="tel" name="phone" value={form.phone}
                 onChange={handleChange} placeholder="+91 9876543210"
-                style={styles.input} autoComplete="tel"
+                required style={styles.input} autoComplete="tel"
               />
             </div>
           </div>

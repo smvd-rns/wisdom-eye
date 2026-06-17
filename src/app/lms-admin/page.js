@@ -2,24 +2,30 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Users, CreditCard, TrendingUp, Plus, ArrowRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { BookOpen, Users, CreditCard, TrendingUp, Plus, ArrowRight, Clock, CheckCircle, AlertCircle, Share2, Copy } from 'lucide-react';
 
 export default function LmsAdminDashboard() {
   const [stats, setStats] = useState(null);
   const [recentEnrollments, setRecentEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [orgInfo, setOrgInfo] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const init = async () => {
       try {
-        const [sRes, eRes] = await Promise.all([
+        const [sRes, eRes, oRes] = await Promise.all([
           fetch('/api/admin/stats'),
           fetch('/api/admin/recent-enrollments'),
+          fetch('/api/tenant/metadata')
         ]);
         if (sRes.ok) setStats(await sRes.json());
         if (eRes.ok) {
           const eData = await eRes.json();
           setRecentEnrollments(eData.enrollments || []);
+        }
+        if (oRes.ok) {
+          setOrgInfo(await oRes.json());
         }
       } finally {
         setLoading(false);
@@ -27,6 +33,16 @@ export default function LmsAdminDashboard() {
     };
     init();
   }, []);
+
+  const handleCopyShareText = () => {
+    if (typeof window === 'undefined') return;
+    const origin = window.location.origin;
+    const text = `Join our Scripture Academy! 📚\n\nDirect Link: ${origin}/\nOrganization Code: ${orgInfo?.slug || ''}\n\nRegister from the main portal at: ${origin.includes('localhost') ? 'http://localhost:3001' : 'https://wisdom-eye.in'}/signup using Organization Code: ${orgInfo?.slug || ''}`;
+    
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const statCards = stats ? [
     { label: 'Total Courses', value: stats.courses, icon: <BookOpen size={22} />, color: '#1A1B4B', bg: '#EEF2FF', link: '/lms-admin/courses' },
@@ -70,6 +86,66 @@ export default function LmsAdminDashboard() {
         </div>
       )}
 
+      {/* Share Portal Card */}
+      {orgInfo && (
+        <div style={{
+          background: 'linear-gradient(135deg, #1A1B4B 0%, #2D1B69 100%)',
+          borderRadius: '16px',
+          padding: '24px',
+          color: '#FFF',
+          marginBottom: '28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '20px',
+          boxShadow: '0 8px 30px rgba(26,27,75,0.2)'
+        }}>
+          <div style={{ flex: 1, minWidth: '280px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#FF9F1C', fontFamily: 'Outfit, sans-serif', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Share2 size={20} /> Share Portal Details
+            </h2>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', margin: '0 0 16px 0' }}>
+              Share access links and the unique organization code for students to register under your academy.
+            </p>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '8px 14px', borderRadius: '8px' }}>
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Organization Code</span>
+                <span style={{ fontSize: '14px', fontWeight: '700', fontFamily: 'monospace', color: '#FF9F1C' }}>{orgInfo.slug}</span>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '8px 14px', borderRadius: '8px' }}>
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Direct URL</span>
+                <span style={{ fontSize: '14px', fontWeight: '700', fontFamily: 'monospace' }}>
+                  {typeof window !== 'undefined' ? window.location.origin : `https://${orgInfo.slug}.wisdom-eye.in`}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button 
+            onClick={handleCopyShareText}
+            style={{
+              background: '#FF9F1C',
+              color: '#1A1B4B',
+              border: 'none',
+              borderRadius: '9999px',
+              padding: '12px 24px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.15s ease',
+              fontFamily: 'Outfit, sans-serif',
+              boxShadow: '0 4px 14px rgba(255,159,28,0.3)'
+            }}
+          >
+            <Copy size={16} />
+            {copied ? 'Copied Details!' : 'Copy Share Invite'}
+          </button>
+        </div>
+      )}
+
       {/* Quick actions */}
       <div style={styles.quickActions}>
         <h2 style={styles.sectionTitle}>Quick Actions</h2>
@@ -77,7 +153,6 @@ export default function LmsAdminDashboard() {
           {[
             { label: 'Create Course', desc: 'Add new course with modules & lessons', href: '/lms-admin/courses/new', icon: '📚', color: '#1A1B4B' },
             { label: 'Manage Packages', desc: 'Create course bundles and link courses manually', href: '/lms-admin/packages', icon: '📦', color: '#10B981' },
-            { label: 'Database Setup', desc: 'Verify connection & copy SQL migration scripts', href: '/lms-admin/database-setup', icon: '🗄️', color: '#EF4444' },
             { label: 'Manage Coupons', desc: 'Create discount or free coupon codes', href: '/lms-admin/coupons', icon: '🏷️', color: '#D97706' },
             { label: 'Grading Queue', desc: 'Review and grade subjective answers', href: '/lms-admin/grading', icon: '✍️', color: '#7C3AED' },
             { label: 'View Reports', desc: 'Student progress and revenue data', href: '/lms-admin/reports', icon: '📊', color: '#0891B2' },

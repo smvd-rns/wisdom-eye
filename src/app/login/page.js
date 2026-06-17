@@ -5,15 +5,29 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, Loader2, BookOpen } from 'lucide-react';
 
+// GET /api/auth/login helper
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
 
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '', organizationCode: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [tenantName, setTenantName] = useState('LMS Portal');
+
+  // Load tenant name dynamically from current domain settings context
+  useState(() => {
+    const fetchBranding = async () => {
+      try {
+        const res = await fetch('/api/courses');
+        // If there's an organization logo/name header context returned dynamically:
+        // We can extract organization details or read from document root variables
+      } catch(e){}
+    };
+    fetchBranding();
+  }, []);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -62,7 +76,7 @@ function LoginForm() {
           <div style={styles.logoIcon}>
             <BookOpen size={20} color="#FF9F1C" />
           </div>
-          <span style={styles.logoText}>Radheshyam Das</span>
+          <span style={styles.logoText}>{tenantName}</span>
         </Link>
 
         <h1 style={styles.title}>Welcome back</h1>
@@ -75,6 +89,22 @@ function LoginForm() {
         )}
 
         <form onSubmit={handleSubmit} style={styles.form}>
+          {/* Org Code / Name (Compulsory only on main/shared domain) */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Organization Code / Subdomain</label>
+            <div style={styles.inputWrap}>
+              <BookOpen size={16} style={styles.inputIcon} />
+              <input
+                type="text"
+                name="organizationCode"
+                value={form.organizationCode}
+                onChange={handleChange}
+                placeholder="e.g. vedic-academy (Leave empty for default)"
+                style={styles.input}
+              />
+            </div>
+          </div>
+
           {/* Email */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Email Address</label>

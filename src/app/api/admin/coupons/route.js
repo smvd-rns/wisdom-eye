@@ -11,10 +11,22 @@ export async function GET(req) {
   }
 
   // Fetch coupons
-  const { data: coupons, error } = await supabase
+  let query = supabase
     .from('coupons')
     .select('*')
     .order('created_at', { ascending: false });
+
+  // If not superadmin, filter by creators belonging to the same organization
+  if (session.role !== 'superadmin') {
+    const { data: orgUsers } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('organization_id', session.organizationId);
+    const orgUserIds = orgUsers?.map(u => u.user_id) || [];
+    query = query.in('created_by', orgUserIds);
+  }
+
+  const { data: coupons, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: 'Failed to fetch coupons' }, { status: 500 });
@@ -113,6 +125,27 @@ export async function DELETE(req) {
 
   if (!id) {
     return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
+  // If not superadmin, verify that the coupon belongs to this organization
+  if (session.role !== 'superadmin') {
+    const { data: coupon } = await supabase
+      .from('coupons')
+      .select('created_by')
+      .eq('id', id)
+      .single();
+
+    if (coupon) {
+      const { data: creator } = await supabase
+        .from('user_profiles')
+        .select('organization_id')
+        .eq('user_id', coupon.created_by)
+        .single();
+
+      if (!creator || creator.organization_id !== session.organizationId) {
+        return NextResponse.json({ error: 'Unauthorized: Coupon is outside your organization.' }, { status: 403 });
+      }
+    }
   }
 
   const { error } = await supabase

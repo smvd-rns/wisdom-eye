@@ -27,6 +27,18 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Quiz attempt not found' }, { status: 404 });
     }
 
+    // Verify ownership of the quiz/course before showing single attempt
+    if (session.role !== 'superadmin') {
+      const { data: courseCheck } = await supabase
+        .from('quizzes')
+        .select('courses(organization_id)')
+        .eq('id', attempt.quiz_id)
+        .single();
+      if (!courseCheck || courseCheck.courses?.organization_id !== session.organizationId) {
+        return NextResponse.json({ error: 'Unauthorized: Attempt belongs to another organization.' }, { status: 403 });
+      }
+    }
+
     // 2. Fetch quiz and questions details
     const { data: quiz } = await supabase
       .from('quizzes')
@@ -55,6 +67,16 @@ export async function GET(req) {
     });
   }
 
+  // Fetch organization course IDs to filter attempts listing
+  let orgCourseIds = [];
+  if (session.role !== 'superadmin') {
+    const { data: orgCourses } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('organization_id', session.organizationId);
+    orgCourseIds = orgCourses?.map(c => c.id) || [];
+  }
+
   // Listing query builder
   let query = supabase.from('quiz_attempts').select(`
     id, user_id, quiz_id, score, total_marks, passed, status, attempt_number, submitted_at,
@@ -64,13 +86,6 @@ export async function GET(req) {
   if (status) {
     query = query.eq('status', status);
   }
-  if (courseId) {
-    // We can filter attempts where quizzes.course_id = courseId.
-    // In postgrest we can do this or filter on related fields.
-    // Let's filter on the quiz relation.
-    // If we filter, it's easier to fetch all and filter or do join filtering.
-    // Let's do simple order.
-  }
 
   const { data: attempts, error } = await query.order('submitted_at', { ascending: false });
   if (error) {
@@ -78,8 +93,11 @@ export async function GET(req) {
     return NextResponse.json({ error: 'Failed to fetch attempts list' }, { status: 500 });
   }
 
-  // Filter by course_id in JS if needed
+  // Filter in memory by organization courses and optionally by courseId
   let filteredAttempts = attempts || [];
+  if (session.role !== 'superadmin') {
+    filteredAttempts = filteredAttempts.filter(a => orgCourseIds.includes(a.quizzes?.course_id));
+  }
   if (courseId) {
     filteredAttempts = filteredAttempts.filter(a => a.quizzes?.course_id === courseId);
   }

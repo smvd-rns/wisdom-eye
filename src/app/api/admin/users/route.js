@@ -19,6 +19,11 @@ export async function GET(req) {
     .select('id, user_id, name, email, phone, role, is_active, created_at')
     .order('created_at', { ascending: false });
 
+  // If not superadmin, isolate by organization_id
+  if (session.role !== 'superadmin') {
+    query = query.eq('organization_id', session.organizationId);
+  }
+
   if (role !== 'All') {
     query = query.eq('role', role);
   }
@@ -61,6 +66,32 @@ export async function PUT(req) {
     return NextResponse.json({ 
       error: 'Access denied: You cannot alter your own admin role or status.' 
     }, { status: 400 });
+  }
+
+  // 1. Fetch user to verify organization and role
+  const { data: targetUser, error: fetchError } = await supabase
+    .from('user_profiles')
+    .select('organization_id, role')
+    .eq('user_id', user_id)
+    .single();
+
+  if (fetchError || !targetUser) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  }
+
+  // If not superadmin, enforce organization boundary
+  if (session.role !== 'superadmin' && targetUser.organization_id !== session.organizationId) {
+    return NextResponse.json({ error: 'Unauthorized: User is outside your organization.' }, { status: 403 });
+  }
+
+  // Prevent promoting someone to superadmin unless the actor is a superadmin
+  if (role === 'superadmin' && session.role !== 'superadmin') {
+    return NextResponse.json({ error: 'Unauthorized: Only superadmins can assign the superadmin role.' }, { status: 403 });
+  }
+  
+  // Prevent altering a superadmin unless the actor is a superadmin
+  if (targetUser.role === 'superadmin' && session.role !== 'superadmin') {
+    return NextResponse.json({ error: 'Unauthorized: You cannot modify a superadmin account.' }, { status: 403 });
   }
 
   // Build update payload

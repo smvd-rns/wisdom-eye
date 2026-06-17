@@ -24,6 +24,13 @@ export default function SiteBuilderPage() {
   const [savingNav, setSavingNav] = useState(false);
   const [newNavLink, setNewNavLink] = useState({ label: '', url: '', is_visible: true });
 
+  // Branding & Footer Editor State
+  const [showBrandingEditor, setShowBrandingEditor] = useState(false);
+  const [brandingData, setBrandingData] = useState({
+    name: '', slogan: '', description: '', address: '', email: '', phone: ''
+  });
+  const [savingBranding, setSavingBranding] = useState(false);
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -32,6 +39,7 @@ export default function SiteBuilderPage() {
   useEffect(() => {
     loadPages();
     loadNavLinks();
+    loadBrandingData();
   }, []);
 
   const loadPages = async () => {
@@ -56,6 +64,47 @@ export default function SiteBuilderPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const loadBrandingData = async () => {
+    try {
+      const res = await fetch('/api/tenant/metadata');
+      if (res.ok) {
+        const data = await res.json();
+        setBrandingData({
+          name: data.name || '',
+          slogan: data.slogan || '',
+          description: data.description || '',
+          address: data.address || '',
+          email: data.email || '',
+          phone: data.phone || ''
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load branding data', e);
+    }
+  };
+
+  const handleSaveBranding = async () => {
+    setSavingBranding(true);
+    try {
+      const res = await fetch('/api/tenant/metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(brandingData)
+      });
+      if (res.ok) {
+        showToast('Site branding and footer details updated successfully!', 'success');
+        setShowBrandingEditor(false);
+      } else {
+        const errData = await res.json();
+        showToast(errData.error || 'Failed to update branding details', 'error');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setSavingBranding(false);
     }
   };
 
@@ -197,7 +246,10 @@ export default function SiteBuilderPage() {
             Create and manage any page on your website with a visual drag-and-drop builder.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={() => { loadBrandingData(); setShowBrandingEditor(true); }} style={btnSecondary}>
+            <Edit3 size={16} /> Edit Branding & Footer
+          </button>
           <button onClick={() => setShowNavEditor(true)} style={btnSecondary}>
             <Menu size={16} /> Edit Navbar Links
           </button>
@@ -369,7 +421,61 @@ export default function SiteBuilderPage() {
         </div>
       )}
 
-      {/* New Page Modal */}
+      {/* Visual Branding & Footer Editor Modal */}
+      {showBrandingEditor && (
+        <div style={modalOverlay} onClick={() => setShowBrandingEditor(false)}>
+          <div style={{ ...modalBox, maxWidth: '580px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#111827', fontFamily: 'Outfit, sans-serif' }}>Edit Site Branding & Footer</h3>
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>Customize branding names, logo text, header slogan, and footer details.</p>
+              </div>
+              <button onClick={() => setShowBrandingEditor(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={20} /></button>
+            </div>
+
+            <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '6px', marginBottom: '20px' }}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={fieldLabel}>Brand Logo Name (Navbar & Footer Heading)</label>
+                <input style={fieldInput} value={brandingData.name} placeholder="e.g. Radheshyam Das" onChange={e => setBrandingData(prev => ({ ...prev, name: e.target.value }))} />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={fieldLabel}>Header Tagline / Slogan</label>
+                <input style={fieldInput} value={brandingData.slogan} placeholder="e.g. Vedic Character & Leadership Mentoring" onChange={e => setBrandingData(prev => ({ ...prev, slogan: e.target.value }))} />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={fieldLabel}>Footer Description Text</label>
+                <textarea style={{ ...fieldInput, resize: 'vertical' }} rows={3} value={brandingData.description} placeholder="Vedic Character & Leadership Mentoring under VOICE..." onChange={e => setBrandingData(prev => ({ ...prev, description: e.target.value }))} />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={fieldLabel}>Contact Address</label>
+                <input style={fieldInput} value={brandingData.address} placeholder="Govardhan Ecovillage, Wada..." onChange={e => setBrandingData(prev => ({ ...prev, address: e.target.value }))} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <label style={fieldLabel}>Contact Email</label>
+                  <input style={fieldInput} value={brandingData.email} placeholder="manager@voicepune.com" onChange={e => setBrandingData(prev => ({ ...prev, email: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={fieldLabel}>Contact Phone</label>
+                  <input style={fieldInput} value={brandingData.phone} placeholder="+91 8605036000" onChange={e => setBrandingData(prev => ({ ...prev, phone: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowBrandingEditor(false)} style={btnSecondary}>Cancel</button>
+              <button onClick={handleSaveBranding} disabled={savingBranding} style={{ ...btnPrimary, opacity: savingBranding ? 0.7 : 1 }}>
+                {savingBranding ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
+                {savingBranding ? 'Saving...' : 'Save Branding'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showNew && (
         <div style={modalOverlay} onClick={() => setShowNew(false)}>
           <div style={modalBox} onClick={e => e.stopPropagation()}>
