@@ -455,7 +455,6 @@ export default function AdminPackagesPage() {
       ) : (
         /* Package List View */
         <div style={styles.tableCard}>
-      )}
 
       {/* Media Library Selector Modal */}
       {showLibrary && (
