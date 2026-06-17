@@ -9,21 +9,25 @@ const CACHE_TTL = 60 * 1000; // 1 minute
  * Falls back to the default organization if not found or on local testing environments.
  */
 export async function getActiveTenant(req) {
-  // 1. Extract hostname from request headers
+  // 1. Extract hostname and slug override from request headers
   let host = '';
+  let tenantSlug = '';
   if (req && req.headers) {
     if (typeof req.headers.get === 'function') {
       host = req.headers.get('host') || '';
-    } else if (req.headers.host) {
-      host = req.headers.host;
+      tenantSlug = req.headers.get('x-tenant-slug') || '';
+    } else {
+      if (req.headers.host) host = req.headers.host;
+      if (req.headers['x-tenant-slug']) tenantSlug = req.headers['x-tenant-slug'];
     }
   }
 
   // Clean hostname (remove port numbers if any)
   const cleanHost = host.split(':')[0].toLowerCase();
+  const cacheKey = tenantSlug ? `slug:${tenantSlug}` : cleanHost;
 
   // 2. Check cache first
-  const cached = tenantCache.get(cleanHost);
+  const cached = tenantCache.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
     return cached.data;
   }
@@ -31,7 +35,21 @@ export async function getActiveTenant(req) {
   try {
     let org = null;
 
-    if (cleanHost && cleanHost !== 'localhost' && cleanHost !== '127.0.0.1') {
+    // Prioritize slug override if provided (useful for vercel.app/local testing)
+    if (tenantSlug) {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('slug', tenantSlug)
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) {
+        org = data;
+      }
+    }
+
+    if (!org && cleanHost && cleanHost !== 'localhost' && cleanHost !== '127.0.0.1') {
       // Look up by custom domain or subdomain slug
       const { data, error } = await supabase
         .from('organizations')
@@ -60,7 +78,7 @@ export async function getActiveTenant(req) {
     }
 
     if (org) {
-      tenantCache.set(cleanHost, {
+      tenantCache.set(cacheKey, {
         data: org,
         timestamp: Date.now()
       });

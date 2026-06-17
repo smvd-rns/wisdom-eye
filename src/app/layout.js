@@ -16,10 +16,9 @@ export const viewport = {
 
 export default async function RootLayout({ children }) {
   const reqHeaders = headers();
-  const host = reqHeaders.get('x-tenant-host') || '';
   
   // Resolve active tenant dynamically
-  const tenant = await getActiveTenant({ headers: { get: () => host } });
+  const tenant = await getActiveTenant({ headers: reqHeaders });
 
   const dynamicStyles = {
     '--primary-color': tenant.primary_color || '#FF9F1C',
