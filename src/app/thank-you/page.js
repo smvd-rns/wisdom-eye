@@ -10,6 +10,8 @@ export default function ThankYouPage() {
   const [email, setEmail] = useState('');
   const [deliveryType, setDeliveryType] = useState('pickup');
   const [amount, setAmount] = useState('200');
+  const [courseName, setCourseName] = useState('Wisdom Eye');
+  const [courseUrl, setCourseUrl] = useState('https://coursesradheshyamdas.ongraphy.com/courses/Wisdom-Eye-689c419d8fb8275d3690dac1');
 
   useEffect(() => {
     // Read query parameters in client environment
@@ -18,6 +20,8 @@ export default function ThankYouPage() {
     setEmail(params.get('email') || 'your email');
     setDeliveryType(params.get('type') || 'pickup');
     setAmount(params.get('amount') || '200');
+    setCourseName(params.get('courseName') || 'Wisdom Eye');
+    setCourseUrl(params.get('courseUrl') || 'https://coursesradheshyamdas.ongraphy.com/courses/Wisdom-Eye-689c419d8fb8275d3690dac1');
   }, []);
 
   return (
@@ -49,7 +53,7 @@ export default function ThankYouPage() {
             <span className="section-tag" style={{ color: '#2E7D32', fontWeight: '800' }}>Registration Successful</span>
             <h1 style={{ fontSize: '32px', margin: '8px 0 16px 0', color: 'var(--primary)' }}>Thank You, {name}!</h1>
             <p className="card-desc" style={{ fontSize: '15px' }}>
-              We have processed your payment of <strong>₹{amount}</strong>. Your registration for the <strong>Wisdom Eye</strong> course is confirmed.
+              We have processed your payment of <strong>₹{amount}</strong>. Your registration for the <strong>{courseName}</strong> course is confirmed.
             </p>
           </div>
 
@@ -105,12 +109,12 @@ export default function ThankYouPage() {
 
           <div style={{ width: '100%', borderTop: '1px solid var(--border-color)', paddingTop: '24px', display: 'flex', gap: '12px', flexDirection: 'column' }}>
             <a 
-              href="https://coursesradheshyamdas.ongraphy.com/courses/Wisdom-Eye-689c419d8fb8275d3690dac1" 
+              href={courseUrl} 
               target="_blank" 
               className="btn btn-primary" 
               style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
             >
-              Go directly to Wisdom Eye Course <ArrowRight size={16} />
+              Go directly to {courseName} Course <ArrowRight size={16} />
             </a>
 
             {deliveryType === 'delivery' && (

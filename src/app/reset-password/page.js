@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Loader2, BookOpen, CheckCircle, Eye, EyeOff } from 'lucide-react';
@@ -16,6 +16,25 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [tenantName, setTenantName] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__.name || 'Wisdom Eye';
+    }
+    return 'Wisdom Eye';
+  });
+
+  useEffect(() => {
+    const fetchBranding = async () => {
+      try {
+        const res = await fetch('/api/tenant/metadata');
+        if (res.ok) {
+          const data = await res.json();
+          setTenantName(data.name || '');
+        }
+      } catch(e){}
+    };
+    fetchBranding();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,7 +83,7 @@ function ResetPasswordForm() {
       <div style={styles.card}>
         <Link href="/" style={styles.logoRow}>
           <div style={styles.logoIcon}><BookOpen size={20} color="#FF9F1C" /></div>
-          <span style={styles.logoText}>Radheshyam Das</span>
+          <span style={styles.logoText}>{tenantName}</span>
         </Link>
 
         {success ? (

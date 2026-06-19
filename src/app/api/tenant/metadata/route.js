@@ -18,7 +18,7 @@ export async function GET(req) {
 
     if (error || !org) {
       return NextResponse.json({
-        name: 'Radheshyam Das',
+        name: 'Wisdom Eye',
         slogan: 'Vedic Character & Leadership Mentoring',
         description: 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
         address: 'Govardhan Ecovillage, Wada, Maharashtra',
@@ -30,7 +30,7 @@ export async function GET(req) {
     // Return fields with robust fallback in case database columns do not exist yet
     return NextResponse.json({
       id: org.id,
-      name: org.name || 'Radheshyam Das',
+      name: org.name || 'Wisdom Eye',
       slug: org.slug,
       custom_domain: org.custom_domain,
       logo_url: org.logo_url,

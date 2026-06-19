@@ -5,12 +5,17 @@ import Link from 'next/link';
 import { Mail, Phone, MapPin, Facebook, Youtube, Instagram, Linkedin } from 'lucide-react';
 
 export default function Footer() {
-  const [tenant, setTenant] = useState({
-    name: 'Radheshyam Das',
-    description: 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
-    address: 'Govardhan Ecovillage, Wada, Maharashtra',
-    email: 'manager@voicepune.com',
-    phone: '+91 8605036000'
+  const [tenant, setTenant] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__;
+    }
+    return {
+      name: 'Wisdom Eye',
+      description: 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
+      address: 'Govardhan Ecovillage, Wada, Maharashtra',
+      email: 'manager@voicepune.com',
+      phone: '+91 8605036000'
+    };
   });
 
   const [navLinks, setNavLinks] = useState([]);

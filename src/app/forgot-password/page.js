@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Mail, Loader2, BookOpen, ArrowLeft, CheckCircle } from 'lucide-react';
 
@@ -9,6 +9,25 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const [tenantName, setTenantName] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__.name || 'Wisdom Eye';
+    }
+    return 'Wisdom Eye';
+  });
+
+  useEffect(() => {
+    const fetchBranding = async () => {
+      try {
+        const res = await fetch('/api/tenant/metadata');
+        if (res.ok) {
+          const data = await res.json();
+          setTenantName(data.name || '');
+        }
+      } catch(e){}
+    };
+    fetchBranding();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,7 +57,7 @@ export default function ForgotPasswordPage() {
       <div style={styles.card}>
         <Link href="/" style={styles.logoRow}>
           <div style={styles.logoIcon}><BookOpen size={20} color="#FF9F1C" /></div>
-          <span style={styles.logoText}>Radheshyam Das</span>
+          <span style={styles.logoText}>{tenantName}</span>
         </Link>
 
         {sent ? (

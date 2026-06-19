@@ -59,7 +59,12 @@ export default function Navbar() {
     checkUser();
   }, []);
 
-  const [tenant, setTenant] = useState({ name: 'Radheshyam Das', slogan: 'IIT Bombay Topper • Author • Monk' });
+  const [tenant, setTenant] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__;
+    }
+    return { name: 'Wisdom Eye', slogan: 'Vedic Character & Leadership Mentoring' };
+  });
 
   useEffect(() => {
     const loadTenant = async () => {
@@ -110,7 +115,12 @@ export default function Navbar() {
   const dropdownLinks = navLinks.slice(5);
 
   // We can fetch active tenant details dynamically from a custom metadata payload
-  const [tenantDetails, setTenantDetails] = useState({ name: 'Radheshyam Das', slogan: 'Vedic Character & Leadership Mentoring' });
+  const [tenantDetails, setTenantDetails] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__;
+    }
+    return { name: 'Wisdom Eye', slogan: 'Vedic Character & Leadership Mentoring' };
+  });
   
   useEffect(() => {
     const fetchActiveTenantDetails = async () => {

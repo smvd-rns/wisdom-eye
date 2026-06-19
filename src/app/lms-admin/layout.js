@@ -26,11 +26,24 @@ export default function LmsAdminLayout({ children }) {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState({ courses: 0, students: 0, revenue: 0, enrollments: 0 });
+  const [tenantName, setTenantName] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__.name || 'Wisdom Eye';
+    }
+    return 'Wisdom Eye';
+  });
 
   const [navItems, setNavItems] = useState(NAV);
 
   useEffect(() => {
     const init = async () => {
+      // Fetch tenant details
+      const tenantRes = await fetch('/api/tenant/metadata');
+      if (tenantRes.ok) {
+        const tenantData = await tenantRes.json();
+        setTenantName(tenantData.name || '');
+      }
+
       const res = await fetch('/api/auth/me');
       if (!res.ok) { router.push('/login'); return; }
       const data = await res.json();
@@ -94,7 +107,7 @@ export default function LmsAdminLayout({ children }) {
           <Link href="/" style={styles.logo}>
             <div style={styles.logoIcon}><GraduationCap size={20} color="#FF9F1C" /></div>
             <div>
-              <div style={styles.logoName}>Radheshyam Das</div>
+              <div style={styles.logoName}>{tenantName}</div>
               <div style={styles.logoSub}>Admin Panel</div>
             </div>
           </Link>

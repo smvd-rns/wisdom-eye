@@ -25,7 +25,7 @@ const getTransporter = () => {
 /**
  * Sends a beautiful HTML enrollment email to the learner.
  */
-export async function sendEnrollmentEmail({ email, name, deliveryType, amount, websiteUrl }) {
+export async function sendEnrollmentEmail({ email, name, deliveryType, amount, websiteUrl, courseName = 'Wisdom Eye', courseUrl = 'https://coursesradheshyamdas.ongraphy.com/courses/Wisdom-Eye-689c419d8fb8275d3690dac1' }) {
   const transporter = getTransporter();
   if (!transporter) {
     console.log('SMTP configuration missing. Skipping custom HTML enrollment email.');
@@ -34,20 +34,19 @@ export async function sendEnrollmentEmail({ email, name, deliveryType, amount, w
 
   const fromEmail = process.env.SMTP_FROM_EMAIL || 'manager@voicepune.com';
   const fromName = process.env.SMTP_FROM_NAME || 'Wisdom Eye VOICE';
-  const courseUrl = 'https://coursesradheshyamdas.ongraphy.com/courses/Wisdom-Eye-689c419d8fb8275d3690dac1';
   const trackingUrl = `${websiteUrl || 'http://localhost:3000'}/track`;
 
   const mailOptions = {
     from: `"${fromName}" <${fromEmail}>`,
     to: email,
-    subject: '📚 Enrolled in Wisdom Eye Course - VOICE Pune',
+    subject: `📚 Enrolled in ${courseName} Course - VOICE Pune`,
     html: `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Wisdom Eye Enrollment</title>
+        <title>${courseName} Enrollment</title>
         <style>
           body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -161,20 +160,20 @@ export async function sendEnrollmentEmail({ email, name, deliveryType, amount, w
         <div class="email-container">
           <div class="email-header">
             <div class="email-logo">📚</div>
-            <h1>Wisdom Eye Course</h1>
+            <h1>${courseName}</h1>
             <p style="margin: 4px 0 0 0; color: #FFF9C4; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Registration Confirmed</p>
           </div>
           
           <div class="email-body">
             <div class="greeting">Hare Krishna, ${name}!</div>
             <p class="intro-text">
-              Thank you for enrolling in the <strong>Wisdom Eye</strong> course. Your payment has been successfully processed, and you have been registered on our learning portal.
+              Thank you for enrolling in the <strong>${courseName}</strong> course. Your payment has been successfully processed, and you have been registered on our learning portal.
             </p>
 
             <div class="receipt-card">
               <div class="receipt-row">
                 <span>Course Name:</span>
-                <strong>Wisdom Eye LMS</strong>
+                <strong>${courseName}</strong>
               </div>
               <div class="receipt-row">
                 <span>Distribution Mode:</span>
@@ -194,7 +193,7 @@ export async function sendEnrollmentEmail({ email, name, deliveryType, amount, w
             </div>
 
             <div class="btn-container">
-              <a href="${courseUrl}" class="btn-primary" target="_blank">Go to Wisdom Eye Course</a>
+              <a href="${courseUrl}" class="btn-primary" target="_blank">Go to ${courseName} Course</a>
             </div>
 
             ${

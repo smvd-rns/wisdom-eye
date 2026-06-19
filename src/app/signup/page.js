@@ -11,13 +11,22 @@ export default function SignupPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [tenantName, setTenantName] = useState('LMS Portal');
+  const [tenantName, setTenantName] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__.name || 'Wisdom Eye';
+    }
+    return 'Wisdom Eye';
+  });
 
   // Load tenant name dynamically from current domain settings context
   useState(() => {
     const fetchBranding = async () => {
       try {
-        const res = await fetch('/api/courses');
+        const res = await fetch('/api/tenant/metadata');
+        if (res.ok) {
+          const data = await res.json();
+          setTenantName(data.name || '');
+        }
       } catch(e){}
     };
     fetchBranding();

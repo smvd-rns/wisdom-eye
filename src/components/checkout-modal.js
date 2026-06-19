@@ -3,7 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Truck, Library, Loader2 } from 'lucide-react';
 
-export default function CheckoutModal({ isOpen, onClose }) {
+export default function CheckoutModal({ 
+  isOpen, 
+  onClose, 
+  courseTitle = 'Wisdom Eye', 
+  courseSlug = 'wisdom-eye', 
+  courseUrl = 'https://coursesradheshyamdas.ongraphy.com/courses/Wisdom-Eye-689c419d8fb8275d3690dac1',
+  basePrice = 200
+}) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -82,6 +89,9 @@ export default function CheckoutModal({ isOpen, onClose }) {
           email: formData.email,
           mobile: formData.mobile,
           deliveryType: formData.deliveryType,
+          basePrice: basePrice,
+          courseTitle: courseTitle,
+          courseSlug: courseSlug,
           addressDetails: {
             address: formData.address,
             city: formData.city,
@@ -102,8 +112,8 @@ export default function CheckoutModal({ isOpen, onClose }) {
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Wisdom Eye Course',
-        description: 'ISKCON Pune - Bhagavad Gita & Book Materials',
+        name: courseTitle,
+        description: 'Bhagavad Gita & Book Materials',
         image: 'https://courses.radheshyamdas.com/logos/625ff3130cf26e4a8b9e83ce.png',
         order_id: orderData.orderId,
         handler: async function (response) {
@@ -126,8 +136,9 @@ export default function CheckoutModal({ isOpen, onClose }) {
               throw new Error(verifyData.error || 'Payment verification failed.');
             }
 
+            const paidAmount = formData.deliveryType === 'delivery' ? (Number(basePrice) + 50) : Number(basePrice);
             // Redirect to Thank You page on success
-            window.location.href = `/thank-you?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&type=${formData.deliveryType}&amount=${formData.deliveryType === 'delivery' ? '250' : '200'}`;
+            window.location.href = `/thank-you?name=${encodeURIComponent(formData.name)}&email=${encodeURIComponent(formData.email)}&type=${formData.deliveryType}&amount=${paidAmount}&courseName=${encodeURIComponent(courseTitle)}&courseUrl=${encodeURIComponent(courseUrl)}`;
           } catch (err) {
             setErrorMsg(err.message || 'Signature verification failed. Please contact admin.');
             setLoading(false);
@@ -157,7 +168,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
     }
   };
 
-  const currentPrice = formData.deliveryType === 'delivery' ? 250 : 200;
+  const currentPrice = formData.deliveryType === 'delivery' ? (Number(basePrice) + 50) : Number(basePrice);
 
   return (
     <div className="modal-overlay">

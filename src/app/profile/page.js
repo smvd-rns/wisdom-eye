@@ -45,10 +45,23 @@ export default function ProfilePage() {
   // Stats states
   const [enrollmentsCount, setEnrollmentsCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
+  const [tenantName, setTenantName] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__.name || 'Wisdom Eye';
+    }
+    return 'Wisdom Eye';
+  });
 
   useEffect(() => {
     const initData = async () => {
       try {
+        // Fetch tenant details
+        const tenantRes = await fetch('/api/tenant/metadata');
+        if (tenantRes.ok) {
+          const tenantData = await tenantRes.json();
+          setTenantName(tenantData.name || '');
+        }
+
         // 1. Fetch current user
         const meRes = await fetch('/api/auth/me');
         if (!meRes.ok) {
@@ -181,7 +194,7 @@ export default function ProfilePage() {
       <aside style={styles.sidebar}>
         <Link href="/" style={styles.sidebarLogo}>
           <div style={styles.logoIcon}><BookOpen size={18} color="var(--secondary)" /></div>
-          <span style={styles.logoText}>Radheshyam Das</span>
+          <span style={styles.logoText}>{tenantName}</span>
         </Link>
 
         <nav style={styles.nav}>

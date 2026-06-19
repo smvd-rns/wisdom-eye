@@ -36,8 +36,8 @@ export async function POST(req) {
     }
 
     // 3. Determine amount based on delivery type (INR)
-    // Book cost = ₹200. Self pick-up fee = ₹0. Home delivery fee = ₹50.
-    const basePrice = 200;
+    // Book cost = dynamic basePrice. Self pick-up fee = ₹0. Home delivery fee = ₹50.
+    const basePrice = Number(body.basePrice) || 200;
     const shippingFee = deliveryType === 'delivery' ? 50 : 0;
     const totalAmount = basePrice + shippingFee;
     const totalAmountInPaise = totalAmount * 100; // Razorpay takes amount in paise

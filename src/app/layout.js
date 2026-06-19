@@ -29,6 +29,19 @@ export default async function RootLayout({ children }) {
     <html lang="en" style={dynamicStyles}>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <script
+          id="tenant-data-script"
+          dangerouslySetInnerHTML={{
+            __html: `window.__TENANT_DATA__ = ${JSON.stringify({
+              name: tenant.name || 'Wisdom Eye',
+              slogan: tenant.slogan || 'Vedic Character & Leadership Mentoring',
+              description: tenant.description || 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
+              address: tenant.address || 'Govardhan Ecovillage, Wada, Maharashtra',
+              email: tenant.email || 'manager@voicepune.com',
+              phone: tenant.phone || '+91 8605036000'
+            })};`
+          }}
+        />
       </head>
       <body>
         {children}
