@@ -224,12 +224,8 @@ export default function StudentPlayerPage() {
   // Helper: YouTube URL parser
   const getYoutubeEmbedUrl = (url) => {
     if (!url) return '';
-    let videoId = '';
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    if (match && match[2].length === 11) {
-      videoId = match[2];
-    }
+    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i);
+    const videoId = (match && match[1]) ? match[1] : '';
     return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0` : '';
   };
 

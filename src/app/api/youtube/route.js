@@ -4,11 +4,10 @@ const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 function extractVideoId(url) {
   if (!url) return null;
-  const regExp = /^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/;
-  const match = url.match(regExp);
+  // Match standard, live, premier, shorts, embed, and playlist-associated youtube URLs
+  const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i);
   if (match && match[1]) {
-    const id = match[1].substring(0, 11);
-    if (id.length === 11) return id;
+    return match[1];
   }
   return null;
 }

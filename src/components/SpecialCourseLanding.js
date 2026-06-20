@@ -350,8 +350,11 @@ export default function SpecialCourseLanding({
 
   const getYouTubeId = (url) => {
     if (!url) return null;
-    const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
-    return (m && m[2].length === 11) ? m[2] : null;
+    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i);
+    if (match && match[1]) {
+      return match[1];
+    }
+    return null;
   };
 
   const discountedPrice = couponResult?.final_price ?? null;
