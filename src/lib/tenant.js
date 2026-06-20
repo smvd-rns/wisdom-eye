@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 
 // In-memory cache for organization settings to prevent DB overhead
 const tenantCache = new Map();
-const CACHE_TTL = 60 * 1000; // 1 minute
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Resolves the active organization based on the request's hostname.

@@ -66,37 +66,31 @@ export default function Navbar() {
     return { name: 'Wisdom Eye', slogan: 'Vedic Character & Leadership Mentoring' };
   });
 
-  useEffect(() => {
-    const loadTenant = async () => {
-      try {
-        const res = await fetch('/api/auth/me'); // Or resolve context
-        if (res.ok) {
-          const data = await res.json();
-          // We can call a dynamic route or load active tenant from layout context headers
-          const activeRes = await fetch('/api/packages'); // Query package just to trigger middleware headers
-        }
-        // Instead, let's fetch resolved client-side metadata matching hostname
-        const hostRes = await fetch('/api/courses'); // Triggers tenant resolution automatically in API
-        // Fetch current active tenant from session or route
-      } catch (err) {}
-    };
-    loadTenant();
-  }, []);
+  const [tenantDetails, setTenantDetails] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__;
+    }
+    return { name: 'Wisdom Eye', slogan: 'Vedic Character & Leadership Mentoring' };
+  });
 
   useEffect(() => {
-    const fetchTenantInfo = async () => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      setTenant(window.__TENANT_DATA__);
+      setTenantDetails(window.__TENANT_DATA__);
+      return;
+    }
+
+    const fetchActiveTenantDetails = async () => {
       try {
-        // We can fetch from a generic metadata endpoint or fetch from the headers
-        const res = await fetch('/api/auth/me');
+        const res = await fetch('/api/tenant/metadata');
         if (res.ok) {
           const data = await res.json();
-          if (data.authenticated && data.user) {
-            // We can read organization details
-          }
+          setTenant(data);
+          setTenantDetails(data);
         }
       } catch(e){}
     };
-    fetchTenantInfo();
+    fetchActiveTenantDetails();
   }, []);
 
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
@@ -113,27 +107,6 @@ export default function Navbar() {
 
   const visibleLinks = navLinks.slice(0, 5);
   const dropdownLinks = navLinks.slice(5);
-
-  // We can fetch active tenant details dynamically from a custom metadata payload
-  const [tenantDetails, setTenantDetails] = useState(() => {
-    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
-      return window.__TENANT_DATA__;
-    }
-    return { name: 'Wisdom Eye', slogan: 'Vedic Character & Leadership Mentoring' };
-  });
-  
-  useEffect(() => {
-    const fetchActiveTenantDetails = async () => {
-      try {
-        const res = await fetch('/api/tenant/metadata');
-        if (res.ok) {
-          const data = await res.json();
-          setTenantDetails(data);
-        }
-      } catch(e){}
-    };
-    fetchActiveTenantDetails();
-  }, []);
 
   return (
     <>

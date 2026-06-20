@@ -22,6 +22,10 @@ export default function Footer() {
 
   useEffect(() => {
     const fetchFooterBranding = async () => {
+      if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+        setTenant(window.__TENANT_DATA__);
+        return;
+      }
       try {
         const res = await fetch('/api/tenant/metadata');
         if (res.ok) {

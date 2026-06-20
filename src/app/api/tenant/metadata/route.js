@@ -9,14 +9,7 @@ export async function GET(req) {
     const { getActiveTenant } = await import('@/lib/tenant');
     const tenant = await getActiveTenant(req);
 
-    // Fetch the organization details
-    const { data: org, error } = await supabase
-      .from('organizations')
-      .select('*')
-      .eq('id', tenant.id)
-      .single();
-
-    if (error || !org) {
+    if (!tenant || tenant.id === 'default') {
       return NextResponse.json({
         name: 'Wisdom Eye',
         slogan: 'Vedic Character & Leadership Mentoring',
@@ -26,6 +19,8 @@ export async function GET(req) {
         phone: '+91 8605036000'
       });
     }
+
+    const org = tenant;
 
     // Return fields with robust fallback in case database columns do not exist yet
     return NextResponse.json({
