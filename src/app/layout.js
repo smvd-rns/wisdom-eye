@@ -2,12 +2,21 @@ import { headers } from 'next/headers';
 import { getActiveTenant } from '@/lib/tenant';
 import './globals.css';
 
-export const metadata = {
-  title: 'Radheshyam Das - Transform Your Life with Vedic Wisdom',
-  description: 'Embark on a powerful meditation and spiritual journey based on the timeless wisdom of Bhagavad Gita. Course includes physical study material shipped to your doorstep.',
-  keywords: 'Bhagavad Gita, Wisdom Eye, Spiritual Course, Meditation, ISKCON Pune, Radheshyam Das',
-  authors: [{ name: 'ISKCON Pune VOICE' }],
-};
+export async function generateMetadata() {
+  const reqHeaders = headers();
+  const tenant = await getActiveTenant({ headers: reqHeaders });
+  
+  const title = tenant.name 
+    ? `${tenant.name} - ${tenant.slogan || 'Transform Your Life with Vedic Wisdom'}`
+    : 'Radheshyam Das - Transform Your Life with Vedic Wisdom';
+
+  return {
+    title: title,
+    description: tenant.description || 'Embark on a powerful meditation and spiritual journey based on the timeless wisdom of Bhagavad Gita. Course includes physical study material shipped to your doorstep.',
+    keywords: 'Bhagavad Gita, Wisdom Eye, Spiritual Course, Meditation, ISKCON Pune, Radheshyam Das',
+    authors: [{ name: tenant.name || 'ISKCON Pune VOICE' }],
+  };
+}
 
 export const viewport = {
   width: 'device-width',
