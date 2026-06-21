@@ -42,6 +42,8 @@ export default async function RootLayout({ children }) {
           id="tenant-data-script"
           dangerouslySetInnerHTML={{
             __html: `window.__TENANT_DATA__ = ${JSON.stringify({
+              id: tenant.id || 'default',
+              slug: tenant.slug || 'wisdom-eye',
               name: tenant.name || 'Wisdom Eye',
               slogan: tenant.slogan || 'Vedic Character & Leadership Mentoring',
               description: tenant.description || 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',

@@ -137,8 +137,8 @@ export default function NewCoursePage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed to create course.'); return; }
-      // Redirect to builder
-      router.push(`/lms-admin/courses/${data.course.id}/builder`);
+      // Redirect to basic course settings
+      router.push(`/lms-admin/courses/${data.course.id}`);
     } catch {
       setError('An unexpected error occurred.');
     } finally {
@@ -176,7 +176,7 @@ export default function NewCoursePage() {
       {error && <div style={styles.errorBox}>⚠️ {error}</div>}
 
       <form onSubmit={handleSubmit}>
-        <div style={styles.grid}>
+        <div style={styles.grid} className="courses-edit-grid">
           {/* Left column - main info */}
           <div style={styles.col}>
             <div style={styles.card}>
@@ -394,7 +394,7 @@ export default function NewCoursePage() {
             <button type="submit" disabled={saving || !form.title} style={styles.submitBtn}>
               {saving
                 ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Creating…</>
-                : 'Create Course & Go to Builder →'}
+                : 'Create Course & Go to Settings →'}
             </button>
           </div>
         </div>

@@ -178,22 +178,24 @@ export default function LmsAdminDashboard() {
         {recentEnrollments.length === 0 ? (
           <div style={styles.emptyRow}>No enrollments yet.</div>
         ) : (
-          <div style={styles.table}>
-            <div style={styles.tableHead}>
-              <span>Student</span><span>Course</span><span>Amount</span><span>Date</span><span>Status</span>
-            </div>
-            {recentEnrollments.map(e => (
-              <div key={e.id} style={styles.tableRow}>
-                <span style={styles.studentName}>{e.user_profiles?.name || '—'}</span>
-                <span style={styles.courseName}>{e.courses?.title || '—'}</span>
-                <span style={styles.amount}>{e.amount_paid === 0 ? 'Free' : `₹${e.amount_paid}`}</span>
-                <span style={styles.date}>{new Date(e.enrolled_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
-                <span style={{ ...styles.statusBadge, ...(e.status === 'active' ? styles.statusActive : styles.statusInactive) }}>
-                  {e.status === 'active' ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
-                  {e.status}
-                </span>
+          <div className="responsive-table-wrapper">
+            <div style={styles.table} className="responsive-table">
+              <div style={styles.tableHead}>
+                <span>Student</span><span>Course</span><span>Amount</span><span>Date</span><span>Status</span>
               </div>
-            ))}
+              {recentEnrollments.map(e => (
+                <div key={e.id} style={styles.tableRow}>
+                  <span style={styles.studentName}>{e.user_profiles?.name || '—'}</span>
+                  <span style={styles.courseName}>{e.courses?.title || '—'}</span>
+                  <span style={styles.amount}>{e.amount_paid === 0 ? 'Free' : `₹${e.amount_paid}`}</span>
+                  <span style={styles.date}>{new Date(e.enrolled_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                  <span style={{ ...styles.statusBadge, ...(e.status === 'active' ? styles.statusActive : styles.statusInactive) }}>
+                    {e.status === 'active' ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
+                    {e.status}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

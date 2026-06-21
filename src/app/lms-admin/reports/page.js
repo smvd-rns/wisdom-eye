@@ -84,21 +84,21 @@ export default function AdminReportsPage() {
 
           {/* Detailed stats cards */}
           <div style={styles.detailsStatsRow}>
-            <div style={styles.detailStatCard}>
+            <div style={styles.detailStatCard} className="reports-stats-card">
               <Users size={18} color="#FF9F1C" />
               <div>
                 <span style={styles.detailStatLabel}>Enrolled Learners</span>
                 <span style={styles.detailStatVal}>{selectedCourse.enrolled_count}</span>
               </div>
             </div>
-            <div style={styles.detailStatCard}>
+            <div style={styles.detailStatCard} className="reports-stats-card">
               <CheckCircle size={18} color="#10B981" />
               <div>
                 <span style={styles.detailStatLabel}>Completions</span>
                 <span style={styles.detailStatVal}>{selectedCourse.completed_count}</span>
               </div>
             </div>
-            <div style={styles.detailStatCard}>
+            <div style={styles.detailStatCard} className="reports-stats-card">
               <Award size={18} color="#3B82F6" />
               <div>
                 <span style={styles.detailStatLabel}>Certificates Issued</span>
@@ -133,8 +133,8 @@ export default function AdminReportsPage() {
               <p>Once users enroll, their lesson-by-lesson progress will appear here.</p>
             </div>
           ) : (
-            <div style={styles.tableCard}>
-              <table style={styles.table}>
+            <div style={styles.tableCard} className="responsive-table-wrapper">
+              <table style={styles.table} className="responsive-table">
                 <thead>
                   <tr style={styles.thRow}>
                     <th style={styles.th}>Student Info</th>
@@ -227,8 +227,8 @@ export default function AdminReportsPage() {
               <h3>No Reports Data Found</h3>
             </div>
           ) : (
-            <div style={styles.tableCard}>
-              <table style={styles.table}>
+            <div style={styles.tableCard} className="responsive-table-wrapper">
+              <table style={styles.table} className="responsive-table">
                 <thead>
                   <tr style={styles.thRow}>
                     <th style={styles.th}>Course Title</th>
@@ -288,7 +288,14 @@ export default function AdminReportsPage() {
           )}
         </div>
       )}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 991px) {
+          .reports-stats-card {
+            width: 100% !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -308,7 +315,7 @@ const styles = {
   searchInput: { width: '100%', padding: '9px 12px 9px 36px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' },
   countText: { fontSize: '13px', color: '#6B7280' },
   emptyState: { textAlign: 'center', padding: '60px 24px', background: '#fff', borderRadius: '12px', border: '1.5px dashed #D1D5DB' },
-  tableCard: { background: '#fff', borderRadius: '14px', border: '1px solid #E5E7EB', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' },
+  tableCard: { background: '#fff', borderRadius: '14px', border: '1px solid #E5E7EB', overflowX: 'auto', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
   thRow: { background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' },
   th: { padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.5px' },

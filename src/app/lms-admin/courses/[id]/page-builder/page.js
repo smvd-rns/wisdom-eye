@@ -2317,6 +2317,7 @@ export default function PageBuilderPage() {
   const [error, setError] = useState('');
   const [dragOverIdx, setDragOverIdx] = useState(null);
   const [previewActive, setPreviewActive] = useState(false);
+  const [activeMobileTab, setActiveMobileTab] = useState('canvas'); // 'library' | 'canvas' | 'settings'
   const dragItem = useRef(null);
   const dragFromPalette = useRef(null);
   // For resizing columns
@@ -2336,6 +2337,13 @@ export default function PageBuilderPage() {
     };
     load();
   }, [id]);
+
+  // Auto-switch mobile tabs to settings when a block is clicked/selected
+  useEffect(() => {
+    if (selectedId || selectedRowId) {
+      setActiveMobileTab('settings');
+    }
+  }, [selectedId, selectedRowId]);
 
   // ── Helper: find block anywhere (top-level or inside a row) ──────
   const findBlock = useCallback((blockId) => {
@@ -2664,12 +2672,48 @@ export default function PageBuilderPage() {
         .col-resize-handle { cursor: col-resize; }
         .col-resize-handle:hover { background: rgba(99,102,241,0.3) !important; }
         .col-resize-handle:active { background: rgba(99,102,241,0.5) !important; }
+
+        @media (max-width: 991px) {
+          .builder-topbar {
+            height: auto !important;
+            padding: 10px !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .builder-topbar > div:first-child {
+            flex: none !important;
+            width: 100% !important;
+            margin-bottom: 2px;
+          }
+          .mobile-builder-tabs {
+            display: flex !important;
+          }
+          .page-builder-three-panel {
+            grid-template-columns: 1fr !important;
+            height: auto !important;
+            overflow-y: auto !important;
+          }
+          .page-builder-three-panel > div:nth-child(1),
+          .page-builder-three-panel > div:nth-child(2),
+          .page-builder-three-panel > div:nth-child(3) {
+            display: none !important;
+          }
+          .page-builder-three-panel.active-tab-library > div:nth-child(1) {
+            display: flex !important;
+          }
+          .page-builder-three-panel.active-tab-canvas > div:nth-child(2) {
+            display: block !important;
+          }
+          .page-builder-three-panel.active-tab-settings > div:nth-child(3) {
+            display: block !important;
+          }
+        }
       `}</style>
 
       {/* ── Top Toolbar ─────────────────────────────────────── */}
-      <div style={{ background: '#1A1B4B', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '16px', height: '56px', flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.2)', zIndex: 100 }}>
+      <div className="builder-topbar" style={{ background: '#1A1B4B', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '16px', height: '56px', flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.2)', zIndex: 100 }}>
         <Link href={`/lms-admin/courses/${id}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.6)', fontSize: '13px', textDecoration: 'none', paddingRight: '16px', borderRight: '1px solid rgba(255,255,255,0.15)' }}>
-          <ArrowLeft size={14} /> Back
+          <ArrowLeft size={14} /> Course Settings
         </Link>
 
         <div style={{ flex: 1 }}>
@@ -2699,8 +2743,48 @@ export default function PageBuilderPage() {
         </button>
       </div>
 
+      {/* Mobile Tab Switcher */}
+      <div className="mobile-builder-tabs" style={{ display: 'none', background: '#ffffff', borderBottom: '1px solid #E5E7EB', padding: '8px 16px', gap: '8px', zIndex: 90 }}>
+        <button 
+          onClick={() => setActiveMobileTab('library')}
+          style={{
+            flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+            background: activeMobileTab === 'library' ? '#EFF6FF' : 'transparent',
+            color: activeMobileTab === 'library' ? '#FF9F1C' : '#4B5563',
+            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+          }}
+        >
+          🧩 Library
+        </button>
+        <button 
+          onClick={() => setActiveMobileTab('canvas')}
+          style={{
+            flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+            background: activeMobileTab === 'canvas' ? '#EFF6FF' : 'transparent',
+            color: activeMobileTab === 'canvas' ? '#FF9F1C' : '#4B5563',
+            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+          }}
+        >
+          📝 Canvas
+        </button>
+        <button 
+          onClick={() => setActiveMobileTab('settings')}
+          style={{
+            flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+            background: activeMobileTab === 'settings' ? '#EFF6FF' : 'transparent',
+            color: activeMobileTab === 'settings' ? '#FF9F1C' : '#4B5563',
+            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+          }}
+        >
+          ⚙️ Settings
+        </button>
+      </div>
+
       {/* ── Three-panel layout ───────────────────────────────── */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '240px 1fr 300px', overflow: 'hidden' }}>
+      <div className={`page-builder-three-panel active-tab-${activeMobileTab}`} style={{ flex: 1, display: 'grid', gridTemplateColumns: '240px 1fr 300px', overflow: 'hidden' }}>
 
         {/* LEFT — Block Palette */}
         <div style={{ background: '#fff', borderRight: '1px solid #E5E7EB', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>

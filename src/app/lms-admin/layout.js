@@ -102,7 +102,7 @@ export default function LmsAdminLayout({ children }) {
   return (
     <div style={styles.layout}>
       {/* Sidebar */}
-      <aside style={{ ...styles.sidebar, transform: sidebarOpen ? 'translateX(0)' : undefined }}>
+      <aside className={`lms-sidebar ${sidebarOpen ? 'open' : ''}`} style={styles.sidebar}>
         <div style={styles.sidebarTop}>
           <Link href="/" style={styles.logo}>
             <div style={styles.logoIcon}><GraduationCap size={20} color="#FF9F1C" /></div>
@@ -166,13 +166,13 @@ export default function LmsAdminLayout({ children }) {
       {sidebarOpen && <div style={styles.overlay} onClick={() => setSidebarOpen(false)} />}
 
       {/* Main */}
-      <div style={styles.main}>
+      <div className="lms-main" style={styles.main}>
         {/* Top bar */}
         <header style={styles.topbar}>
-          <button onClick={() => setSidebarOpen(p => !p)} style={styles.menuBtn}>
+          <button onClick={() => setSidebarOpen(p => !p)} className="lms-menu-btn" style={styles.menuBtn}>
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <div style={styles.breadcrumb}>
+          <div className="lms-breadcrumb" style={styles.breadcrumb}>
             {pathname.split('/').filter(Boolean).map((seg, i, arr) => (
               <span key={i} style={styles.breadSeg}>
                 {i > 0 && <span style={{ color: '#D1D5DB', margin: '0 6px' }}>/</span>}
@@ -190,7 +190,7 @@ export default function LmsAdminLayout({ children }) {
         </header>
 
         {/* Page content */}
-        <main style={styles.content}>
+        <main className="lms-content" style={styles.content}>
           {user ? children : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', flexDirection: 'column', gap: '12px' }}>
               <Loader2 size={36} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
@@ -201,8 +201,62 @@ export default function LmsAdminLayout({ children }) {
       </div>
 
       <style>{`
-        @media (max-width: 768px) {
-          .lms-sidebar { transform: translateX(-100%); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .lms-sidebar {
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        /* Responsive overrides */
+        @media (max-width: 991px) {
+          .lms-sidebar {
+            transform: translateX(-100%) !important;
+          }
+          .lms-sidebar.open {
+            transform: translateX(0) !important;
+          }
+          .lms-main {
+            margin-left: 0 !important;
+          }
+          .lms-menu-btn {
+            display: block !important;
+          }
+          .lms-breadcrumb {
+            display: none !important;
+          }
+          .lms-content {
+            padding: 16px !important;
+          }
+          
+          /* Auto-scroll tables on mobile */
+          .responsive-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 20px;
+          }
+          .responsive-table {
+            display: table !important;
+            min-width: 700px;
+            width: 100% !important;
+          }
+          table {
+            display: block;
+            width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          .courses-edit-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .builder-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .page-builder-three-panel {
+            grid-template-columns: 1fr !important;
+            height: auto !important;
+            overflow-y: auto !important;
+          }
         }
       `}</style>
     </div>

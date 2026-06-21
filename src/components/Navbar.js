@@ -7,6 +7,7 @@ import { Menu, X, Home, BookOpen, Book, Play, MoreHorizontal, GraduationCap } fr
 
 export default function Navbar({ onlyBottom = false }) {
   const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [navLinks, setNavLinks] = useState([]);
@@ -54,14 +55,26 @@ export default function Navbar({ onlyBottom = false }) {
         }
       } catch (err) {
         console.error('Navbar user fetch failed:', err);
+      } finally {
+        setLoadingUser(false);
       }
     };
     checkUser();
   }, []);
 
-  const [tenant, setTenant] = useState({ name: '', slogan: '' });
+  const [tenant, setTenant] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__;
+    }
+    return { name: '', slogan: '', slug: '' };
+  });
 
-  const [tenantDetails, setTenantDetails] = useState({ name: '', slogan: '' });
+  const [tenantDetails, setTenantDetails] = useState(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__;
+    }
+    return { name: '', slogan: '', slug: '' };
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
@@ -229,7 +242,7 @@ export default function Navbar({ onlyBottom = false }) {
                 <Link key={idx} href={link.url} style={styles.navLink}>{link.label}</Link>
               ))}
 
-              {dropdownLinks.length > 0 && (
+              {(dropdownLinks.length > 0 || (tenant.slug === 'wisdom-eye' && !user && !loadingUser) || (user && !loadingUser)) && (
                 <div 
                   className="nav-dropdown-trigger" 
                   onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
@@ -248,19 +261,38 @@ export default function Navbar({ onlyBottom = false }) {
                           {link.label}
                         </Link>
                       ))}
+                      
+                      {/* Register Org inside More dropdown when signed out on root site */}
+                      {!loadingUser && !user && tenant.slug === 'wisdom-eye' && (
+                        <Link 
+                          href="/register-org" 
+                          onClick={() => setMoreDropdownOpen(false)} 
+                          className="dropdown-item"
+                          style={{ color: '#FF9F1C' }}
+                        >
+                          Register Org
+                        </Link>
+                      )}
+
+                      {/* Profile inside More dropdown when signed in */}
+                      {!loadingUser && user && (
+                        <Link 
+                          href="/profile" 
+                          onClick={() => setMoreDropdownOpen(false)} 
+                          className="dropdown-item"
+                        >
+                          Profile
+                        </Link>
+                      )}
                     </div>
                   )}
                 </div>
               )}
               
-              {user ? (
+              {loadingUser ? (
+                <div style={{ width: '100px' }} />
+              ) : user ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <Link 
-                    href="/profile" 
-                    style={styles.navLink}
-                  >
-                    Profile
-                  </Link>
                   <Link 
                     href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
                     style={styles.navBtnPrimary}
@@ -270,9 +302,6 @@ export default function Navbar({ onlyBottom = false }) {
                 </div>
               ) : (
                 <div style={styles.authGroup}>
-                  <Link href="/register-org" style={{ ...styles.navLink, color: '#FF9F1C' }}>
-                    Register Org
-                  </Link>
                   <Link href="/login" style={styles.navLink}>
                     Sign In
                   </Link>
@@ -378,7 +407,9 @@ export default function Navbar({ onlyBottom = false }) {
 
               <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '8px 0' }} />
 
-              {user ? (
+              {loadingUser ? (
+                <div style={{ height: '40px' }} />
+              ) : user ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <Link 
                     href="/profile" 
@@ -406,9 +437,11 @@ export default function Navbar({ onlyBottom = false }) {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <Link href="/register-org" onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: '#FF9F1C', textDecoration: 'none', padding: '8px 0' }}>
-                    Register Org
-                  </Link>
+                  {tenant.slug === 'wisdom-eye' && (
+                    <Link href="/register-org" onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: '#FF9F1C', textDecoration: 'none', padding: '8px 0' }}>
+                      Register Org
+                    </Link>
+                  )}
                   <Link href="/login" onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}>
                     Sign In
                   </Link>

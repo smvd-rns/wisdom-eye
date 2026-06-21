@@ -84,15 +84,16 @@ export default function AdminCoursesPage() {
           <p style={{ color: '#9CA3AF' }}>No courses found. <Link href="/lms-admin/courses/new" style={{ color: '#FF9F1C', fontWeight: '600' }}>Create your first course →</Link></p>
         </div>
       ) : (
-        <div style={styles.table}>
-          <div style={styles.tableHead}>
-            <span>Course</span>
-            <span>Category</span>
-            <span>Price</span>
-            <span>Lessons</span>
-            <span>Status</span>
-            <span>Actions</span>
-          </div>
+        <div className="responsive-table-wrapper">
+          <div style={styles.table} className="responsive-table">
+            <div style={styles.tableHead}>
+              <span>Course</span>
+              <span>Category</span>
+              <span>Price</span>
+              <span>Lessons</span>
+              <span>Status</span>
+              <span>Actions</span>
+            </div>
           {filtered.map(course => {
             const sc = statusColors[course.status] || statusColors.draft;
             return (
@@ -152,6 +153,7 @@ export default function AdminCoursesPage() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

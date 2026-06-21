@@ -269,13 +269,13 @@ export default function AdminPackagesPage() {
   };
 
   return (
-    <div style={styles.adminContainer}>
+    <div style={styles.adminContainer} className="packages-container">
       {/* Header */}
       <div style={styles.header}>
         <Link href="/lms-admin" style={styles.backLink}>
           <ArrowLeft size={16} /> Back to Dashboard
         </Link>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', width: '100%' }} className="packages-header-row">
           <div>
             <h1 style={styles.title}><Layers size={24} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Course Packages</h1>
             <p style={styles.subtitle}>Group multiple courses manually into bundles with custom pricing.</p>
@@ -307,7 +307,7 @@ export default function AdminPackagesPage() {
         </div>
       ) : formOpen ? (
         /* Create/Edit Form View */
-        <div style={styles.formCard}>
+        <div style={styles.formCard} className="packages-form-card">
           <div style={styles.formHeader}>
             <h2 style={styles.formTitle}>{editingId ? 'Edit Package' : 'Create New Package'}</h2>
             <button onClick={() => setFormOpen(false)} style={styles.closeFormBtn}><X size={20} /></button>
@@ -319,7 +319,7 @@ export default function AdminPackagesPage() {
               <input type="text" value={title} onChange={e => setTitle(e.target.value)} required placeholder="e.g. Complete Wisdom Eye Series" style={styles.input} />
             </div>
 
-            <div style={styles.formRow}>
+            <div style={styles.formRow} className="packages-form-row">
               <div style={{ ...styles.formGroup, flex: 1 }}>
                 <label style={styles.label}>Price (INR) *</label>
                 <input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)} required placeholder="499" style={styles.input} />
@@ -542,15 +542,16 @@ export default function AdminPackagesPage() {
               </button>
             </div>
           ) : (
-            <div style={styles.table}>
-              <div style={styles.tableHeader}>
-                <span>Package Info</span>
-                <span>Price</span>
-                <span>Status</span>
-                <span style={{ textAlign: 'right' }}>Actions</span>
-              </div>
+            <div className="responsive-table-wrapper">
+              <div style={styles.table} className="responsive-table">
+                <div style={styles.tableHeader} className="packages-table-header">
+                  <span>Package Info</span>
+                  <span>Price</span>
+                  <span>Status</span>
+                  <span style={{ textAlign: 'right' }}>Actions</span>
+                </div>
               {packages.map(pkg => (
-                <div key={pkg.id} style={styles.tableRow}>
+                <div key={pkg.id} style={styles.tableRow} className="packages-table-row">
                   <div style={styles.pkgInfo}>
                     {pkg.thumbnail_url && (
                       <img src={formatImageUrl(pkg.thumbnail_url)} alt="" referrerPolicy="no-referrer" style={styles.pkgThumb} />
@@ -573,7 +574,7 @@ export default function AdminPackagesPage() {
                       {pkg.status}
                     </span>
                   </div>
-                  <div style={styles.actions}>
+                  <div style={styles.actions} className="packages-actions">
                     <button onClick={() => openEditForm(pkg)} style={styles.actionBtnEdit}>
                       <Edit2 size={14} /> Edit
                     </button>
@@ -583,11 +584,45 @@ export default function AdminPackagesPage() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </div>
       )}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @media (max-width: 991px) {
+          .packages-container {
+            padding: 16px !important;
+          }
+          .packages-header-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+          .packages-form-card {
+            padding: 16px !important;
+          }
+          .packages-form-row {
+            flex-direction: column !important;
+          }
+          .packages-table-header {
+            display: none !important;
+          }
+          .packages-table-row {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+            padding: 16px !important;
+            position: relative;
+            border-bottom: 2px solid #E5E7EB !important;
+          }
+          .packages-actions {
+            justify-content: flex-start !important;
+            margin-top: 10px;
+          }
+        }
+      `}</style>
     </div>
   );
 }

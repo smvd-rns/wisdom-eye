@@ -49,7 +49,7 @@ export async function PUT(req, { params }) {
   const allowedFields = [
     'title', 'short_description', 'description', 'thumbnail_url',
     'price', 'original_price', 'category', 'level', 'status',
-    'has_certificate', 'certificate_image_url'
+    'has_certificate', 'certificate_image_url', 'custom_layout'
   ];
 
   const updates = {};

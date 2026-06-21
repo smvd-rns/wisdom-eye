@@ -393,7 +393,7 @@ export default function CourseBuilderPage() {
       </div>
 
       {/* Builder Layout */}
-      <div style={S.builder}>
+      <div style={S.builder} className="builder-grid">
         {/* Modules List */}
         <div style={S.modulesList}>
           {modules.map((mod, mi) => {

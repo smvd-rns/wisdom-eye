@@ -26,9 +26,21 @@ export async function GET() {
       ? fs.readFileSync(pkgMigrationPath, 'utf8')
       : '-- Packages migration file not found';
 
+    // Read site_pages_migration.sql
+    const sitePagesMigrationPath = path.join(rootDir, 'site_pages_migration.sql');
+    const sitePagesMigrationSql = fs.existsSync(sitePagesMigrationPath)
+      ? fs.readFileSync(sitePagesMigrationPath, 'utf8')
+      : '-- Site pages migration file not found';
+
     return NextResponse.json({
       success: true,
       migrations: [
+        {
+          name: 'site_pages_migration.sql',
+          title: 'Site Pages Multi-tenancy Migration',
+          description: 'Adds organization_id field and unique index per organization to the site_pages table.',
+          sql: sitePagesMigrationSql,
+        },
         {
           name: 'packages_migration.sql',
           title: 'Course Packages Migration (New)',

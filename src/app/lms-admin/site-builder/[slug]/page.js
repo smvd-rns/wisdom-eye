@@ -2637,15 +2637,19 @@ export default function SiteBuilderEditorPage() {
                       {/* Columns */}
                       <div style={{
                         display: 'flex',
-                        gap: '0',
+                        gap: `${block.rowGap ?? 16}px`,
                         alignItems: block.rowAlign ?? 'stretch',
-                        background: '#fff',
+                        background: 'transparent',
                         borderRadius: '0 0 10px 10px',
-                        overflow: 'hidden',
+                        overflow: 'visible',
                       }}>
                         {block.columns.map((col, colIdx) => {
                           const isColBlockSelected = selectedId === col.block.id;
                           const bt = BLOCK_TYPES.find(b => b.type === col.block.type);
+                          const gap = block.rowGap ?? 16;
+                          const gapReduction = ((block.columns.length - 1) * gap) / block.columns.length;
+                          const finalWidth = `calc(${col.width}% - ${gapReduction}px)`;
+
                           return (
                             <div
                               key={`${col.block.id}-${col.block.props?.animation || 'none'}-${col.block.props?.animationDuration ?? 0.8}-${col.block.props?.animationDelay ?? 0}-${col.block.props?.animationEasing ?? 'ease-out'}-${col.block.props?.animationStagger ? 'stagger' : 'no-stagger'}-${col.block.props?.textAnimation || 'none'}-${col.block.props?._previewTrigger || 0}`}
@@ -2655,7 +2659,7 @@ export default function SiteBuilderEditorPage() {
                               style={{
                                 display: 'flex',
                                 flex: 'none',
-                                width: `${col.width}%`,
+                                width: finalWidth,
                                 position: 'relative',
                                 minWidth: 0,
                                 '--sa-dur': `${col.block.props?.animationDuration ?? 0.8}s`,
@@ -2673,10 +2677,13 @@ export default function SiteBuilderEditorPage() {
                                   border: `2px solid ${isColBlockSelected ? '#FF9F1C' : 'transparent'}`,
                                   borderRadius: '8px',
                                   cursor: 'pointer',
-                                  background: '#fff',
+                                  background: 'transparent',
                                   transition: 'border-color 0.15s',
                                   position: 'relative',
                                   overflow: 'hidden',
+                                  height: '100%',
+                                  display: 'flex',
+                                  flexDirection: 'column',
                                 }}>
                                 {/* Column header */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 8px', background: isColBlockSelected ? '#FFF8EE' : '#FAFAFA', borderBottom: '1px solid #F3F4F6' }}>
@@ -2688,7 +2695,7 @@ export default function SiteBuilderEditorPage() {
                                     <button title="Delete Column" onClick={e => { e.stopPropagation(); deleteColumnFromRow(block.id, colIdx); }} style={{ ...actionBtn, padding: '2px 5px', color: '#DC2626' }}><X size={11} /></button>
                                   </div>
                                 </div>
-                                <BlockPreview block={col.block} onChange={updateBlock} />
+                                <BlockPreview block={col.block} onChange={updateBlock} isNested={true} />
                                 
                                 {/* PaddingY Resize handle on column block (or sub block) */}
                                 <div
@@ -2700,21 +2707,24 @@ export default function SiteBuilderEditorPage() {
                                 </div>
                               </div>
 
-                              {/* Resize handle (between columns) */}
+                              {/* Resize handle (between columns, absolutely positioned in the gap) */}
                               {colIdx < block.columns.length - 1 && (
                                 <div
                                   className="col-resize-handle"
                                   onMouseDown={e => startColumnResize(e, block.id, colIdx)}
                                   title="Drag to resize columns"
                                   style={{
+                                    position: 'absolute',
+                                    right: `calc(-${gap / 2}px - 4px)`,
+                                    top: 0,
+                                    bottom: 0,
                                     width: '8px',
-                                    flexShrink: 0,
-                                    background: isRowSelected ? 'rgba(99,102,241,0.15)' : 'rgba(0,0,0,0.04)',
+                                    cursor: 'col-resize',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    position: 'relative',
-                                    zIndex: 10,
+                                    zIndex: 100,
+                                    background: isRowSelected ? 'rgba(99,102,241,0.1)' : 'transparent',
                                     transition: 'background 0.15s',
                                   }}>
                                   <div style={{ width: '2px', height: '24px', background: isRowSelected ? '#6366F1' : '#D1D5DB', borderRadius: '2px', opacity: isRowSelected ? 0.8 : 0.5 }} />
@@ -3318,7 +3328,7 @@ const AnimatedText = ({ text, animation = 'none', trigger }) => {
 
 
 // ─── Block Preview (simplified canvas render) ────────────────────────
-function BlockPreview({ block, onChange, canvasRef, anchorOverlay = false, isSelected = false, onSelect }) {
+function BlockPreview({ block, onChange, canvasRef, anchorOverlay = false, isSelected = false, onSelect, isNested = false }) {
   const [isFocused, setIsFocused] = useState(false);
   const floatingContentRef = useRef(null);
   const floatingBoxRef = useRef(null);
@@ -3363,53 +3373,103 @@ function BlockPreview({ block, onChange, canvasRef, anchorOverlay = false, isSel
         ? { backgroundImage: `url(${p.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
         : { background: p.background || '#1A1B4B' };
       const isSplit = p.layoutMode === 'split';
+      const paddingVal = p.paddingY !== undefined ? p.paddingY : 80;
 
       return (
-        <div style={{ ...previewStyle, ...bgStyle, padding: `${(p.paddingY || 80) / 2.5}px 20px`, color: '#fff', position: 'relative' }}>
+        <div style={{
+          ...previewStyle,
+          pointerEvents: 'none',
+          ...bgStyle,
+          padding: `${paddingVal}px 20px`,
+          color: '#fff',
+          position: 'relative',
+          height: isNested ? '100%' : undefined,
+          boxSizing: 'border-box',
+          display: isNested ? 'flex' : undefined,
+          flexDirection: isNested ? 'column' : undefined,
+          justifyContent: isNested ? 'center' : undefined
+        }}>
           {p.backgroundImage && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${p.overlayOpacity ?? 0.5})`, zIndex: 1 }} />}
-          <div style={{ position: 'relative', zIndex: 2, display: isSplit ? 'grid' : 'block', gridTemplateColumns: isSplit ? '1.2fr 0.8fr' : 'none', gap: '20px', alignItems: 'center' }}>
+          <div style={{ width: '100%', position: 'relative', zIndex: 2, display: isSplit ? 'grid' : 'block', gridTemplateColumns: isSplit ? '1.2fr 0.8fr' : 'none', gap: '20px', alignItems: 'center' }}>
             <div style={{ textAlign: p.align === 'center' ? 'center' : 'left' }}>
               {p.badge && (
                 <span style={{ display: 'inline-block', background: 'rgba(255,159,28,0.2)', color: '#FF9F1C', padding: '3px 10px', borderRadius: '9999px', fontSize: '9px', fontWeight: '700', marginBottom: '8px' }}>
-                  {p.badge}
+                  {animText(p.badge)}
                 </span>
               )}
-              <h1 style={{ fontSize: '20px', fontWeight: '900', color: p.textColor || '#fff', marginBottom: '8px', fontFamily: 'Outfit, sans-serif', lineHeight: 1.2 }}>
-                {block.props?.textAnimation && block.props.textAnimation !== 'none' ? <AnimatedText text={p.title || 'Wisdom Title'} animation={block.props.textAnimation} trigger={block.props?._previewTrigger} /> : (p.title || 'Wisdom Title')}
+              <h1 style={{ fontSize: `${Math.round((p.titleSize || 48) * 0.42)}px`, fontWeight: '900', color: p.textColor || '#fff', marginBottom: '8px', fontFamily: 'Outfit, sans-serif', lineHeight: 1.2 }}>
+                {animText(p.title || 'Course Title')}
               </h1>
               {p.subtitle && (
-                <p style={{ fontSize: '11px', color: p.subtitleColor || 'rgba(255,255,255,0.8)', marginBottom: '14px', lineHeight: 1.4 }}>
-                  {block.props?.textAnimation && block.props.textAnimation !== 'none' ? <AnimatedText text={p.subtitle || ''} animation={block.props.textAnimation} trigger={block.props?._previewTrigger} /> : p.subtitle}
+                <p style={{ fontSize: `${Math.round((p.subtitleSize || 18) * 0.6)}px`, color: p.subtitleColor || 'rgba(255,255,255,0.8)', marginBottom: '14px', lineHeight: 1.4 }}>
+                  {animText(p.subtitle)}
                 </p>
               )}
               {p.ctaText && (
                 <button style={{ background: p.ctaColor || '#FF9F1C', color: p.ctaTextColor || '#fff', border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '11px', fontWeight: '800' }}>
-                  {p.ctaText}
+                  {animText(p.ctaText)}
                 </button>
               )}
             </div>
+            {isSplit && (
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                {p.rightAssetType === 'image' && p.rightImage && (
+                  <img src={p.rightImage} alt="" style={{ width: '100%', maxHeight: '100px', objectFit: p.fit || 'cover', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }} />
+                )}
+                {p.rightAssetType === 'video' && p.rightVideoUrl && (
+                  <div style={{ width: '100%', height: '90px', background: '#000', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px', border: '1px solid rgba(255,255,255,0.1)' }}>🎬 Video</div>
+                )}
+                {p.rightAssetType === 'image' && !p.rightImage && (
+                  <div style={{ width: '100%', height: '90px', background: 'rgba(255,255,255,0.1)', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🖼️</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       );
     }
 
-    case 'text':
+    case 'text': {
+      const paddingVal = isNested ? (p.paddingY !== undefined ? p.paddingY : 24) : (p.paddingY || 48);
       return (
-        <div style={{ ...previewStyle, background: p.background || '#fff', padding: `${Math.round((p.paddingY || 56) / 2.5)}px 20px` }}>
-          <div style={{ textAlign: p.align || 'left' }}>
+        <div style={{
+          ...previewStyle,
+          pointerEvents: 'none',
+          background: p.background || '#fff',
+          padding: `${paddingVal}px 20px`,
+          height: isNested ? '100%' : undefined,
+          boxSizing: 'border-box',
+          display: isNested ? 'flex' : undefined,
+          flexDirection: isNested ? 'column' : undefined,
+          justifyContent: isNested ? 'center' : undefined
+        }}>
+          <div style={{ textAlign: p.align || 'left', width: '100%' }}>
             {p.eyebrow && <p style={{ fontSize: '9px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{animText(p.eyebrow)}</p>}
             {p.heading && <h2 style={{ fontSize: `${Math.round((p.headingSize || 32) * 0.5)}px`, fontWeight: '800', color: p.headingColor || '#1A1B4B', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>{animText(p.heading)}</h2>}
             {p.content && <div style={{ fontSize: `${Math.round((p.fontSize || 16) * 0.7)}px`, color: p.textColor || '#4B5563', lineHeight: p.lineHeight || 1.6, whiteSpace: 'pre-wrap' }}>{animText(p.content)}</div>}
           </div>
         </div>
       );
+    }
 
-    case 'rich_text':
+    case 'rich_text': {
+      const paddingVal = isNested ? (p.paddingY !== undefined ? p.paddingY : 24) : (p.paddingY || 48);
       return (
-        <div style={{ ...previewStyle, background: p.background || '#fff', padding: `${(p.paddingY || 48) / 2.5}px 20px` }}>
-          <div style={{ textAlign: p.align || 'left', color: p.textColor || '#1f2937', fontSize: `${Math.round((p.fontSize || 16) * 0.7)}px`, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: p.content || '' }} />
+        <div style={{
+          ...previewStyle,
+          pointerEvents: 'none',
+          background: p.background || '#fff',
+          padding: `${paddingVal}px 20px`,
+          height: isNested ? '100%' : undefined,
+          boxSizing: 'border-box',
+          display: isNested ? 'flex' : undefined,
+          flexDirection: isNested ? 'column' : undefined,
+          justifyContent: isNested ? 'center' : undefined
+        }}>
+          <div style={{ textAlign: p.align || 'left', color: p.textColor || '#1f2937', fontSize: `${Math.round((p.fontSize || 16) * 0.7)}px`, lineHeight: 1.6, width: '100%' }} dangerouslySetInnerHTML={{ __html: p.content || '' }} />
         </div>
       );
+    }
 
     case 'floating_text': {
       const handleMouseDown = (e) => {
@@ -3526,9 +3586,21 @@ function BlockPreview({ block, onChange, canvasRef, anchorOverlay = false, isSel
 
     case 'video': {
       const ytId = getYouTubeId(p.url);
+      const paddingVal = isNested ? (p.paddingY !== undefined ? p.paddingY : 24) : (p.paddingY || 48);
       return (
-        <div style={{ ...previewStyle, background: p.background || '#0F0F0F', padding: `${(p.paddingY || 48) / 2.5}px 20px`, color: '#fff', textAlign: 'center' }}>
-          {p.title && <h3 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px' }}>{p.title}</h3>}
+        <div style={{
+          ...previewStyle,
+          background: p.background || '#0F0F0F',
+          padding: `${paddingVal}px 20px`,
+          color: '#fff',
+          textAlign: 'center',
+          height: isNested ? '100%' : undefined,
+          boxSizing: 'border-box',
+          display: isNested ? 'flex' : undefined,
+          flexDirection: isNested ? 'column' : undefined,
+          justifyContent: isNested ? 'center' : undefined
+        }}>
+          {p.title && <h3 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px' }}>{animText(p.title)}</h3>}
           <div style={{ width: '100%', maxWidth: '280px', height: '140px', background: '#1F1F1F', margin: '0 auto', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #333' }}>
             <span style={{ fontSize: '32px', color: '#FF0000' }}>▶</span>
             <span style={{ fontSize: '10px', color: '#888', marginTop: '6px' }}>{ytId ? 'YouTube Video Connected' : 'Enter YouTube Video URL'}</span>
@@ -3536,17 +3608,30 @@ function BlockPreview({ block, onChange, canvasRef, anchorOverlay = false, isSel
         </div>
       );
     }
-    case 'image':
+
+    case 'image': {
+      const paddingVal = isNested ? (p.paddingY !== undefined ? p.paddingY : 24) : (p.paddingY || 32);
       return (
-        <div style={{ ...previewStyle, background: p.background || '#fff', padding: '16px 20px', textAlign: 'center' }}>
+        <div style={{
+          ...previewStyle,
+          background: p.background || '#fff',
+          padding: `${paddingVal}px 20px`,
+          textAlign: 'center',
+          height: isNested ? '100%' : undefined,
+          boxSizing: 'border-box',
+          display: isNested ? 'flex' : undefined,
+          flexDirection: isNested ? 'column' : undefined,
+          justifyContent: isNested ? 'center' : undefined
+        }}>
           {p.src ? (
-            <img src={p.src} alt="" style={{ maxWidth: '100%', maxHeight: '120px', objectFit: p.fit || 'contain', borderRadius: `${p.borderRadius || 12}px` }} />
+            <img src={p.src} alt="" style={{ maxWidth: '100%', maxHeight: `${p.maxHeight || 500}px`, objectFit: p.fit || 'contain', borderRadius: `${p.borderRadius || 16}px` }} />
           ) : (
             <div style={{ width: '100%', height: '80px', background: '#F3F4F6', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', border: '1px dashed #D1D5DB' }}>🖼️ Paste Image URL in properties</div>
           )}
           {p.caption && <p style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '6px', fontStyle: 'italic' }}>{animText(p.caption)}</p>}
         </div>
       );
+    }
 
     case 'features': {
       const cols = p.columns || 3;

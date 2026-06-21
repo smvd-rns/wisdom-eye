@@ -17,6 +17,7 @@ export default function SiteBuilderPage() {
   const [toast, setToast] = useState(null);
   const [newPage, setNewPage] = useState({ title: '', slug: '', meta_description: '' });
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [hostname, setHostname] = useState('');
 
   // Navbar Links Editor State
   const [showNavEditor, setShowNavEditor] = useState(false);
@@ -40,6 +41,9 @@ export default function SiteBuilderPage() {
     loadPages();
     loadNavLinks();
     loadBrandingData();
+    if (typeof window !== 'undefined') {
+      setHostname(window.location.hostname);
+    }
   }, []);
 
   const loadPages = async () => {
@@ -523,7 +527,7 @@ export default function SiteBuilderPage() {
             <label style={fieldLabel}>URL Slug</label>
             <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', marginBottom: '14px', background: '#FAFAFA' }}>
               <span style={{ padding: '9px 10px', background: '#F3F4F6', color: '#6B7280', fontSize: '13px', borderRight: '1px solid #E5E7EB' }}>
-                radheshyamdas.com
+                {hostname || 'wisdom-eye.com'}
               </span>
               <input style={{ flex: 1, padding: '9px 12px', border: 'none', outline: 'none', fontSize: '13px', background: 'transparent', fontFamily: 'monospace' }}
                 value={newPage.slug}

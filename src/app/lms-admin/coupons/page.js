@@ -66,7 +66,7 @@ export default function AdminCouponsPage() {
   return (
     <div>
       {/* Header */}
-      <div style={styles.header}>
+      <div style={styles.header} className="coupons-header">
         <div>
           <h1 style={styles.title}>Coupons & Offers</h1>
           <p style={styles.subtitle}>Manage promo codes, direct discounts, and bulk free entry vouchers</p>
@@ -100,8 +100,8 @@ export default function AdminCouponsPage() {
           <p>Click "Create Coupon" to add discount campaigns.</p>
         </div>
       ) : (
-        <div style={styles.tableCard}>
-          <table style={styles.table}>
+        <div style={styles.tableCard} className="responsive-table-wrapper">
+          <table style={styles.table} className="responsive-table">
             <thead>
               <tr style={styles.thRow}>
                 <th style={styles.th}>Code / Campaign</th>
@@ -178,7 +178,23 @@ export default function AdminCouponsPage() {
           </table>
         </div>
       )}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @media (max-width: 768px) {
+          .coupons-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+            margin-bottom: 16px !important;
+          }
+          .coupons-header a {
+            width: 100% !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

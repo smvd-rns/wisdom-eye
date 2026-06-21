@@ -14,6 +14,8 @@ const ROLES = [
   { value: 'student',    label: 'Student',     color: '#059669', bg: '#D1FAE5' },
 ];
 
+const ROLE_ORDER = ['student', 'evaluator', 'course_builder', 'admin', 'superadmin'];
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -107,9 +109,9 @@ export default function AdminUsersPage() {
   }));
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ fontFamily: 'Inter, sans-serif' }} className="users-container">
       {/* Page Header */}
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }} className="users-header">
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', margin: 0, fontFamily: 'Outfit, sans-serif' }}>
             User Management
@@ -124,7 +126,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Role Stats Pills */}
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }} className="users-stats">
         {roleStats.map(r => (
           <button
             key={r.value}
@@ -212,6 +214,8 @@ export default function AdminUsersPage() {
               <tbody>
                 {users.map(u => {
                   const isSelf = u.user_id === currentUser?.user_id;
+                  const isHigherRole = ROLE_ORDER.indexOf(u.role) > ROLE_ORDER.indexOf(currentUser?.role || 'student');
+                  const canEdit = !isSelf && !isHigherRole;
                   const dateStr = u.created_at
                     ? new Date(u.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                     : '—';
@@ -250,7 +254,7 @@ export default function AdminUsersPage() {
 
                       {/* Role */}
                       <td style={TD}>
-                        {isSelf ? (
+                        {!canEdit ? (
                           <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 9px', borderRadius: '6px', background: roleConfig.bg, color: roleConfig.color, whiteSpace: 'nowrap' }}>
                             {roleConfig.label}
                           </span>
@@ -261,7 +265,9 @@ export default function AdminUsersPage() {
                             onChange={e => handleRoleChange(u.user_id, e.target.value)}
                             style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', border: `1.5px solid ${roleConfig.color}40`, background: roleConfig.bg, color: roleConfig.color, outline: 'none', fontFamily: 'inherit' }}
                           >
-                            {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                            {ROLES.filter(r => ROLE_ORDER.indexOf(r.value) <= ROLE_ORDER.indexOf(currentUser?.role || 'student')).map(r => (
+                              <option key={r.value} value={r.value}>{r.label}</option>
+                            ))}
                           </select>
                         )}
                       </td>
@@ -275,7 +281,7 @@ export default function AdminUsersPage() {
 
                       {/* Action */}
                       <td style={{ ...TD, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        {isSelf ? (
+                        {isSelf || isHigherRole ? (
                           <span style={{ fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>Locked</span>
                         ) : updatingId === u.user_id ? (
                           <Loader2 size={14} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
@@ -317,6 +323,27 @@ export default function AdminUsersPage() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700;800&display=swap');
+
+        @media (max-width: 768px) {
+          .users-container {
+            padding: 16px !important;
+          }
+          .users-container th,
+          .users-container td {
+            padding: 8px 10px !important;
+          }
+          .users-header {
+            margin-bottom: 16px !important;
+          }
+          .users-stats {
+            gap: 6px !important;
+            margin-bottom: 16px !important;
+          }
+          .users-stats button {
+            padding: 5px 10px !important;
+            font-size: 11px !important;
+          }
+        }
       `}</style>
     </div>
   );

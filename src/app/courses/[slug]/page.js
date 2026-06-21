@@ -21,6 +21,7 @@ export default function CourseLandingPage() {
   const [couponResult, setCouponResult] = useState(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [previewLesson, setPreviewLesson] = useState(null);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
   useEffect(() => {
     try {
@@ -137,6 +138,19 @@ export default function CourseLandingPage() {
     });
   };
 
+  const handleEnrollClick = () => {
+    if (!user) { router.push(`/login?redirect=/courses/${slug}`); return; }
+    if (isEnrolled) { router.push(`/courses/${slug}/learn`); return; }
+    
+    // For special courses, if it has a price, open the checkout modal
+    if (course.is_special && course.price > 0) {
+      setShowCheckoutModal(true);
+    } else {
+      // Free course or standard course: enroll directly
+      handleEnroll();
+    }
+  };
+
   const handleEnroll = async () => {
     if (!user) { router.push(`/login?redirect=/courses/${slug}`); return; }
     setEnrolling(true);
@@ -150,7 +164,11 @@ export default function CourseLandingPage() {
         body: JSON.stringify({ coupon_code: couponResult ? coupon : null }),
       });
       const data = await res.json();
-      if (res.ok) { router.push(`/courses/${slug}/learn`); return; }
+      if (res.ok) { 
+        setShowCheckoutModal(false);
+        router.push(`/courses/${slug}/learn`); 
+        return; 
+      }
       alert(data.error || 'Enrollment failed.');
       setEnrolling(false);
     } else {
@@ -185,6 +203,7 @@ export default function CourseLandingPage() {
             body: JSON.stringify(response),
           });
           if (verifyRes.ok) {
+            setShowCheckoutModal(false);
             router.push(`/courses/${slug}/learn`);
           } else {
             alert('Payment verification failed. Please contact support.');
@@ -226,7 +245,7 @@ export default function CourseLandingPage() {
           user={user}
           isEnrolled={isEnrolled}
           enrolling={enrolling}
-          onEnroll={handleEnroll}
+          onEnroll={handleEnrollClick}
           coupon={coupon}
           setCoupon={setCoupon}
           couponResult={couponResult}
@@ -235,6 +254,71 @@ export default function CourseLandingPage() {
           onApplyCoupon={applyCoupon}
           slug={slug}
         />
+        {/* Checkout Modal */}
+        {showCheckoutModal && (
+          <div style={styles.modalOverlay} onClick={() => setShowCheckoutModal(false)}>
+            <div style={styles.checkoutModalBox} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', margin: 0 }}>Confirm Enrollment</h3>
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', margin: 0 }}>Review details and apply coupon code below.</p>
+                </div>
+                <button onClick={() => setShowCheckoutModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: '22px' }}>×</button>
+              </div>
+
+              <div style={{ background: '#F8F9FE', borderRadius: '12px', padding: '16px', marginBottom: '20px', border: '1px solid rgba(26,27,75,0.06)' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Course</div>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: '#1A1B4B', marginTop: '2px' }}>{course.title}</div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '16px', borderTop: '1px dashed #E5E7EB', paddingTop: '12px' }}>
+                  <span style={{ fontSize: '13px', color: '#4B5563', fontWeight: '600' }}>Price:</span>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                    <span style={{ fontSize: '20px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif' }}>
+                      {displayPrice === 0 ? 'Free' : `₹${Number(displayPrice).toLocaleString('en-IN')}`}
+                    </span>
+                    {course.original_price && course.original_price > displayPrice && (
+                      <span style={{ fontSize: '13px', color: '#9CA3AF', textDecoration: 'line-through' }}>₹{Number(course.original_price).toLocaleString('en-IN')}</span>
+                    )}
+                  </div>
+                </div>
+                {couponResult?.discount_amount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#16A34A', fontWeight: '700', marginTop: '6px' }}>
+                    <span>Coupon Discount:</span>
+                    <span>- ₹{couponResult.discount_amount}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Coupon Code Input */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Have a Coupon Code?</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={coupon}
+                    onChange={e => { setCoupon(e.target.value.toUpperCase()); setCouponResult(null); }}
+                    placeholder="Enter code"
+                    style={{ flex: 1, padding: '10px 14px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', letterSpacing: '1px', fontFamily: 'monospace' }}
+                  />
+                  <button onClick={applyCoupon} disabled={applyingCoupon || !coupon.trim()} style={{ padding: '10px 18px', background: '#F3F4F6', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}>
+                    {applyingCoupon ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Apply'}
+                  </button>
+                </div>
+                {couponResult?.error && <p style={{ color: '#DC2626', fontSize: '12px', marginTop: '6px', marginBottom: 0 }}>{couponResult.error}</p>}
+                {couponResult?.success && <p style={{ color: '#16A34A', fontSize: '12px', marginTop: '6px', marginBottom: 0 }}>✓ Coupon applied! {couponResult.description}</p>}
+              </div>
+
+              {/* Pay Button */}
+              <button 
+                onClick={handleEnroll} 
+                disabled={enrolling} 
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, #FF9F1C, #E07A5F)', color: '#fff', border: 'none', borderRadius: '14px', padding: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', width: '100%', fontFamily: 'Outfit, sans-serif', boxShadow: '0 6px 20px rgba(255,159,28,0.35)' }}
+              >
+                {enrolling ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing…</> : displayPrice === 0 ? 'Enroll for Free' : 'Proceed to Payment'}
+              </button>
+            </div>
+          </div>
+        )}
       </>
     );
   }
@@ -242,6 +326,26 @@ export default function CourseLandingPage() {
   const discountedPrice = couponResult?.final_price ?? null;
   const displayPrice = discountedPrice !== null ? discountedPrice : course.price;
   const totalLessons = course.modules?.reduce((sum, m) => sum + (m.lessons?.length || 0), 0) || 0;
+
+  const instructor = course.custom_layout?.metadata?.instructor || {
+    name: 'Radheshyam Das',
+    title: 'Founding Director, VOICE & Renowned Vedic Educator',
+    bio: "Radheshyam Das holds a Master's degree from IIT Bombay and is a celebrated author, speaker, and spiritual mentor. Having dedicated over three decades to studying and teaching Vedic literature, he has inspired tens of thousands of youths and professionals across the globe to lead balanced, value-based, and spiritually enriched lives.",
+    initials: 'RD'
+  };
+
+  const faqs = course.custom_layout?.metadata?.faq || [
+    { q: 'Who is this course for?', a: 'This course is designed for students, professionals, and seekers of all backgrounds who want to deepen their understanding of life, spirituality, and personal leadership based on Vedic principles.' },
+    { q: 'Is there any certificate provided?', a: 'Yes! For courses that have certificates enabled, you will receive a verifiable digital certificate once you complete all modules and pass the course quizzes.' },
+    { q: 'How long will I have access to the course?', a: 'You will get lifetime access to the course content. You can learn at your own pace and revisit lessons whenever you like.' }
+  ];
+
+  const highlights = course.custom_layout?.metadata?.highlights || [
+    { title: 'Timeless Vedic Wisdom', text: 'Connect with centuries-old philosophical concepts structured for contemporary life challenges.' },
+    { title: 'Practical Mindfulness', text: 'Translate profound philosophical wisdom into actionable daily meditation and lifestyle habits.' },
+    { title: 'Interactive Quizzes', text: 'Validate your understanding after key lessons with interactive self-assessment questions.' },
+    { title: 'Global Community', text: 'Engage in thought-provoking discussions, share insights, and connect with global seekers.' }
+  ];
 
   return (
     <div style={{ minHeight: '100vh', background: '#F0F2F5' }}>
@@ -369,34 +473,20 @@ export default function CourseLandingPage() {
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>What You Will Learn</h2>
           <div className="highlights-grid">
-            <div style={styles.highlightCard} className="highlight-card-hover">
-              <div style={styles.highlightIconWrapper}><BookOpen size={18} color="#FF9F1C" /></div>
-              <div>
-                <h3 style={styles.highlightTitle}>Timeless Vedic Wisdom</h3>
-                <p style={styles.highlightText}>Connect with centuries-old philosophical concepts structured for contemporary life challenges.</p>
+            {highlights.map((h, i) => (
+              <div key={i} style={styles.highlightCard} className="highlight-card-hover">
+                <div style={styles.highlightIconWrapper}>
+                  {i === 0 ? <BookOpen size={18} color="#FF9F1C" /> :
+                   i === 1 ? <Clock size={18} color="#FF9F1C" /> :
+                   i === 2 ? <Award size={18} color="#FF9F1C" /> :
+                             <Users size={18} color="#FF9F1C" />}
+                </div>
+                <div>
+                  <h3 style={styles.highlightTitle}>{h.title}</h3>
+                  <p style={styles.highlightText}>{h.text}</p>
+                </div>
               </div>
-            </div>
-            <div style={styles.highlightCard} className="highlight-card-hover">
-              <div style={styles.highlightIconWrapper}><Clock size={18} color="#FF9F1C" /></div>
-              <div>
-                <h3 style={styles.highlightTitle}>Practical Mindfulness</h3>
-                <p style={styles.highlightText}>Translate profound philosophical wisdom into actionable daily meditation and lifestyle habits.</p>
-              </div>
-            </div>
-            <div style={styles.highlightCard} className="highlight-card-hover">
-              <div style={styles.highlightIconWrapper}><Award size={18} color="#FF9F1C" /></div>
-              <div>
-                <h3 style={styles.highlightTitle}>Interactive Quizzes</h3>
-                <p style={styles.highlightText}>Validate your understanding after key lessons with interactive self-assessment questions.</p>
-              </div>
-            </div>
-            <div style={styles.highlightCard} className="highlight-card-hover">
-              <div style={styles.highlightIconWrapper}><Users size={18} color="#FF9F1C" /></div>
-              <div>
-                <h3 style={styles.highlightTitle}>Global Community</h3>
-                <p style={styles.highlightText}>Engage in thought-provoking discussions, share insights, and connect with global seekers.</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -531,14 +621,12 @@ export default function CourseLandingPage() {
           <h2 style={styles.sectionTitle}>Meet Your Instructor</h2>
           <div className="instructor-card-layout">
             <div style={styles.instructorAvatar}>
-              <span style={styles.instructorInitials}>RD</span>
+              <span style={styles.instructorInitials}>{instructor.initials || 'RD'}</span>
             </div>
             <div style={styles.instructorInfo}>
-              <h3 style={styles.instructorName}>Radheshyam Das</h3>
-              <p style={styles.instructorTitle}>Founding Director, VOICE & Renowned Vedic Educator</p>
-              <p style={styles.instructorBio}>
-                Radheshyam Das holds a Master's degree from IIT Bombay and is a celebrated author, speaker, and spiritual mentor. Having dedicated over three decades to studying and teaching Vedic literature, he has inspired tens of thousands of youths and professionals across the globe to lead balanced, value-based, and spiritually enriched lives.
-              </p>
+              <h3 style={styles.instructorName}>{instructor.name}</h3>
+              <p style={styles.instructorTitle}>{instructor.title}</p>
+              <p style={styles.instructorBio}>{instructor.bio}</p>
             </div>
           </div>
         </div>
@@ -547,18 +635,12 @@ export default function CourseLandingPage() {
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>Frequently Asked Questions</h2>
           <div style={styles.faqList}>
-            <div style={styles.faqItem}>
-              <h3 style={styles.faqQuestion}>Who is this course for?</h3>
-              <p style={styles.faqAnswer}>This course is designed for students, professionals, and seekers of all backgrounds who want to deepen their understanding of life, spirituality, and personal leadership based on Vedic principles.</p>
-            </div>
-            <div style={styles.faqItem}>
-              <h3 style={styles.faqQuestion}>Is there any certificate provided?</h3>
-              <p style={styles.faqAnswer}>Yes! For courses that have certificates enabled, you will receive a verifiable digital certificate once you complete all modules and pass the course quizzes.</p>
-            </div>
-            <div style={styles.faqItem}>
-              <h3 style={styles.faqQuestion}>How long will I have access to the course?</h3>
-              <p style={styles.faqAnswer}>You will get lifetime access to the course content. You can learn at your own pace and revisit lessons whenever you like.</p>
-            </div>
+            {faqs.map((faq, i) => (
+              <div key={i} style={styles.faqItem}>
+                <h3 style={styles.faqQuestion}>{faq.q}</h3>
+                <p style={styles.faqAnswer}>{faq.a}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -716,6 +798,7 @@ const styles = {
   },
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
   modalContent: { background: '#fff', width: '100%', maxWidth: '700px', borderRadius: '12px', overflow: 'hidden' },
+  checkoutModalBox: { background: '#FFF', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', zIndex: 1001, animation: 'slideUp 0.25s ease' },
   modalHeader: { padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #E5E7EB' },
   modalTag: { fontSize: '10px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase' },
   modalTitle: { margin: '4px 0 0', fontSize: '18px' },

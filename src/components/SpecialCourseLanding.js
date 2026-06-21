@@ -965,7 +965,7 @@ export default function SpecialCourseLanding({
 
   function renderText(block, isNested = false) {
     const p = block.props;
-    const padding = isNested ? '24px' : `${p.paddingY || 48}px 24px`;
+    const padding = isNested ? `${p.paddingY !== undefined ? p.paddingY : 24}px 24px` : `${p.paddingY || 48}px 24px`;
     const borderRadius = p.borderRadius !== undefined ? `${p.borderRadius}px` : '0px';
     const border = p.border || 'none';
     const boxShadow = p.boxShadow || 'none';
@@ -996,7 +996,7 @@ export default function SpecialCourseLanding({
     const p = block.props;
     const ytId = getYouTubeId(p.url);
     if (!ytId) return null;
-    const padding = isNested ? '24px' : `${p.paddingY || 48}px 24px`;
+    const padding = isNested ? `${p.paddingY !== undefined ? p.paddingY : 24}px 24px` : `${p.paddingY || 48}px 24px`;
     const borderRadius = p.borderRadius !== undefined ? `${p.borderRadius}px` : '0px';
     const border = p.border || 'none';
     const boxShadow = p.boxShadow || 'none';
@@ -1023,15 +1023,17 @@ export default function SpecialCourseLanding({
     );
   }
 
-  function renderImage(block) {
+  function renderImage(block, isNested = false) {
     const p = block.props;
     if (!p.src) return null;
 
     const errorKey = `${block.id}-img`;
+    const padding = isNested ? `${p.paddingY !== undefined ? p.paddingY : 24}px 24px` : `${p.paddingY || 32}px 24px`;
+
     if (imageErrors[errorKey]) {
       return (
-        <div key={block.id} style={{ background: p.background || '#fff', padding: `${p.paddingY || 32}px 24px` }}>
-          <div style={{ maxWidth: p.maxWidth || '900px', margin: '0 auto', padding: '32px', background: '#F9FAFB', border: '1px dashed #D1D5DB', borderRadius: '16px', textAlign: 'center' }}>
+        <div key={block.id} style={{ background: p.background || '#fff', padding, height: isNested ? '100%' : undefined, boxSizing: 'border-box', display: isNested ? 'flex' : undefined, flexDirection: isNested ? 'column' : undefined, justifyContent: isNested ? 'center' : undefined }}>
+          <div style={{ maxWidth: p.maxWidth || '900px', margin: '0 auto', padding: '32px', background: '#F9FAFB', border: '1px dashed #D1D5DB', borderRadius: '16px', textAlign: 'center', width: '100%' }}>
             <span style={{ fontSize: '24px' }}>⚠️</span>
             <p style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: '8px 0 4px' }}>Image failed to load</p>
             <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>Please make sure your Google Drive link is set to <strong>"Anyone with the link can view"</strong>.</p>
@@ -1041,8 +1043,8 @@ export default function SpecialCourseLanding({
     }
 
     return (
-      <div key={block.id} style={{ background: p.background || '#fff', padding: `${p.paddingY || 32}px 24px` }}>
-        <div style={{ maxWidth: p.maxWidth || '900px', margin: '0 auto', textAlign: 'center' }}>
+      <div key={block.id} style={{ background: p.background || '#fff', padding, height: isNested ? '100%' : undefined, boxSizing: 'border-box', display: isNested ? 'flex' : undefined, flexDirection: isNested ? 'column' : undefined, justifyContent: isNested ? 'center' : undefined }}>
+        <div style={{ maxWidth: p.maxWidth || '900px', margin: '0 auto', textAlign: 'center', width: '100%' }}>
           <img
             src={formatImageUrl(p.src)}
             alt={p.alt || ''}

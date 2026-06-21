@@ -85,6 +85,7 @@ export default function EditCoursePage() {
         status: c.status || 'draft',
         has_certificate: c.has_certificate || false,
         certificate_image_url: c.certificate_image_url || '',
+        custom_layout: c.custom_layout || {},
       });
       setLoading(false);
     };
@@ -192,6 +193,27 @@ export default function EditCoursePage() {
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '80px' }}><Loader2 size={28} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} /></div>;
 
+  const metadata = form?.custom_layout?.metadata || {};
+  const instructor = metadata.instructor || { name: '', title: '', bio: '', initials: '' };
+  const faqs = metadata.faq || [];
+  const highlights = metadata.highlights || [];
+
+  const updateMetadata = (key, val) => {
+    const newMetadata = { ...metadata, [key]: val };
+    setForm(p => ({
+      ...p,
+      custom_layout: {
+        ...p.custom_layout,
+        metadata: newMetadata
+      }
+    }));
+  };
+
+  const updateInstructor = (key, val) => {
+    const newInstructor = { ...instructor, [key]: val };
+    updateMetadata('instructor', newInstructor);
+  };
+
   return (
     <div>
       <div style={styles.header}>
@@ -216,7 +238,7 @@ export default function EditCoursePage() {
       {saved && <div style={styles.successBox}>✅ Course saved successfully!</div>}
 
       <form onSubmit={handleSave}>
-        <div style={styles.grid}>
+        <div style={styles.grid} className="courses-edit-grid">
           <div style={styles.col}>
             <div style={styles.card}>
               <h2 style={styles.cardTitle}><BookOpen size={16} /> Course Information</h2>
@@ -286,6 +308,63 @@ export default function EditCoursePage() {
               {form.thumbnail_url && (
                 <img src={formatImageUrl(form.thumbnail_url)} alt="Preview" style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '10px', marginTop: '8px' }} onError={e => e.target.style.display = 'none'} />
               )}
+            </div>
+
+            {/* Instructor & Landing Page Details Card */}
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>👥 Instructor & Landing Page Details</h2>
+              <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+                These settings configure the instructor card, landing highlights, and FAQs shown on the default landing page.
+              </p>
+
+              {/* Instructor Form */}
+              <h3 style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>Mentor Profile</h3>
+              <Field label="Instructor Name">
+                <input value={instructor.name} onChange={e => updateInstructor('name', e.target.value)} placeholder="e.g. Radheshyam Das" style={styles.input} />
+              </Field>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: '10px' }}>
+                <Field label="Instructor Title">
+                  <input value={instructor.title} onChange={e => updateInstructor('title', e.target.value)} placeholder="e.g. Renowned Vedic Educator" style={styles.input} />
+                </Field>
+                <Field label="Initials">
+                  <input value={instructor.initials} onChange={e => updateInstructor('initials', e.target.value)} placeholder="RD" style={styles.input} maxLength={3} />
+                </Field>
+              </div>
+              <Field label="Biography">
+                <textarea value={instructor.bio} onChange={e => updateInstructor('bio', e.target.value)} placeholder="Instructor bio details..." style={{ ...styles.input, minHeight: '80px', resize: 'vertical' }} />
+              </Field>
+
+              <hr style={{ border: 'none', borderTop: '1px solid #F3F4F6', margin: '20px 0' }} />
+
+              {/* What You Will Learn (Highlights) Form */}
+              <h3 style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginBottom: '10px' }}>What You Will Learn (Highlights)</h3>
+              {highlights.map((h, idx) => (
+                <div key={idx} style={{ background: '#FAF9F6', padding: '12px', borderRadius: '10px', marginBottom: '10px', border: '1px solid #E5E7EB', position: 'relative' }}>
+                  <button type="button" onClick={() => updateMetadata('highlights', highlights.filter((_, i) => i !== idx))} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '12px' }}>✕ Remove</button>
+                  <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '6px', fontWeight: 'bold' }}>Highlight #{idx + 1}</div>
+                  <input value={h.title} onChange={e => updateMetadata('highlights', highlights.map((item, i) => i === idx ? { ...item, title: e.target.value } : item))} placeholder="Title" style={{ ...styles.input, marginBottom: '6px', padding: '6px 10px', fontSize: '13px' }} />
+                  <textarea value={h.text} onChange={e => updateMetadata('highlights', highlights.map((item, i) => i === idx ? { ...item, text: e.target.value } : item))} placeholder="Description" style={{ ...styles.input, padding: '6px 10px', fontSize: '13px', minHeight: '40px', resize: 'vertical' }} />
+                </div>
+              ))}
+              <button type="button" onClick={() => updateMetadata('highlights', [...highlights, { title: 'New Highlight', text: 'Detail summary here.' }])} style={{ padding: '8px 16px', background: '#F3F4F6', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: '#374151' }}>
+                + Add Highlight Card
+              </button>
+
+              <hr style={{ border: 'none', borderTop: '1px solid #F3F4F6', margin: '20px 0' }} />
+
+              {/* FAQ Form */}
+              <h3 style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginBottom: '10px' }}>Frequently Asked Questions</h3>
+              {faqs.map((faq, idx) => (
+                <div key={idx} style={{ background: '#FAF9F6', padding: '12px', borderRadius: '10px', marginBottom: '10px', border: '1px solid #E5E7EB', position: 'relative' }}>
+                  <button type="button" onClick={() => updateMetadata('faq', faqs.filter((_, i) => i !== idx))} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '12px' }}>✕ Remove</button>
+                  <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '6px', fontWeight: 'bold' }}>FAQ #{idx + 1}</div>
+                  <input value={faq.q} onChange={e => updateMetadata('faq', faqs.map((item, i) => i === idx ? { ...item, q: e.target.value } : item))} placeholder="Question" style={{ ...styles.input, marginBottom: '6px', padding: '6px 10px', fontSize: '13px' }} />
+                  <textarea value={faq.a} onChange={e => updateMetadata('faq', faqs.map((item, i) => i === idx ? { ...item, a: e.target.value } : item))} placeholder="Answer" style={{ ...styles.input, padding: '6px 10px', fontSize: '13px', minHeight: '40px', resize: 'vertical' }} />
+                </div>
+              ))}
+              <button type="button" onClick={() => updateMetadata('faq', [...faqs, { q: 'New Question?', a: 'Answer here.' }])} style={{ padding: '8px 16px', background: '#F3F4F6', border: '1px solid #D1D5DB', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: '#374151' }}>
+                + Add FAQ Item
+              </button>
             </div>
 
             {/* Danger zone */}

@@ -84,14 +84,16 @@ export async function PUT(req) {
     return NextResponse.json({ error: 'Unauthorized: User is outside your organization.' }, { status: 403 });
   }
 
-  // Prevent promoting someone to superadmin unless the actor is a superadmin
-  if (role === 'superadmin' && session.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized: Only superadmins can assign the superadmin role.' }, { status: 403 });
+  const ROLE_ORDER = ['student', 'evaluator', 'course_builder', 'admin', 'superadmin'];
+
+  // Enforce role hierarchy: Actor cannot alter someone with a higher role than their own
+  if (ROLE_ORDER.indexOf(targetUser.role) > ROLE_ORDER.indexOf(session.role)) {
+    return NextResponse.json({ error: 'Unauthorized: You cannot modify a user with a higher role than your own.' }, { status: 403 });
   }
-  
-  // Prevent altering a superadmin unless the actor is a superadmin
-  if (targetUser.role === 'superadmin' && session.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized: You cannot modify a superadmin account.' }, { status: 403 });
+
+  // Enforce role hierarchy: Actor cannot assign a role higher than their own
+  if (role && ROLE_ORDER.indexOf(role) > ROLE_ORDER.indexOf(session.role)) {
+    return NextResponse.json({ error: 'Unauthorized: You cannot assign a role higher than your own.' }, { status: 403 });
   }
 
   // Build update payload
