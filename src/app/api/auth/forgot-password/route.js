@@ -53,7 +53,9 @@ export async function POST(req) {
     const sent = await sendForgotPasswordEmail({
       email: user.email,
       name: user.name,
-      resetLink
+      resetLink,
+      orgName: tenant.name || 'LMS Portal',
+      orgEmail: tenant.email || 'support@wisdom-eye.in'
     });
 
     if (!sent) {

@@ -86,6 +86,8 @@ export async function POST(req) {
           payment_status: 'pending',
           graphy_status: 'pending',
           shipping_status: deliveryType === 'delivery' ? 'pending_shipment' : 'not_applicable',
+          course_title: body.courseTitle || 'Wisdom Eye',
+          course_url: body.courseUrl || ''
         },
       ]);
 

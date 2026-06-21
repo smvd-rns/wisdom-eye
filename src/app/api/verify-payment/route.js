@@ -174,12 +174,19 @@ export async function POST(req) {
     if (!updateError) {
       try {
         const origin = req.headers.get('origin') || 'http://localhost:3000';
+        const { getActiveTenant } = await import('@/lib/tenant');
+        const tenant = await getActiveTenant(req);
+
         await sendEnrollmentEmail({
           email: registration.email,
           name: registration.name,
           deliveryType: registration.delivery_type,
           amount: registration.amount_paid,
           websiteUrl: origin,
+          courseName: registration.course_title || 'Wisdom Eye',
+          courseUrl: registration.course_url || `${origin}/courses`,
+          orgName: tenant.name || 'Wisdom Eye VOICE',
+          orgEmail: tenant.email || 'manager@voicepune.com'
         });
       } catch (mailErr) {
         console.error('Failed to send HTML enrollment notification email:', mailErr);

@@ -1,4 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Montserrat:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&family=Lato:wght@300;400;700&family=Open+Sans:wght@300;400;600;700&family=Raleway:wght@300;400;600;700&family=Nunito:wght@300;400;600;700&family=Mukta:wght@300;400;600;700&family=Ubuntu:wght@300;400;700&family=Heebo:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Merriweather:ital,wght@0,300..900;1,300..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Cinzel:wght@400;600;700;800&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Georgia&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Domine:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;700&family=Bebas+Neue&family=Anton&family=Archivo+Black&family=Syncopate:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Playpen+Sans:wght@300;400;600;800&family=Architects+Daughter&family=Pacifico&family=Dancing+Script:wght@400;700&family=Sacramento&family=Shadows+Into+Light&family=Great+Vibes&family=Alex+Brush&family=Pinyon+Script&family=Allura&family=Parisienne&family=Cookie&family=Yellowtail&family=Kaushan+Script&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=JetBrains+Mono:wght@400;600&family=Source+Code+Pro:wght@400;600&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Share+Tech+Mono&display=swap');
 
 :root {
   /* Premium Harmonious Color Palette */
@@ -1221,4 +1225,265 @@ button, input, select, textarea {
     padding: 16px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCROLL ANIMATION SYSTEM — Block & Section Entrance Effects
+   Apply via data-sa-animation attribute on the wrapper div.
+   The JS IntersectionObserver adds .sa-visible to trigger the animation.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* --- Base state: all animated blocks start hidden --- */
+[data-sa-animation]:not([data-sa-animation="none"]) {
+  opacity: 0;
+  will-change: opacity, transform;
+  transition-property: opacity, transform;
+}
+
+/* --- Visible state: applied by IntersectionObserver --- */
+[data-sa-animation].sa-visible {
+  opacity: 1;
+}
+
+/* ── Keyframes ── */
+@keyframes sa-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sa-fade-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sa-fade-down {
+  from { opacity: 0; transform: translateY(-40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sa-fade-left {
+  from { opacity: 0; transform: translateX(50px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes sa-fade-right {
+  from { opacity: 0; transform: translateX(-50px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes sa-zoom-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes sa-zoom-out {
+  from { opacity: 0; transform: scale(1.15); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes sa-flip-up {
+  from { opacity: 0; transform: perspective(800px) rotateX(20deg) translateY(30px); }
+  to   { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); }
+}
+@keyframes sa-flip-left {
+  from { opacity: 0; transform: perspective(800px) rotateY(-25deg); }
+  to   { opacity: 1; transform: perspective(800px) rotateY(0deg); }
+}
+@keyframes sa-flip-right {
+  from { opacity: 0; transform: perspective(800px) rotateY(25deg); }
+  to   { opacity: 1; transform: perspective(800px) rotateY(0deg); }
+}
+@keyframes sa-bounce-in {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.05); }
+  80%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+@keyframes sa-slide-up {
+  from { opacity: 0; transform: translateY(80px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sa-slide-down {
+  from { opacity: 0; transform: translateY(-80px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sa-slide-left {
+  from { opacity: 0; transform: translateX(100px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes sa-slide-right {
+  from { opacity: 0; transform: translateX(-100px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes sa-rotate-in {
+  from { opacity: 0; transform: rotate(-8deg) scale(0.9); }
+  to   { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+@keyframes sa-skew-up {
+  from { opacity: 0; transform: skewY(4deg) translateY(30px); }
+  to   { opacity: 1; transform: skewY(0deg) translateY(0); }
+}
+@keyframes sa-blur-in {
+  from { opacity: 0; filter: blur(12px); transform: scale(1.02); }
+  to   { opacity: 1; filter: blur(0px); transform: scale(1); }
+}
+@keyframes sa-roll-in {
+  from { opacity: 0; transform: translateX(-80px) rotate(-15deg); }
+  to   { opacity: 1; transform: translateX(0) rotate(0deg); }
+}
+@keyframes sa-swing-in {
+  0%   { opacity: 0; transform: rotate(-10deg) translateY(-20px); }
+  60%  { transform: rotate(4deg); opacity: 1; }
+  80%  { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); opacity: 1; }
+}
+@keyframes sa-elastic-up {
+  0%   { opacity: 0; transform: translateY(60px) scaleY(0.8); }
+  60%  { opacity: 1; transform: translateY(-10px) scaleY(1.04); }
+  80%  { transform: translateY(4px) scaleY(0.98); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+@keyframes sa-pulse-in {
+  0%   { opacity: 0; transform: scale(0.95); }
+  50%  { opacity: 1; transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* ── Animation trigger classes (applied when .sa-visible is added) ── */
+[data-sa-animation="fade-in"].sa-visible               { animation: sa-fade-in var(--sa-dur, 0.7s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="fade-up"].sa-visible               { animation: sa-fade-up var(--sa-dur, 0.7s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="fade-down"].sa-visible             { animation: sa-fade-down var(--sa-dur, 0.7s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="fade-left"].sa-visible             { animation: sa-fade-left var(--sa-dur, 0.7s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="fade-right"].sa-visible            { animation: sa-fade-right var(--sa-dur, 0.7s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="zoom-in"].sa-visible               { animation: sa-zoom-in var(--sa-dur, 0.7s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="zoom-out"].sa-visible              { animation: sa-zoom-out var(--sa-dur, 0.7s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="flip-up"].sa-visible               { animation: sa-flip-up var(--sa-dur, 0.8s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="flip-left"].sa-visible             { animation: sa-flip-left var(--sa-dur, 0.8s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="flip-right"].sa-visible            { animation: sa-flip-right var(--sa-dur, 0.8s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="bounce-in"].sa-visible             { animation: sa-bounce-in var(--sa-dur, 0.9s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="slide-up"].sa-visible              { animation: sa-slide-up var(--sa-dur, 0.8s) var(--sa-ease, cubic-bezier(0.25,0.46,0.45,0.94)) var(--sa-delay, 0s) both; }
+[data-sa-animation="slide-down"].sa-visible            { animation: sa-slide-down var(--sa-dur, 0.8s) var(--sa-ease, cubic-bezier(0.25,0.46,0.45,0.94)) var(--sa-delay, 0s) both; }
+[data-sa-animation="slide-left"].sa-visible            { animation: sa-slide-left var(--sa-dur, 0.8s) var(--sa-ease, cubic-bezier(0.25,0.46,0.45,0.94)) var(--sa-delay, 0s) both; }
+[data-sa-animation="slide-right"].sa-visible           { animation: sa-slide-right var(--sa-dur, 0.8s) var(--sa-ease, cubic-bezier(0.25,0.46,0.45,0.94)) var(--sa-delay, 0s) both; }
+[data-sa-animation="rotate-in"].sa-visible             { animation: sa-rotate-in var(--sa-dur, 0.8s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="skew-up"].sa-visible               { animation: sa-skew-up var(--sa-dur, 0.7s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="blur-in"].sa-visible               { animation: sa-blur-in var(--sa-dur, 0.9s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="roll-in"].sa-visible               { animation: sa-roll-in var(--sa-dur, 0.8s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="swing-in"].sa-visible              { animation: sa-swing-in var(--sa-dur, 0.9s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="elastic-up"].sa-visible            { animation: sa-elastic-up var(--sa-dur, 0.9s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+[data-sa-animation="pulse-in"].sa-visible              { animation: sa-pulse-in var(--sa-dur, 0.6s) var(--sa-ease, ease) var(--sa-delay, 0s) both; }
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  [data-sa-animation] {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
+/* --- Staggered children setup --- */
+[data-sa-animation]:not([data-sa-animation="none"])[data-sa-stagger="true"] {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+[data-sa-animation]:not([data-sa-animation="none"])[data-sa-stagger="true"] > * {
+  opacity: 0;
+  will-change: opacity, transform;
+  transition-property: opacity, transform;
+}
+
+[data-sa-animation]:not([data-sa-animation="none"])[data-sa-stagger="true"] > *:nth-child(1) { --sa-child-delay: 0s; }
+[data-sa-animation]:not([data-sa-animation="none"])[data-sa-stagger="true"] > *:nth-child(2) { --sa-child-delay: 0.15s; }
+[data-sa-animation]:not([data-sa-animation="none"])[data-sa-stagger="true"] > *:nth-child(3) { --sa-child-delay: 0.3s; }
+[data-sa-animation]:not([data-sa-animation="none"])[data-sa-stagger="true"] > *:nth-child(4) { --sa-child-delay: 0.45s; }
+[data-sa-animation]:not([data-sa-animation="none"])[data-sa-stagger="true"] > *:nth-child(n+5) { --sa-child-delay: 0.6s; }
+
+[data-sa-animation="fade-in"][data-sa-stagger="true"].sa-visible > * { animation: sa-fade-in var(--sa-dur, 0.7s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="fade-up"][data-sa-stagger="true"].sa-visible > * { animation: sa-fade-up var(--sa-dur, 0.7s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="fade-down"][data-sa-stagger="true"].sa-visible > * { animation: sa-fade-down var(--sa-dur, 0.7s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="fade-left"][data-sa-stagger="true"].sa-visible > * { animation: sa-fade-left var(--sa-dur, 0.7s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="fade-right"][data-sa-stagger="true"].sa-visible > * { animation: sa-fade-right var(--sa-dur, 0.7s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="zoom-in"][data-sa-stagger="true"].sa-visible > * { animation: sa-zoom-in var(--sa-dur, 0.7s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="zoom-out"][data-sa-stagger="true"].sa-visible > * { animation: sa-zoom-out var(--sa-dur, 0.7s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="slide-up"][data-sa-stagger="true"].sa-visible > * { animation: sa-slide-up var(--sa-dur, 0.8s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="slide-down"][data-sa-stagger="true"].sa-visible > * { animation: sa-slide-down var(--sa-dur, 0.8s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="slide-left"][data-sa-stagger="true"].sa-visible > * { animation: sa-slide-left var(--sa-dur, 0.8s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="slide-right"][data-sa-stagger="true"].sa-visible > * { animation: sa-slide-right var(--sa-dur, 0.8s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="flip-up"][data-sa-stagger="true"].sa-visible > * { animation: sa-flip-up var(--sa-dur, 0.8s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="bounce-in"][data-sa-stagger="true"].sa-visible > * { animation: sa-bounce-in var(--sa-dur, 0.9s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="rotate-in"][data-sa-stagger="true"].sa-visible > * { animation: sa-rotate-in var(--sa-dur, 0.8s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="blur-in"][data-sa-stagger="true"].sa-visible > * { animation: sa-blur-in var(--sa-dur, 0.9s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="elastic-up"][data-sa-stagger="true"].sa-visible > * { animation: sa-elastic-up var(--sa-dur, 0.9s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="swing-in"][data-sa-stagger="true"].sa-visible > * { animation: sa-swing-in var(--sa-dur, 0.9s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="pulse-in"][data-sa-stagger="true"].sa-visible > * { animation: sa-pulse-in var(--sa-dur, 0.6s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="roll-in"][data-sa-stagger="true"].sa-visible > * { animation: sa-roll-in var(--sa-dur, 0.8s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+[data-sa-animation="skew-up"][data-sa-stagger="true"].sa-visible > * { animation: sa-skew-up var(--sa-dur, 0.7s) var(--sa-ease, ease) calc(var(--sa-delay, 0s) + var(--sa-child-delay, 0s)) both; }
+
+/* Typing Effect Cursor */
+@keyframes sa-blink {
+  from, to { opacity: 0; }
+  50% { opacity: 1; }
+}
+.sa-typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  margin-left: 3px;
+  animation: sa-blink 0.8s infinite;
+  vertical-align: middle;
+}
+
+/* Handwriting Pencil Animation */
+@keyframes sa-pencil-write {
+  0% { transform: rotate(0deg) translate(0, 0); }
+  100% { transform: rotate(-12deg) translate(3px, -2px); }
+}
+
+.sa-handwritten-text {
+  font-family: 'Caveat', 'Playpen Sans', 'Architects Daughter', cursive !important;
+}
+
+/* Sparkle / Shine Animation */
+@keyframes sa-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.sa-sparkle-text {
+  background: linear-gradient(120deg, currentColor 35%, #FFD700 50%, currentColor 65%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: sa-shimmer 3s infinite linear;
+}
+
+/* Rainbow flow animation */
+@keyframes sa-rainbow-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 400% 50%; }
+}
+.sa-rainbow-text {
+  background: linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #6366f1, #a855f7, #ef4444);
+  background-size: 400% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: sa-rainbow-flow 8s linear infinite;
+}
+
+/* Neon Glow Flicker */
+@keyframes sa-neon-flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    text-shadow: 0 0 4px #fff, 0 0 10px #7C3AED, 0 0 20px #7C3AED, 0 0 30px #7C3AED;
+    opacity: 1;
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+    opacity: 0.75;
+  }
+}
+.sa-neon-flicker-text {
+  animation: sa-neon-flicker 2.5s infinite alternate;
+}
+
+/* Sine wave animation */
+@keyframes sa-wave-sine-anim {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
 

@@ -3,12 +3,21 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Award, BookOpen, Clock, Loader2, ArrowLeft, ExternalLink } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 
 export default function CertificatesPage() {
   const [certs, setCerts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem('certificates_list');
+      if (cached) {
+        setCerts(JSON.parse(cached));
+        setLoading(false);
+      }
+    } catch (e) {}
+
     const fetchCertificates = async () => {
       try {
         const res = await fetch('/api/student/enrollments');
@@ -24,6 +33,7 @@ export default function CertificatesPage() {
               completedAt: e.course_progress.completed_at
             })) || [];
           setCerts(completedCerts);
+          sessionStorage.setItem('certificates_list', JSON.stringify(completedCerts));
         }
       } catch (err) {
         console.error(err);
@@ -42,16 +52,17 @@ export default function CertificatesPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F0F2F5', padding: '40px 20px' }}>
+    <div className="certs-page-wrapper" style={{ minHeight: '100vh', background: '#F0F2F5' }}>
+      <Navbar />
       <div style={styles.container}>
         {/* Back link */}
         <Link href="/dashboard" style={styles.back}>
           <ArrowLeft size={14} /> Back to Dashboard
         </Link>
-
+ 
         <h1 style={styles.title}>🏆 Your Certificates</h1>
         <p style={styles.subtitle}>Download credentials for courses you have successfully finished.</p>
-
+ 
         {certs.length === 0 ? (
           <div style={styles.emptyState}>
             <Award size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
@@ -81,6 +92,16 @@ export default function CertificatesPage() {
           </div>
         )}
       </div>
+      <style>{`
+        .certs-page-wrapper {
+          padding: 100px 20px 40px !important;
+        }
+        @media (max-width: 900px) {
+          .certs-page-wrapper {
+            padding: 40px 16px 100px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

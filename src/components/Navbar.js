@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Home, BookOpen, Book, Play, MoreHorizontal } from 'lucide-react';
+import { Menu, X, Home, BookOpen, Book, Play, MoreHorizontal, GraduationCap } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ onlyBottom = false }) {
   const [user, setUser] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -59,19 +59,9 @@ export default function Navbar() {
     checkUser();
   }, []);
 
-  const [tenant, setTenant] = useState(() => {
-    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
-      return window.__TENANT_DATA__;
-    }
-    return { name: 'Wisdom Eye', slogan: 'Vedic Character & Leadership Mentoring' };
-  });
+  const [tenant, setTenant] = useState({ name: '', slogan: '' });
 
-  const [tenantDetails, setTenantDetails] = useState(() => {
-    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
-      return window.__TENANT_DATA__;
-    }
-    return { name: 'Wisdom Eye', slogan: 'Vedic Character & Leadership Mentoring' };
-  });
+  const [tenantDetails, setTenantDetails] = useState({ name: '', slogan: '' });
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
@@ -219,101 +209,155 @@ export default function Navbar() {
           to { transform: translateY(0); }
         }
       `}</style>
-      <header style={{
-        ...styles.header,
-        background: scrolled ? '#1A1B4B' : 'rgba(26, 27, 75, 0.95)',
-        boxShadow: scrolled ? '0px 4px 20px rgba(0,0,0,0.15)' : 'none',
-        backdropFilter: 'blur(10px)',
-      }}>
-        <div style={styles.navContainer}>
-          <Link href="/" style={styles.logo}>
-            <div style={styles.logoTextContainer}>
-              <span style={styles.logoText}>{tenantDetails.name}</span>
-              <span style={styles.logoSubtext}>{tenantDetails.slogan}</span>
-            </div>
-          </Link>
-          
-          <nav className="desktop-links" style={styles.navLinks}>
-            {visibleLinks.map((link, idx) => (
-              <Link key={idx} href={link.url} style={styles.navLink}>{link.label}</Link>
-            ))}
-
-            {dropdownLinks.length > 0 && (
-              <div 
-                className="nav-dropdown-trigger" 
-                onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
-                style={{ ...styles.navLink, display: 'inline-flex', alignItems: 'center', gap: '4px', height: '40px', userSelect: 'none' }}
-              >
-                More <span style={{ fontSize: '10px', transform: moreDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
-                {moreDropdownOpen && (
-                  <div className="nav-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                    {dropdownLinks.map((link, idx) => (
-                      <Link 
-                        key={idx} 
-                        href={link.url} 
-                        onClick={() => setMoreDropdownOpen(false)} 
-                        className="dropdown-item"
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+      {!onlyBottom && (
+        <header style={{
+          ...styles.header,
+          background: scrolled ? '#1A1B4B' : 'rgba(26, 27, 75, 0.95)',
+          boxShadow: scrolled ? '0px 4px 20px rgba(0,0,0,0.15)' : 'none',
+          backdropFilter: 'blur(10px)',
+        }}>
+          <div style={styles.navContainer}>
+            <Link href="/" style={styles.logo}>
+              <div style={styles.logoTextContainer}>
+                <span style={styles.logoText}>{tenantDetails.name}</span>
+                <span style={styles.logoSubtext}>{tenantDetails.slogan}</span>
               </div>
-            )}
+            </Link>
             
-            {user ? (
-              <Link 
-                href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
-                style={styles.navBtnPrimary}
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <div style={styles.authGroup}>
-                <Link href="/register-org" style={{ ...styles.navLink, color: '#FF9F1C' }}>
-                  Register Org
-                </Link>
-                <Link href="/login" style={styles.navLink}>
-                  Sign In
-                </Link>
-                <Link href="/signup" style={styles.navBtnSecondary}>
-                  Sign Up
-                </Link>
-              </div>
-            )}
-          </nav>
+            <nav className="desktop-links" style={styles.navLinks}>
+              {visibleLinks.map((link, idx) => (
+                <Link key={idx} href={link.url} style={styles.navLink}>{link.label}</Link>
+              ))}
+
+              {dropdownLinks.length > 0 && (
+                <div 
+                  className="nav-dropdown-trigger" 
+                  onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
+                  style={{ ...styles.navLink, display: 'inline-flex', alignItems: 'center', gap: '4px', height: '40px', userSelect: 'none' }}
+                >
+                  More <span style={{ fontSize: '10px', transform: moreDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+                  {moreDropdownOpen && (
+                    <div className="nav-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                      {dropdownLinks.map((link, idx) => (
+                        <Link 
+                          key={idx} 
+                          href={link.url} 
+                          onClick={() => setMoreDropdownOpen(false)} 
+                          className="dropdown-item"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {user ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <Link 
+                    href="/profile" 
+                    style={styles.navLink}
+                  >
+                    Profile
+                  </Link>
+                  <Link 
+                    href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
+                    style={styles.navBtnPrimary}
+                  >
+                    Dashboard
+                  </Link>
+                </div>
+              ) : (
+                <div style={styles.authGroup}>
+                  <Link href="/register-org" style={{ ...styles.navLink, color: '#FF9F1C' }}>
+                    Register Org
+                  </Link>
+                  <Link href="/login" style={styles.navLink}>
+                    Sign In
+                  </Link>
+                  <Link href="/signup" style={styles.navBtnSecondary}>
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </nav>
 
 
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
       {/* Floating Bottom Navigation for APK/App feel */}
       <div className="mobile-bottom-nav">
-        <Link href="/" className={`mobile-tab-item ${pathname === '/' ? 'active' : ''}`}>
-          <Home size={20} />
-          <span>Home</span>
-        </Link>
-        <Link href="/courses" className={`mobile-tab-item ${pathname.startsWith('/courses') ? 'active' : ''}`}>
-          <BookOpen size={20} />
-          <span>Courses</span>
-        </Link>
-        <Link href="/books" className={`mobile-tab-item ${pathname.startsWith('/books') ? 'active' : ''}`}>
-          <Book size={20} />
-          <span>Books</span>
-        </Link>
-        <Link href="/media" className={`mobile-tab-item ${pathname.startsWith('/media') ? 'active' : ''}`}>
-          <Play size={20} />
-          <span>Media</span>
-        </Link>
-        <div 
-          onClick={() => setMoreSheetOpen(true)} 
-          className={`mobile-tab-item ${moreSheetOpen ? 'active' : ''}`}
-          style={{ cursor: 'pointer' }}
+        {/* Render first 2 links from dynamic config */}
+        {navLinks.slice(0, 2).map((link, idx) => {
+          let IconComponent = BookOpen;
+          if (link.label.toLowerCase() === 'home') IconComponent = Home;
+          else if (link.label.toLowerCase() === 'books') IconComponent = Book;
+          else if (link.label.toLowerCase() === 'media') IconComponent = Play;
+
+          return (
+            <Link key={idx} href={link.url} className={`mobile-tab-item ${pathname === link.url || (link.url !== '/' && pathname.startsWith(link.url)) ? 'active' : ''}`}>
+              <IconComponent size={18} />
+              <span>{link.label}</span>
+            </Link>
+          );
+        })}
+
+        <Link 
+          href={user ? (user.role === 'student' ? '/dashboard' : '/lms-admin') : '/login'} 
+          className={`mobile-tab-item ${pathname.startsWith('/dashboard') || pathname.startsWith('/lms-admin') ? 'active' : ''}`}
+          style={{
+            position: 'relative',
+            top: '-8px',
+            background: 'linear-gradient(135deg, #FF9F1C 0%, #F37A1F 100%)',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            color: '#1A1B4B',
+            boxShadow: '0 8px 20px rgba(255, 159, 28, 0.4)',
+            border: '3px solid #1A1B4B',
+            flex: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '2px',
+            transition: 'transform 0.2s',
+            zIndex: 1000,
+          }}
         >
-          <MoreHorizontal size={20} />
-          <span>More</span>
-        </div>
+          <GraduationCap size={20} />
+          <span style={{ fontSize: '9px', fontWeight: '800' }}>Study</span>
+        </Link>
+
+        {/* Render next 2 links if available, fallback to default or More */}
+        {navLinks.slice(2, 4).map((link, idx) => {
+          let IconComponent = Book;
+          if (link.label.toLowerCase() === 'home') IconComponent = Home;
+          else if (link.label.toLowerCase() === 'courses') IconComponent = BookOpen;
+          else if (link.label.toLowerCase() === 'media') IconComponent = Play;
+
+          return (
+            <Link key={idx} href={link.url} className={`mobile-tab-item ${pathname === link.url || pathname.startsWith(link.url) ? 'active' : ''}`}>
+              <IconComponent size={18} />
+              <span>{link.label}</span>
+            </Link>
+          );
+        })}
+
+        {/* If fewer than 4 links, render placeholder/empty spacer or More button depending on list size */}
+        {(navLinks.length > 4 || navLinks.length <= 2) && (
+          <div 
+            onClick={() => setMoreSheetOpen(true)} 
+            className={`mobile-tab-item ${moreSheetOpen ? 'active' : ''}`}
+            style={{ cursor: 'pointer' }}
+          >
+            <MoreHorizontal size={18} />
+            <span>More</span>
+          </div>
+        )}
       </div>
 
       {/* Bottom Sheet Menu Drawer */}
@@ -325,8 +369,8 @@ export default function Navbar() {
               <button onClick={() => setMoreSheetOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FFF', fontSize: '24px', lineHeight: 1 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Render other dropdown links */}
-              {dropdownLinks.map((link, idx) => (
+              {/* Render dynamic links that overflow from the bottom tab bar (index 4+) */}
+              {navLinks.slice(4).map((link, idx) => (
                 <Link key={idx} href={link.url} onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}>
                   {link.label}
                 </Link>
@@ -335,22 +379,31 @@ export default function Navbar() {
               <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '8px 0' }} />
 
               {user ? (
-                <Link 
-                  href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
-                  onClick={() => setMoreSheetOpen(false)}
-                  style={{
-                    background: '#FF9F1C',
-                    color: '#1A1B4B',
-                    padding: '12px',
-                    borderRadius: '12px',
-                    textAlign: 'center',
-                    fontWeight: '700',
-                    textDecoration: 'none',
-                    fontSize: '15px',
-                  }}
-                >
-                  Dashboard
-                </Link>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <Link 
+                    href="/profile" 
+                    onClick={() => setMoreSheetOpen(false)}
+                    style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}
+                  >
+                    Profile Settings
+                  </Link>
+                  <Link 
+                    href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
+                    onClick={() => setMoreSheetOpen(false)}
+                    style={{
+                      background: '#FF9F1C',
+                      color: '#1A1B4B',
+                      padding: '12px',
+                      borderRadius: '12px',
+                      textAlign: 'center',
+                      fontWeight: '700',
+                      textDecoration: 'none',
+                      fontSize: '15px',
+                    }}
+                  >
+                    Dashboard
+                  </Link>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <Link href="/register-org" onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: '#FF9F1C', textDecoration: 'none', padding: '8px 0' }}>

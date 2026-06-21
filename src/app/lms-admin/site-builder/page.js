@@ -78,7 +78,11 @@ export default function SiteBuilderPage() {
           description: data.description || '',
           address: data.address || '',
           email: data.email || '',
-          phone: data.phone || ''
+          phone: data.phone || '',
+          facebook_url: data.facebook_url || '',
+          youtube_url: data.youtube_url || '',
+          instagram_url: data.instagram_url || '',
+          linkedin_url: data.linkedin_url || ''
         });
       }
     } catch (e) {
@@ -462,6 +466,30 @@ export default function SiteBuilderPage() {
                 <div>
                   <label style={fieldLabel}>Contact Phone</label>
                   <input style={fieldInput} value={brandingData.phone} placeholder="+91 8605036000" onChange={e => setBrandingData(prev => ({ ...prev, phone: e.target.value }))} />
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1.5px solid #F3F4F6', paddingTop: '14px', marginTop: '14px' }}>
+                <h4 style={{ fontSize: '11px', fontWeight: '800', color: '#1A1B4B', textTransform: 'uppercase', marginBottom: '12px' }}>Social Media Links</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div>
+                    <label style={fieldLabel}>Facebook URL</label>
+                    <input style={fieldInput} value={brandingData.facebook_url} placeholder="https://facebook.com/yourpage" onChange={e => setBrandingData(prev => ({ ...prev, facebook_url: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={fieldLabel}>YouTube URL</label>
+                    <input style={fieldInput} value={brandingData.youtube_url} placeholder="https://youtube.com/c/yourchannel" onChange={e => setBrandingData(prev => ({ ...prev, youtube_url: e.target.value }))} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={fieldLabel}>Instagram URL</label>
+                    <input style={fieldInput} value={brandingData.instagram_url} placeholder="https://instagram.com/yourhandle" onChange={e => setBrandingData(prev => ({ ...prev, instagram_url: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={fieldLabel}>LinkedIn URL</label>
+                    <input style={fieldInput} value={brandingData.linkedin_url} placeholder="https://linkedin.com/in/yourprofile" onChange={e => setBrandingData(prev => ({ ...prev, linkedin_url: e.target.value }))} />
+                  </div>
                 </div>
               </div>
             </div>

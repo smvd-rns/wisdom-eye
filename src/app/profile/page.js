@@ -21,6 +21,7 @@ import {
   Save,
   Clock
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -45,12 +46,35 @@ export default function ProfilePage() {
   // Stats states
   const [enrollmentsCount, setEnrollmentsCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
-  const [tenantName, setTenantName] = useState(() => {
-    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
-      return window.__TENANT_DATA__.name || 'Wisdom Eye';
-    }
-    return 'Wisdom Eye';
-  });
+  const [tenantName, setTenantName] = useState('Wisdom Eye');
+
+  useEffect(() => {
+    try {
+      const cachedUser = sessionStorage.getItem('dashboard_user');
+      const cachedEnrollments = sessionStorage.getItem('dashboard_enrollments');
+      const cachedTenant = sessionStorage.getItem('dashboard_tenant_name');
+
+      if (cachedUser) {
+        const parsedUser = JSON.parse(cachedUser);
+        setUser(parsedUser);
+        setName(parsedUser.name || '');
+        setPhone(parsedUser.phone || '');
+      }
+      if (cachedEnrollments) {
+        const parsedEnrs = JSON.parse(cachedEnrollments);
+        setEnrollmentsCount(parsedEnrs.length);
+        const completed = parsedEnrs.filter(e => e.course_progress?.percent_complete >= 100).length;
+        setCompletedCount(completed);
+      }
+      if (cachedTenant) {
+        setTenantName(cachedTenant);
+      }
+
+      if (cachedUser) {
+        setLoading(false);
+      }
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     const initData = async () => {
@@ -60,6 +84,7 @@ export default function ProfilePage() {
         if (tenantRes.ok) {
           const tenantData = await tenantRes.json();
           setTenantName(tenantData.name || '');
+          sessionStorage.setItem('dashboard_tenant_name', tenantData.name || '');
         }
 
         // 1. Fetch current user
@@ -72,6 +97,7 @@ export default function ProfilePage() {
         setUser(meData.user);
         setName(meData.user.name || '');
         setPhone(meData.user.phone || '');
+        sessionStorage.setItem('dashboard_user', JSON.stringify(meData.user));
 
         // 2. Fetch enrollments & progress for stats
         const enrollmentsRes = await fetch('/api/student/enrollments');
@@ -79,6 +105,7 @@ export default function ProfilePage() {
           const data = await enrollmentsRes.json();
           const activeEnrollments = data.enrollments || [];
           setEnrollmentsCount(activeEnrollments.length);
+          sessionStorage.setItem('dashboard_enrollments', JSON.stringify(activeEnrollments));
           
           const completed = activeEnrollments.filter(
             e => e.course_progress?.percent_complete >= 100
@@ -190,6 +217,7 @@ export default function ProfilePage() {
 
   return (
     <div style={styles.page}>
+      <Navbar onlyBottom={true} />
       {/* Sidebar */}
       <aside style={styles.sidebar}>
         <Link href="/" style={styles.sidebarLogo}>
@@ -241,7 +269,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Content Layout Grid */}
-        <div style={styles.layoutGrid}>
+        <div className="layout-grid" style={styles.layoutGrid}>
           {/* Left Side: Forms */}
           <div style={styles.leftColumn}>
             
@@ -520,6 +548,19 @@ export default function ProfilePage() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @media (max-width: 900px) {
+          aside { display: none !important; }
+          main { margin-left: 0 !important; padding: 24px 24px 100px !important; }
+          .layout-grid {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+        }
+
+        @media (max-width: 600px) {
+          main { padding: 16px 16px 100px !important; }
+        }
       `}</style>
     </div>
   );

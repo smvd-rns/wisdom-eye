@@ -74,6 +74,26 @@ export default function NewCoursePage() {
     }
   };
 
+  const handleDeleteCategory = async (catName) => {
+    if (!confirm(`Are you sure you want to delete the category "${catName}"?`)) return;
+    try {
+      const res = await fetch(`/api/admin/categories?name=${encodeURIComponent(catName)}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setCategories(prev => prev.filter(c => c !== catName));
+        if (form.category === catName) {
+          set('category', 'General');
+        }
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to delete category');
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -283,6 +303,49 @@ export default function NewCoursePage() {
                       {addingCat ? 'Adding...' : 'Add'}
                     </button>
                   </div>
+
+                  {/* Render custom categories with delete option */}
+                  {categories.filter(c => !DEFAULT_CATEGORIES.includes(c)).length > 0 && (
+                    <div style={{ marginTop: '6px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#374151', marginBottom: '4px' }}>Custom Categories:</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {categories.filter(c => !DEFAULT_CATEGORIES.includes(c)).map(cat => (
+                          <span 
+                            key={cat} 
+                            style={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '6px', 
+                              background: '#F3F4F6', 
+                              border: '1px solid #E5E7EB', 
+                              borderRadius: '6px', 
+                              padding: '2px 8px', 
+                              fontSize: '11.5px', 
+                              color: '#374151' 
+                            }}
+                          >
+                            {cat}
+                            <button 
+                              type="button" 
+                              onClick={() => handleDeleteCategory(cat)}
+                              style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                color: '#EF4444', 
+                                cursor: 'pointer', 
+                                padding: 0, 
+                                fontSize: '10px',
+                                fontWeight: 'bold' 
+                              }}
+                              title="Delete category"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

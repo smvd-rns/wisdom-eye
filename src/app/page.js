@@ -123,10 +123,31 @@ export default function GeneralHomePage() {
   const [ytLoading, setYtLoading] = useState(true);
   const [homeConfig, setHomeConfig] = useState(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  
-  // Custom visual page builder homepage support
   const [sitePage, setSitePage] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
+
+  useEffect(() => {
+    try {
+      const cachedVideos = sessionStorage.getItem('homepage_youtube_videos');
+      const cachedActiveVideo = sessionStorage.getItem('homepage_active_video');
+      const cachedConfig = sessionStorage.getItem('homepage_config');
+      const cachedSitePage = sessionStorage.getItem('homepage_site_page');
+
+      if (cachedVideos) {
+        setYoutubeVideos(JSON.parse(cachedVideos));
+        setYtLoading(false);
+      }
+      if (cachedActiveVideo) setActiveVideo(JSON.parse(cachedActiveVideo));
+      if (cachedConfig) setHomeConfig(JSON.parse(cachedConfig));
+      if (cachedSitePage) setSitePage(JSON.parse(cachedSitePage));
+
+      if (cachedConfig || cachedSitePage) {
+        setPageLoading(false);
+      }
+    } catch (e) {
+      console.error('Failed to load homepage cache', e);
+    }
+  }, []);
 
   const credsScrollRef = useRef(null);
 
@@ -198,12 +219,6 @@ export default function GeneralHomePage() {
     const speed = 0.5; // slow moving speed in pixels per frame
 
     const scroll = (timestamp) => {
-      if (window.innerWidth > 576) {
-        lastTime = timestamp;
-        animationFrameId = requestAnimationFrame(scroll);
-        return;
-      }
-
       if (!lastTime) lastTime = timestamp;
       
       if (isMoving) {
@@ -253,6 +268,7 @@ export default function GeneralHomePage() {
           const pageData = await pageRes.json();
           if (pageData.page && pageData.page.is_published) {
             setSitePage(pageData.page);
+            sessionStorage.setItem('homepage_site_page', JSON.stringify(pageData.page));
             setPageLoading(false);
             return;
           }
@@ -263,7 +279,10 @@ export default function GeneralHomePage() {
 
       // Fallback to config-driven homepage
       fetch('/api/home-config').then(r => r.ok ? r.json() : null).then(data => {
-        if (data) setHomeConfig(data);
+        if (data) {
+          setHomeConfig(data);
+          sessionStorage.setItem('homepage_config', JSON.stringify(data));
+        }
       }).catch(() => {});
       setPageLoading(false);
     }
@@ -303,7 +322,15 @@ export default function GeneralHomePage() {
           const rest = data.filter(v => !pinned.includes(v.id));
           const ordered = [...pinnedList, ...rest];
           setYoutubeVideos(ordered);
-          if (ordered.length > 0) setActiveVideo(ordered[0]);
+          sessionStorage.setItem('homepage_youtube_videos', JSON.stringify(ordered));
+          if (ordered.length > 0) {
+            setActiveVideo(prev => {
+              if (prev && ordered.some(v => v.id === prev.id)) return prev;
+              const defaultAct = ordered[0];
+              sessionStorage.setItem('homepage_active_video', JSON.stringify(defaultAct));
+              return defaultAct;
+            });
+          }
         }
       } catch (err) {
         console.error('Failed to load YouTube videos', err);
@@ -561,6 +588,24 @@ export default function GeneralHomePage() {
 
 
 
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
+
+  useEffect(() => {
+    const fetchEnrollments = async () => {
+      try {
+        const res = await fetch('/api/student/enrollments');
+        if (res.ok) {
+          const data = await res.json();
+          const enrolledIds = new Set((data.enrollments || []).map(e => e.course_id));
+          setEnrolledCourseIds(enrolledIds);
+        }
+      } catch (err) {
+        console.error('Failed to load student enrollments', err);
+      }
+    };
+    fetchEnrollments();
+  }, []);
+
   if (pageLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f3eb' }}>
@@ -571,12 +616,13 @@ export default function GeneralHomePage() {
   }
 
   if (sitePage) {
+    const isEnrolled = enrolledCourseIds.has(sitePage.id);
     return (
       <div style={styles.page}>
         <Navbar />
         <SpecialCourseLanding
           course={sitePage}
-          isEnrolled={false}
+          isEnrolled={isEnrolled}
           onEnroll={() => {}}
           slug="/"
         />
@@ -981,9 +1027,12 @@ const styles = {
     gap: '6px',
   },
   booksGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
+    display: 'flex',
     gap: '24px',
+    overflowX: 'auto',
+    paddingBottom: '16px',
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none',
   },
   bookCard: {
     background: '#FFF',
@@ -992,6 +1041,8 @@ const styles = {
     boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
     display: 'flex',
     flexDirection: 'column',
+    flex: '0 0 280px',
+    width: '280px',
   },
   bookImgWrapper: {
     position: 'relative',

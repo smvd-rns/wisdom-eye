@@ -66,3 +66,38 @@ export async function POST(req) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+// DELETE /api/admin/categories — Delete a custom category
+export async function DELETE(req) {
+  try {
+    const session = await getSession();
+    if (!session || !['superadmin', 'admin'].includes(session.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(req);
+    const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
+
+    const { searchParams } = new URL(req.url);
+    const name = searchParams.get('name');
+
+    if (!name) {
+      return NextResponse.json({ error: 'Category name is required.' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('course_categories')
+      .delete()
+      .eq('name', name.trim())
+      .eq('organization_id', targetOrgId);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

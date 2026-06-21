@@ -92,6 +92,7 @@ export default function CheckoutModal({
           basePrice: basePrice,
           courseTitle: courseTitle,
           courseSlug: courseSlug,
+          courseUrl: courseUrl,
           addressDetails: {
             address: formData.address,
             city: formData.city,

@@ -20,6 +20,7 @@ import {
   CheckCircle2 
 } from 'lucide-react';
 import { formatImageUrl } from '@/lib/utils';
+import Navbar from '@/components/Navbar';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -27,12 +28,31 @@ export default function DashboardPage() {
   const [enrollments, setEnrollments] = useState([]);
   const [recommendedCourses, setRecommendedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tenantName, setTenantName] = useState(() => {
-    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
-      return window.__TENANT_DATA__.name || 'Wisdom Eye';
+  const [tenantName, setTenantName] = useState('Wisdom Eye');
+
+  useEffect(() => {
+    try {
+      const cachedUser = sessionStorage.getItem('dashboard_user');
+      const cachedEnrollments = sessionStorage.getItem('dashboard_enrollments');
+      const cachedRecs = sessionStorage.getItem('dashboard_recommended');
+      const cachedTenant = sessionStorage.getItem('dashboard_tenant_name');
+
+      if (cachedUser) setUser(JSON.parse(cachedUser));
+      if (cachedEnrollments) setEnrollments(JSON.parse(cachedEnrollments));
+      if (cachedRecs) setRecommendedCourses(JSON.parse(cachedRecs));
+      if (cachedTenant) {
+        setTenantName(cachedTenant);
+      } else if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+        setTenantName(window.__TENANT_DATA__.name || 'Wisdom Eye');
+      }
+
+      if (cachedUser && cachedEnrollments) {
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error('Failed to load dashboard cache', e);
     }
-    return 'Wisdom Eye';
-  });
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -41,7 +61,9 @@ export default function DashboardPage() {
         const tenantRes = await fetch('/api/tenant/metadata');
         if (tenantRes.ok) {
           const tenantData = await tenantRes.json();
-          setTenantName(tenantData.name || '');
+          const tName = tenantData.name || '';
+          setTenantName(tName);
+          sessionStorage.setItem('dashboard_tenant_name', tName);
         }
 
         // Get current user
@@ -52,6 +74,7 @@ export default function DashboardPage() {
         }
         const meData = await meRes.json();
         setUser(meData.user);
+        sessionStorage.setItem('dashboard_user', JSON.stringify(meData.user));
 
         // Get enrollments + progress
         const enrRes = await fetch('/api/student/enrollments');
@@ -59,6 +82,7 @@ export default function DashboardPage() {
           const enrData = await enrRes.json();
           const activeEnrollments = enrData.enrollments || [];
           setEnrollments(activeEnrollments);
+          sessionStorage.setItem('dashboard_enrollments', JSON.stringify(activeEnrollments));
 
           // Get all courses to filter for recommendations
           const coursesRes = await fetch('/api/courses');
@@ -69,6 +93,7 @@ export default function DashboardPage() {
               c => !enrolledIds.has(c.id)
             );
             setRecommendedCourses(recommendations);
+            sessionStorage.setItem('dashboard_recommended', JSON.stringify(recommendations));
           }
         }
       } catch (e) {
@@ -82,6 +107,12 @@ export default function DashboardPage() {
   }, [router]);
 
   const handleLogout = async () => {
+    try {
+      sessionStorage.removeItem('dashboard_user');
+      sessionStorage.removeItem('dashboard_enrollments');
+      sessionStorage.removeItem('dashboard_recommended');
+      sessionStorage.removeItem('dashboard_tenant_name');
+    } catch (e) {}
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
   };
@@ -107,6 +138,7 @@ export default function DashboardPage() {
 
   return (
     <div style={styles.page}>
+      <Navbar onlyBottom={true} />
       {/* Sidebar */}
       <aside style={styles.sidebar}>
         <Link href="/" style={styles.sidebarLogo}>
@@ -158,7 +190,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Highlight Section: Streak + Key Metrics */}
-        <div style={styles.topSectionGrid}>
+        <div className="top-section-grid" style={styles.topSectionGrid}>
           {/* Streak Widget */}
           <div style={{
             ...styles.streakCard,
@@ -211,7 +243,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Learning Stats Grid */}
-          <div style={styles.statsRow}>
+          <div className="stats-row" style={styles.statsRow}>
             {[
               { label: 'Active Courses', value: inProgress, icon: <Play size={20} />, color: '#FF9F1C', desc: 'Currently studying' },
               { label: 'Completed', value: completedCourses, icon: <Award size={20} />, color: '#22C55E', desc: 'Fully finished' },
@@ -428,9 +460,13 @@ export default function DashboardPage() {
           }
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
           aside { display: none !important; }
-          main { margin-left: 0 !important; padding: 20px !important; }
+          main { margin-left: 0 !important; padding: 24px 24px 100px !important; }
+        }
+
+        @media (max-width: 600px) {
+          main { padding: 16px 16px 100px !important; }
         }
       `}</style>
     </div>
@@ -609,7 +645,7 @@ const styles = {
     padding: '12px 28px', borderRadius: '9999px', fontWeight: '700',
     textDecoration: 'none', fontFamily: 'Outfit, sans-serif',
   },
-  courseGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' },
+  courseGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' },
   courseCard: {
     background: '#fff', borderRadius: '20px', overflow: 'hidden',
     boxShadow: '0 4px 16px rgba(0,0,0,0.02)', border: '1px solid rgba(26,27,75,0.04)',
@@ -625,6 +661,7 @@ const styles = {
     fontWeight: '700', padding: '6px 12px', borderRadius: '9999px',
     display: 'flex', alignItems: 'center', gap: '4px',
     boxShadow: '0 4px 8px rgba(34,197,94,0.3)',
+    zIndex: 10,
   },
   courseCardBody: { padding: '24px' },
   courseCategory: { fontSize: '10px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' },

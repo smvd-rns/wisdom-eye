@@ -180,6 +180,17 @@ export async function POST(req) {
       .update({ status: 'approved', updated_at: new Date().toISOString() })
       .eq('id', requestId);
 
+    // 5. Seed default navigation links (Only Home & Courses to keep it blank/customizable)
+    try {
+      const defaultLinks = [
+        { label: 'Home', url: '/', order_index: 1, is_visible: true, organization_id: newOrg.id },
+        { label: 'Courses', url: '/courses', order_index: 2, is_visible: true, organization_id: newOrg.id },
+      ];
+      await supabase.from('site_navigation').insert(defaultLinks);
+    } catch (seedErr) {
+      console.error('Failed to seed default navigation links:', seedErr);
+    }
+
     // Send email containing login details automatically to the new admin
     let emailSent = false;
     try {

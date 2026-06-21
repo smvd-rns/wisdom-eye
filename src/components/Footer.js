@@ -5,17 +5,12 @@ import Link from 'next/link';
 import { Mail, Phone, MapPin, Facebook, Youtube, Instagram, Linkedin } from 'lucide-react';
 
 export default function Footer() {
-  const [tenant, setTenant] = useState(() => {
-    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
-      return window.__TENANT_DATA__;
-    }
-    return {
-      name: 'Wisdom Eye',
-      description: 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
-      address: 'Govardhan Ecovillage, Wada, Maharashtra',
-      email: 'manager@voicepune.com',
-      phone: '+91 8605036000'
-    };
+  const [tenant, setTenant] = useState({
+    name: '',
+    description: '',
+    address: '',
+    email: '',
+    phone: ''
   });
 
   const [navLinks, setNavLinks] = useState([]);
@@ -61,10 +56,10 @@ export default function Footer() {
             <h3 style={styles.footerLogo}>{tenant.name}</h3>
             <p style={styles.footerDesc}>{tenant.description}</p>
             <div style={styles.socialRow}>
-              <a href="https://facebook.com" style={styles.socialLinkIcon}><Facebook size={16} /></a>
-              <a href="https://youtube.com" style={styles.socialLinkIcon}><Youtube size={16} /></a>
-              <a href="https://instagram.com" style={styles.socialLinkIcon}><Instagram size={16} /></a>
-              <a href="https://linkedin.com" style={styles.socialLinkIcon}><Linkedin size={16} /></a>
+              {tenant.facebook_url && <a href={tenant.facebook_url} target="_blank" rel="noopener noreferrer" style={styles.socialLinkIcon}><Facebook size={16} /></a>}
+              {tenant.youtube_url && <a href={tenant.youtube_url} target="_blank" rel="noopener noreferrer" style={styles.socialLinkIcon}><Youtube size={16} /></a>}
+              {tenant.instagram_url && <a href={tenant.instagram_url} target="_blank" rel="noopener noreferrer" style={styles.socialLinkIcon}><Instagram size={16} /></a>}
+              {tenant.linkedin_url && <a href={tenant.linkedin_url} target="_blank" rel="noopener noreferrer" style={styles.socialLinkIcon}><Linkedin size={16} /></a>}
             </div>
           </div>
           

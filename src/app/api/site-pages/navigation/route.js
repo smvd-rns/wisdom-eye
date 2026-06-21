@@ -21,10 +21,6 @@ export async function GET(req) {
         links: [
           { label: 'Home', url: '/', is_visible: true, order_index: 1 },
           { label: 'Courses', url: '/courses', is_visible: true, order_index: 2 },
-          { label: 'Books', url: '/books', is_visible: true, order_index: 3 },
-          { label: 'Media', url: '/media', is_visible: true, order_index: 4 },
-          { label: 'Daily Reading', url: '/daily-reading', is_visible: true, order_index: 5 },
-          { label: 'About', url: '/about', is_visible: true, order_index: 6 },
         ]
       });
     }

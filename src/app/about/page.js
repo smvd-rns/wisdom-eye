@@ -10,10 +10,10 @@ export default function AboutPage() {
     <div style={styles.page}>
       <Navbar />
 
-      <div style={styles.hero}>
+      <div className="bio-hero-responsive" style={styles.hero}>
         <div style={styles.heroContent}>
           <span style={styles.heroTag}>Biography</span>
-          <h1 style={styles.heroTitle}>Radheshyam Das</h1>
+          <h1 className="bio-hero-title" style={styles.heroTitle}>Radheshyam Das</h1>
           <p style={styles.heroSubtitle}>IIT Mumbai Topper • Celibate Monk • Global Duty Officer</p>
         </div>
       </div>
@@ -25,9 +25,9 @@ export default function AboutPage() {
           </Link>
         </div>
 
-        <div style={styles.bioGrid}>
+        <div className="bio-grid-responsive" style={styles.bioGrid}>
           <div style={styles.bioTextContent}>
-            <section style={styles.section}>
+            <section className="bio-section-responsive" style={styles.section}>
               <h2 style={styles.sectionHeader}>Early Life and Education</h2>
               <div style={styles.divider} />
               <p style={styles.text}>
@@ -41,7 +41,7 @@ export default function AboutPage() {
               </p>
             </section>
 
-            <section style={styles.section}>
+            <section className="bio-section-responsive" style={styles.section}>
               <h2 style={styles.sectionHeader}>Dedication to ISKCON & Youth Outreach</h2>
               <div style={styles.divider} />
               <p style={styles.text}>
@@ -52,7 +52,7 @@ export default function AboutPage() {
               </p>
             </section>
 
-            <section style={styles.section}>
+            <section className="bio-section-responsive" style={styles.section}>
               <h2 style={styles.sectionHeader}>Temple Development & NVCC</h2>
               <div style={styles.divider} />
               <p style={styles.text}>
@@ -60,7 +60,7 @@ export default function AboutPage() {
               </p>
             </section>
 
-            <section style={styles.section}>
+            <section className="bio-section-responsive" style={styles.section}>
               <h2 style={styles.sectionHeader}>Global Roles & Training Programs</h2>
               <div style={styles.divider} />
               <p style={styles.text}>
@@ -72,8 +72,8 @@ export default function AboutPage() {
             </section>
           </div>
 
-          <div style={styles.bioVisualContent}>
-            <div style={styles.cardDecoration} />
+          <div className="bio-visual-responsive" style={styles.bioVisualContent}>
+            <div className="bio-card-dec-responsive" style={styles.cardDecoration} />
             <img 
               src="https://gdo.radheshyamdas.com/favicon.png" 
               alt="Radheshyam Das Portrait" 
@@ -107,6 +107,39 @@ export default function AboutPage() {
       </div>
 
       <Footer />
+
+      <style>{`
+        @media (max-width: 900px) {
+          .bio-grid-responsive {
+            grid-template-columns: 1fr !important;
+            gap: 32px !important;
+          }
+          .bio-visual-responsive {
+            position: relative !important;
+            top: 0 !important;
+            margin-bottom: 24px !important;
+            order: -1 !important;
+            width: 100% !important;
+            max-width: 320px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+          .bio-card-dec-responsive {
+            display: none !important;
+          }
+        }
+        @media (max-width: 600px) {
+          .bio-hero-responsive {
+            padding: 50px 16px 36px !important;
+          }
+          .bio-hero-title {
+            font-size: 26px !important;
+          }
+          .bio-section-responsive {
+            padding: 20px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

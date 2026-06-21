@@ -7,9 +7,7 @@ import { formatImageUrl } from '@/lib/utils';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
-const CATEGORIES = ['All', 'Spirituality', 'Philosophy', 'Values Education', 'Meditation', 'General'];
-
-
+const DEFAULT_CATEGORIES = ['All', 'Spirituality', 'Philosophy', 'Values Education', 'Meditation', 'General'];
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState([]);
@@ -17,6 +15,46 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [categories, setCategories] = useState(['All']);
+
+  useEffect(() => {
+    try {
+      const cachedCourses = sessionStorage.getItem('catalog_courses');
+      const cachedPackages = sessionStorage.getItem('catalog_packages');
+      if (cachedCourses) setCourses(JSON.parse(cachedCourses));
+      if (cachedPackages) setPackages(JSON.parse(cachedPackages));
+      if (cachedCourses) {
+        setLoading(false);
+      }
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem('courses_page_categories');
+      if (cached) {
+        setCategories(JSON.parse(cached));
+      }
+    } catch (e) {}
+
+    const loadCategories = async () => {
+      try {
+        const res = await fetch('/api/admin/categories');
+        if (res.ok) {
+          const data = await res.json();
+          let finalCategories = DEFAULT_CATEGORIES;
+          if (data.categories && data.categories.length > 0) {
+            finalCategories = ['All', ...data.categories];
+          }
+          setCategories(finalCategories);
+          sessionStorage.setItem('courses_page_categories', JSON.stringify(finalCategories));
+        }
+      } catch (err) {
+        console.error('Failed to load categories', err);
+      }
+    };
+    loadCategories();
+  }, []);
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -24,7 +62,9 @@ export default function CoursesPage() {
         const res = await fetch('/api/packages', { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
-          setPackages(data.packages || []);
+          const pkgs = data.packages || [];
+          setPackages(pkgs);
+          sessionStorage.setItem('catalog_packages', JSON.stringify(pkgs));
         }
       } catch (err) {
         console.error('Fetch packages error:', err);
@@ -35,7 +75,10 @@ export default function CoursesPage() {
 
   useEffect(() => {
     const fetchCourses = async () => {
-      setLoading(true);
+      const hasCached = sessionStorage.getItem('catalog_courses');
+      if (!hasCached) {
+        setLoading(true);
+      }
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (category !== 'All') params.set('category', category);
@@ -43,10 +86,32 @@ export default function CoursesPage() {
       const data = await res.json();
       setCourses(data.courses || []);
       setLoading(false);
+
+      if (category === 'All' && !search) {
+        sessionStorage.setItem('catalog_courses', JSON.stringify(data.courses || []));
+      }
     };
     const timer = setTimeout(fetchCourses, 300);
     return () => clearTimeout(timer);
   }, [search, category]);
+
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
+
+  useEffect(() => {
+    const fetchEnrollments = async () => {
+      try {
+        const res = await fetch('/api/student/enrollments');
+        if (res.ok) {
+          const data = await res.json();
+          const enrolledIds = new Set((data.enrollments || []).map(e => e.course_id));
+          setEnrolledCourseIds(enrolledIds);
+        }
+      } catch (err) {
+        console.error('Failed to load student enrollments', err);
+      }
+    };
+    fetchEnrollments();
+  }, []);
 
   const formatDuration = (secs) => {
     if (!secs) return '';
@@ -63,82 +128,89 @@ export default function CoursesPage() {
     return acc;
   }, {});
 
-  const renderCourseCard = (course) => (
-    <Link key={course.id} href={`/courses/${course.slug}`} style={styles.card} className="course-card-item">
-      {/* Thumbnail */}
-      <div style={{ ...styles.thumb, overflow: 'hidden' }}>
-        {course.thumbnail_url ? (
-          <>
-            {/* Ambient background blur */}
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundImage: `url(${formatImageUrl(course.thumbnail_url)})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              filter: 'blur(10px) brightness(0.5)',
-              transform: 'scale(1.15)',
-              opacity: 0.8,
-            }} />
-            {/* Crisp contained foreground image */}
-            <img
-              src={formatImageUrl(course.thumbnail_url)}
-              alt={course.title}
-              referrerPolicy="no-referrer"
-              style={{
-                position: 'relative',
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                zIndex: 1
-              }}
-            />
-          </>
-        ) : (
-          <div style={styles.thumbPlaceholder}>
-            <BookOpen size={36} color="#9CA3AF" />
-          </div>
-        )}
-        <div style={{ ...styles.levelBadge, zIndex: 2 }}>{course.level}</div>
-      </div>
+  const renderCourseCard = (course) => {
+    const isEnrolled = enrolledCourseIds.has(course.id);
+    const cardHref = isEnrolled ? `/courses/${course.slug}/learn` : `/courses/${course.slug}`;
 
-      {/* Body */}
-      <div style={styles.cardBody}>
-        <span style={styles.cardCategory}>{course.category}</span>
-        <h3 style={styles.cardTitle}>{course.title}</h3>
-        {course.short_description && (
-          <p style={styles.cardDesc}>{course.short_description}</p>
-        )}
-
-        <div style={styles.cardMeta}>
-          {course.total_lessons > 0 && (
-            <span style={styles.metaItem}><BookOpen size={13} /> {course.total_lessons} lessons</span>
+    return (
+      <Link key={course.id} href={cardHref} style={styles.card} className="course-card-item">
+        {/* Thumbnail */}
+        <div style={{ ...styles.thumb, overflow: 'hidden' }}>
+          {course.thumbnail_url ? (
+            <>
+              {/* Ambient background blur */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundImage: `url(${formatImageUrl(course.thumbnail_url)})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(10px) brightness(0.5)',
+                transform: 'scale(1.15)',
+                opacity: 0.8,
+              }} />
+              {/* Crisp contained foreground image */}
+              <img
+                src={formatImageUrl(course.thumbnail_url)}
+                alt={course.title}
+                referrerPolicy="no-referrer"
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  zIndex: 1
+                }}
+              />
+            </>
+          ) : (
+            <div style={styles.thumbPlaceholder}>
+              <BookOpen size={36} color="#9CA3AF" />
+            </div>
           )}
-          {course.total_duration_seconds > 0 && (
-            <span style={styles.metaItem}><Clock size={13} /> {formatDuration(course.total_duration_seconds)}</span>
-          )}
-          {course.has_certificate && (
-            <span style={styles.metaItem}><Award size={13} /> Certificate</span>
-          )}
+          <div style={{ ...styles.levelBadge, zIndex: 2 }}>{course.level}</div>
         </div>
 
-        <div style={styles.cardFooter}>
-          <div style={styles.priceBlock}>
-            <span style={styles.price}>
-              {course.price === 0 ? 'Free' : `₹${course.price.toLocaleString('en-IN')}`}
-            </span>
-            {course.original_price && course.original_price > course.price && (
-              <span style={styles.originalPrice}>₹{course.original_price.toLocaleString('en-IN')}</span>
+        {/* Body */}
+        <div style={styles.cardBody}>
+          <span style={styles.cardCategory}>{course.category}</span>
+          <h3 style={styles.cardTitle}>{course.title}</h3>
+          {course.short_description && (
+            <p style={styles.cardDesc}>{course.short_description}</p>
+          )}
+
+          <div style={styles.cardMeta}>
+            {course.total_lessons > 0 && (
+              <span style={styles.metaItem}><BookOpen size={13} /> {course.total_lessons} lessons</span>
+            )}
+            {course.total_duration_seconds > 0 && (
+              <span style={styles.metaItem}><Clock size={13} /> {formatDuration(course.total_duration_seconds)}</span>
+            )}
+            {course.has_certificate && (
+              <span style={styles.metaItem}><Award size={13} /> Certificate</span>
             )}
           </div>
-          <span style={styles.enrollBtn}>Enroll <ChevronRight size={14} /></span>
+
+          <div style={styles.cardFooter}>
+            <div style={styles.priceBlock}>
+              <span style={styles.price}>
+                {course.price === 0 ? 'Free' : `₹${course.price.toLocaleString('en-IN')}`}
+              </span>
+              {course.original_price && course.original_price > course.price && (
+                <span style={styles.originalPrice}>₹{course.original_price.toLocaleString('en-IN')}</span>
+              )}
+            </div>
+            <span style={styles.enrollBtn}>
+              {isEnrolled ? 'Continue' : 'Enroll'} <ChevronRight size={14} />
+            </span>
+          </div>
         </div>
-      </div>
-    </Link>
-  );
+      </Link>
+    );
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f3eb', display: 'flex', flexDirection: 'column' }}>
@@ -169,7 +241,7 @@ export default function CoursesPage() {
         <div style={styles.filters} className="filter-chips-container">
           <div style={styles.filterGroup} className="filter-chips-group">
             <Filter size={14} style={{ color: '#6B7280', flexShrink: 0 }} />
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button key={cat} onClick={() => setCategory(cat)}
                 className={`filter-chip ${category === cat ? 'active' : ''}`}
                 style={{ ...styles.chip, ...(category === cat ? styles.chipActive : {}) }}>
@@ -277,7 +349,7 @@ export default function CoursesPage() {
                     </span>
                   </div>
 
-                  <div style={styles.grid}>
+                  <div style={styles.grid} className="category-section-grid">
                     {groupedCourses[catName].map(renderCourseCard)}
                   </div>
                 </div>
@@ -286,7 +358,7 @@ export default function CoursesPage() {
               // Single filtered grid
               <>
                 <p style={styles.resultCount}>{courses.length} course{courses.length !== 1 ? 's' : ''} found</p>
-                <div style={styles.grid}>
+                <div style={styles.grid} className="category-section-grid">
                   {courses.map(renderCourseCard)}
                 </div>
               </>
@@ -298,6 +370,26 @@ export default function CoursesPage() {
       <Footer />
 
       <style>{`
+        /* Global horizontal scrolling category grids (applied on both mobile & desktop) */
+        .category-section-grid {
+          display: flex !important;
+          flex-direction: row !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+          scrollbar-width: none !important;
+          gap: 20px !important;
+          padding: 8px 4px 20px 4px !important;
+        }
+        .category-section-grid::-webkit-scrollbar {
+          display: none !important;
+        }
+        .category-section-grid a.course-card-item {
+          width: 300px !important;
+          flex-shrink: 0 !important;
+          display: flex !important;
+        }
+
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Responsive styling */

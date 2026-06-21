@@ -35,7 +35,11 @@ export async function GET(req) {
       description: org.description || 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
       address: org.address || 'Govardhan Ecovillage, Wada, Maharashtra',
       email: org.email || 'manager@voicepune.com',
-      phone: org.phone || '+91 8605036000'
+      phone: org.phone || '+91 8605036000',
+      facebook_url: org.facebook_url || 'https://facebook.com',
+      youtube_url: org.youtube_url || 'https://youtube.com',
+      instagram_url: org.instagram_url || 'https://instagram.com',
+      linkedin_url: org.linkedin_url || 'https://linkedin.com'
     });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -54,7 +58,7 @@ export async function POST(req) {
     const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
 
     const body = await req.json();
-    const { name, slogan, description, address, email, phone } = body;
+    const { name, slogan, description, address, email, phone, facebook_url, youtube_url, instagram_url, linkedin_url } = body;
 
     // Build update payload
     const updatePayload = {};
@@ -64,6 +68,10 @@ export async function POST(req) {
     if (address !== undefined) updatePayload.address = address;
     if (email !== undefined) updatePayload.email = email;
     if (phone !== undefined) updatePayload.phone = phone;
+    if (facebook_url !== undefined) updatePayload.facebook_url = facebook_url;
+    if (youtube_url !== undefined) updatePayload.youtube_url = youtube_url;
+    if (instagram_url !== undefined) updatePayload.instagram_url = instagram_url;
+    if (linkedin_url !== undefined) updatePayload.linkedin_url = linkedin_url;
 
     const { data, error } = await supabase
       .from('organizations')

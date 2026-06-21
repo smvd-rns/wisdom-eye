@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { BookOpen, Clock, Award, ChevronDown, ChevronUp, Play, FileText, Lock, CheckCircle, Loader2, Star, Users } from 'lucide-react';
 import { formatImageUrl } from '@/lib/utils';
 import SpecialCourseLanding from '@/components/SpecialCourseLanding';
+import Navbar from '@/components/Navbar';
 
 export default function CourseLandingPage() {
   const { slug } = useParams();
@@ -20,6 +21,24 @@ export default function CourseLandingPage() {
   const [couponResult, setCouponResult] = useState(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [previewLesson, setPreviewLesson] = useState(null);
+
+  useEffect(() => {
+    try {
+      const cachedCourse = sessionStorage.getItem(`landing_course_${slug}`);
+      const cachedUser = sessionStorage.getItem(`landing_user_${slug}`);
+      const cachedEnrolled = sessionStorage.getItem(`landing_enrolled_${slug}`);
+
+      if (cachedCourse) setCourse(JSON.parse(cachedCourse));
+      if (cachedUser) setUser(JSON.parse(cachedUser));
+      if (cachedEnrolled) setIsEnrolled(cachedEnrolled === 'true');
+
+      if (cachedCourse) {
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error('Failed to load landing cache', e);
+    }
+  }, [slug]);
 
   const getYouTubeId = (url) => {
     if (!url) return null;
@@ -55,17 +74,21 @@ export default function CourseLandingPage() {
         if (!res.ok) { router.push('/courses'); return; }
         const data = await res.json();
         setCourse(data.course);
+        sessionStorage.setItem(`landing_course_${slug}`, JSON.stringify(data.course));
 
         // Check if logged in + enrolled
         const meRes = await fetch('/api/auth/me');
         if (meRes.ok) {
           const meData = await meRes.json();
           setUser(meData.user);
+          sessionStorage.setItem(`landing_user_${slug}`, JSON.stringify(meData.user));
+          
           // Check enrollment
           const enrRes = await fetch(`/api/courses/${data.course.id}/enrollment-check`);
           if (enrRes.ok) {
             const enrData = await enrRes.json();
             setIsEnrolled(enrData.enrolled);
+            sessionStorage.setItem(`landing_enrolled_${slug}`, enrData.enrolled ? 'true' : 'false');
           }
         }
       } catch (e) {
@@ -196,20 +219,23 @@ export default function CourseLandingPage() {
   // ── Special Course: render custom page builder layout ──────────────
   if (course.is_special && course.custom_layout?.blocks?.length > 0) {
     return (
-      <SpecialCourseLanding
-        course={course}
-        user={user}
-        isEnrolled={isEnrolled}
-        enrolling={enrolling}
-        onEnroll={handleEnroll}
-        coupon={coupon}
-        setCoupon={setCoupon}
-        couponResult={couponResult}
-        setCouponResult={setCouponResult}
-        applyingCoupon={applyingCoupon}
-        onApplyCoupon={applyCoupon}
-        slug={slug}
-      />
+      <>
+        <Navbar />
+        <SpecialCourseLanding
+          course={course}
+          user={user}
+          isEnrolled={isEnrolled}
+          enrolling={enrolling}
+          onEnroll={handleEnroll}
+          coupon={coupon}
+          setCoupon={setCoupon}
+          couponResult={couponResult}
+          setCouponResult={setCouponResult}
+          applyingCoupon={applyingCoupon}
+          onApplyCoupon={applyCoupon}
+          slug={slug}
+        />
+      </>
     );
   }
 
@@ -219,9 +245,10 @@ export default function CourseLandingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F0F2F5' }}>
+      <Navbar />
       {/* Hero */}
       <div style={styles.hero}>
-        <div style={styles.heroInner}>
+        <div className="hero-inner" style={styles.heroInner}>
           <div style={styles.heroLeft}>
             <Link href="/courses" style={styles.backLink}>← All Courses</Link>
             <span style={styles.category}>{course.category}</span>
@@ -248,7 +275,7 @@ export default function CourseLandingPage() {
           </div>
 
           {/* Enroll card */}
-          <div style={styles.enrollCard}>
+          <div className="enroll-card" style={styles.enrollCard}>
             {course.thumbnail_url && (
               <div style={{ position: 'relative', width: '100%', height: '180px', overflow: 'hidden' }}>
                 {/* Ambient background blur */}
@@ -463,7 +490,11 @@ export default function CourseLandingPage() {
                             className={isClickable ? 'free-lesson-row' : ''}
                           >
                             <div style={styles.lessonLeft}>
-                              {lesson.type === 'youtube' ? <Play size={14} color="#6B7280" /> : <FileText size={14} color="#6B7280" />}
+                              {lesson.type === 'youtube' ? (
+                                <Play size={14} color="#6B7280" style={{ marginTop: '3px', flexShrink: 0 }} />
+                              ) : (
+                                <FileText size={14} color="#6B7280" style={{ marginTop: '3px', flexShrink: 0 }} />
+                              )}
                               <span style={styles.lessonTitle}>{lesson.title}</span>
                               {lesson.is_free_preview && (
                                 <button 
@@ -478,7 +509,9 @@ export default function CourseLandingPage() {
                                 </button>
                               )}
                             </div>
-                            {!lesson.is_free_preview && !isEnrolled && <Lock size={12} color="#D1D5DB" />}
+                            {!lesson.is_free_preview && !isEnrolled && (
+                              <Lock size={12} color="#D1D5DB" style={{ marginTop: '4px', flexShrink: 0 }} />
+                            )}
                             {lesson.duration_seconds > 0 && (
                               <span style={styles.lessonDuration}>{formatDuration(lesson.duration_seconds)}</span>
                             )}
@@ -554,6 +587,24 @@ export default function CourseLandingPage() {
         }
 
         /* Grid and Flex Layout responsiveness */
+        .hero-inner {
+          display: grid;
+          grid-template-columns: 1fr 340px;
+          gap: 40px;
+          align-items: start;
+        }
+        @media (max-width: 900px) {
+          .hero-inner {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+          .enroll-card {
+            width: 100% !important;
+            max-width: 450px !important;
+            margin: 0 auto !important;
+          }
+        }
+
         .highlights-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -626,9 +677,20 @@ const styles = {
   moduleNum: { fontSize: '11px', fontWeight: '700', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '0.5px' },
   moduleName: { fontSize: '14px', fontWeight: '600', color: '#1A1B4B' },
   lessonList: { borderTop: '1px solid #E5E7EB' },
-  lessonRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 18px', borderBottom: '1px solid #F3F4F6' },
-  lessonLeft: { flex: 1, display: 'flex', alignItems: 'center', gap: '10px' },
-  lessonTitle: { fontSize: '13px', color: '#374151', flex: 1 },
+  lessonRow: { display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 18px', borderBottom: '1px solid #F3F4F6' },
+  lessonLeft: { flex: 1, display: 'flex', alignItems: 'flex-start', gap: '10px' },
+  lessonTitle: { fontSize: '13px', color: '#374151', flex: 1, lineHeight: '1.5' },
+  lessonDuration: {
+    fontSize: '11px',
+    color: '#6B7280',
+    background: '#F3F4F6',
+    padding: '3px 8px',
+    borderRadius: '4px',
+    whiteSpace: 'nowrap',
+    marginTop: '2px',
+    display: 'inline-block',
+    fontWeight: '500',
+  },
   freeBadgeBtn: {
     background: '#DCFCE7',
     color: '#16A34A',

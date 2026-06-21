@@ -25,21 +25,21 @@ const getTransporter = () => {
 /**
  * Sends a beautiful HTML enrollment email to the learner.
  */
-export async function sendEnrollmentEmail({ email, name, deliveryType, amount, websiteUrl, courseName = 'Wisdom Eye', courseUrl = 'https://coursesradheshyamdas.ongraphy.com/courses/Wisdom-Eye-689c419d8fb8275d3690dac1' }) {
+export async function sendEnrollmentEmail({ email, name, deliveryType, amount, websiteUrl, courseName = 'Wisdom Eye', courseUrl = 'https://coursesradheshyamdas.ongraphy.com/courses/Wisdom-Eye-689c419d8fb8275d3690dac1', orgName = 'Wisdom Eye VOICE', orgEmail = 'manager@voicepune.com' }) {
   const transporter = getTransporter();
   if (!transporter) {
     console.log('SMTP configuration missing. Skipping custom HTML enrollment email.');
     return false;
   }
 
-  const fromEmail = process.env.SMTP_FROM_EMAIL || 'manager@voicepune.com';
-  const fromName = process.env.SMTP_FROM_NAME || 'Wisdom Eye VOICE';
+  const fromEmail = process.env.SMTP_FROM_EMAIL || orgEmail;
+  const fromName = orgName;
   const trackingUrl = `${websiteUrl || 'http://localhost:3000'}/track`;
 
   const mailOptions = {
     from: `"${fromName}" <${fromEmail}>`,
     to: email,
-    subject: `📚 Enrolled in ${courseName} Course - VOICE Pune`,
+    subject: `📚 Enrolled in ${courseName} Course - ${orgName}`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -177,7 +177,7 @@ export async function sendEnrollmentEmail({ email, name, deliveryType, amount, w
               </div>
               <div class="receipt-row">
                 <span>Distribution Mode:</span>
-                <strong>${deliveryType === 'delivery' ? 'Home Delivery Parcel' : 'Self Pick Up (NVCC Temple)'}</strong>
+                <strong>${deliveryType === 'delivery' ? 'Home Delivery Parcel' : 'Self Pick Up'}</strong>
               </div>
               <div class="receipt-row">
                 <span>Amount Paid:</span>
@@ -188,7 +188,7 @@ export async function sendEnrollmentEmail({ email, name, deliveryType, amount, w
             <div class="next-steps">
               <h3>🚀 Access Your Learning Portal</h3>
               <p style="margin: 0;">
-                We have registered your account on Graphy. Click the button below to sign in and start watching the video lessons and taking the MCQ tests.
+                We have registered your account. Click the button below to sign in and start watching the video lessons and taking the MCQ tests.
               </p>
             </div>
 
@@ -200,7 +200,7 @@ export async function sendEnrollmentEmail({ email, name, deliveryType, amount, w
               deliveryType === 'delivery' 
               ? `
               <div style="font-size: 14px; color: #4A5568; margin-top: 20px; border-top: 1px dashed #E2E8F0; padding-top: 20px;">
-                <strong>🚚 Parcel Dispatch:</strong> We will ship your copy of the Bhagavad Gita and Wisdom Eye book to your shipping address within 2-3 business days.
+                <strong>🚚 Parcel Dispatch:</strong> We will ship your course materials to your shipping address within 2-3 business days.
                 <br><br>
                 You can track your dispatch parcel and find your tracking ID at any time here:
                 <div style="margin-top: 10px;">
@@ -210,15 +210,15 @@ export async function sendEnrollmentEmail({ email, name, deliveryType, amount, w
               `
               : `
               <div style="font-size: 14px; color: #4A5568; margin-top: 20px; border-top: 1px dashed #E2E8F0; padding-top: 20px;">
-                <strong>🏠 Self Pick Up:</strong> Please visit the **VOICE Office** at ISKCON Pune (NVCC) to collect your physical book materials. Show this email at the counter to verify your collection.
+                <strong>🏠 Self Pick Up:</strong> Please visit the **VOICE Office** to collect your physical book materials. Show this email at the counter to verify your collection.
               </div>
               `
             }
           </div>
 
           <div class="email-footer">
-            <p>Need support? Write to us at <a href="mailto:manager@voicepune.com">manager@voicepune.com</a> or call +91 8605036000.</p>
-            <p>&copy; ${new Date().getFullYear()} Wisdom Eye / VOICE Publication, ISKCON Pune. All rights reserved.</p>
+            <p>Need support? Write to us at <a href="mailto:${orgEmail}">${orgEmail}</a>.</p>
+            <p>&copy; ${new Date().getFullYear()} ${orgName}. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -546,26 +546,26 @@ export async function sendCompletionNotificationEmail({ email, name, courseTitle
 /**
  * Sends a password reset email with a token link.
  */
-export async function sendForgotPasswordEmail({ email, name, resetLink }) {
+export async function sendForgotPasswordEmail({ email, name, resetLink, orgName = 'LMS Portal', orgEmail = 'manager@voicepune.com' }) {
   const transporter = getTransporter();
   if (!transporter) {
     console.log('SMTP config missing. Skipping forgot password email.');
     return false;
   }
 
-  const fromEmail = process.env.SMTP_FROM_EMAIL || 'manager@voicepune.com';
-  const fromName = process.env.SMTP_FROM_NAME || 'Wisdom Eye VOICE';
+  const fromEmail = process.env.SMTP_FROM_EMAIL || orgEmail;
+  const fromName = orgName;
 
   const mailOptions = {
     from: `"${fromName}" <${fromEmail}>`,
     to: email,
-    subject: '🔑 Reset Your Wisdom Eye LMS Password',
+    subject: `🔑 Reset Your ${orgName} Password`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 10px; padding: 24px; background: #fff;">
         <h2 style="color: #1A1B4B; margin-top: 0;">Reset Your Password</h2>
         <p style="font-size: 15px; color: #4B5563;">Hello ${name},</p>
         <p style="font-size: 15px; color: #4B5563; line-height: 1.6;">
-          We received a request to reset your password for your Wisdom Eye LMS account.
+          We received a request to reset your password for your ${orgName} account.
           Please click the button below to choose a new password. This link is valid for 1 hour.
         </p>
         <div style="text-align: center; margin: 24px 0;">

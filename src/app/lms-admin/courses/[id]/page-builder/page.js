@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback, createContext, useContext } f
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SpecialCourseLanding from '@/components/SpecialCourseLanding';
+import RichTextEditor from '@/components/RichTextEditor';
+import { buildAnchorPosition, getAnchorElement, migrateFloatingBlocks, resolveAnchorBlockId, resolveAnchorPosition } from '@/lib/floatingTextPosition';
 import {
   ArrowLeft, Save, Eye, Loader2, Plus, Trash2, Copy,
   GripVertical, ChevronUp, ChevronDown, Sparkles, Settings,
@@ -13,27 +15,119 @@ import {
   SplitSquareHorizontal, AlignJustify
 } from 'lucide-react';
 
-// ─── Block Definitions (the palette) ────────────────────────────────
+// ─── Block Definitions (the palette, extended to 20+ types) ────────────────────────────────
 const BLOCK_TYPES = [
   { type: 'hero', label: 'Hero Banner', icon: '🎯', desc: 'Eye-catching header section', color: '#7C3AED' },
   { type: 'text', label: 'Text Block', icon: '📝', desc: 'Heading + paragraph content', color: '#0891B2' },
+  { type: 'rich_text', label: 'Rich Text', icon: '✍️', desc: 'WYSIWYG rich text block', color: '#3B82F6' },
+  { type: 'floating_text', label: 'Floating Text', icon: '🍃', desc: 'Text box that floats/overlays anywhere', color: '#EC4899' },
   { type: 'two_column', label: 'Two Column', icon: '◫', desc: 'Side-by-side layout', color: '#059669' },
+  { type: 'three_column', label: 'Three Column', icon: '☰', desc: '3-column grid layout', color: '#10B981' },
+  { type: 'four_column', label: 'Four Column', icon: '⧉', desc: '4-column grid layout', color: '#06B6D4' },
   { type: 'video', label: 'YouTube Video', icon: '🎬', desc: 'Embed a YouTube video', color: '#DC2626' },
   { type: 'image', label: 'Image', icon: '🖼️', desc: 'Full-width image block', color: '#D97706' },
+  { type: 'gallery', label: 'Photo Gallery', icon: '📸', desc: 'Grid of images with caption', color: '#F59E0B' },
   { type: 'features', label: 'Features Grid', icon: '✨', desc: 'Icon + title + text cards', color: '#7C3AED' },
   { type: 'stats', label: 'Stats Bar', icon: '📊', desc: 'Numbers / achievements row', color: '#1A1B4B' },
   { type: 'testimonials', label: 'Testimonials', icon: '💬', desc: 'Student reviews carousel', color: '#0891B2' },
+  { type: 'team_cards', label: 'Team Members', icon: '👥', desc: 'Team/Instructor profiles', color: '#6366F1' },
+  { type: 'timeline', label: 'Timeline', icon: '📅', desc: 'Step-by-step history timeline', color: '#8B5CF6' },
+  { type: 'accordion', label: 'Accordion (FAQ)', icon: '❓', desc: 'Collapsible text questions', color: '#EC4899' },
+  { type: 'countdown', label: 'Countdown Timer', icon: '⏱️', desc: 'Urgency countdown clock', color: '#7C3AED' },
+  { type: 'cta', label: 'CTA Banner', icon: '🚀', desc: 'Call-to-action section', color: '#1A1B4B' },
+  { type: 'divider', label: 'Spacer/Divider', icon: '➖', desc: 'Blank space or line', color: '#9CA3AF' },
+  { type: 'slider', label: 'Image Slider', icon: '🎠', desc: 'Auto-playing image slider/carousel', color: '#8B5CF6' },
+  { type: 'banner', label: 'Alert Banner', icon: '📢', desc: 'Header notification bar', color: '#EF4444' },
+  { type: 'html_embed', label: 'Custom HTML', icon: '💻', desc: 'Raw HTML / Iframe / Map embed', color: '#111827' },
   { type: 'instructor', label: 'Instructor Card', icon: '👨‍🏫', desc: 'About the instructor', color: '#059669' },
   { type: 'curriculum', label: 'Curriculum', icon: '📚', desc: 'Course modules (auto-populated)', color: '#D97706' },
   { type: 'enroll_card', label: 'Enroll Card', icon: '💰', desc: 'Price & enroll button', color: '#16A34A' },
   { type: 'faq', label: 'FAQ Accordion', icon: '❓', desc: 'Frequently asked questions', color: '#DC2626' },
-  { type: 'countdown', label: 'Countdown Timer', icon: '⏱️', desc: 'Urgency countdown clock', color: '#7C3AED' },
-  { type: 'cta', label: 'CTA Banner', icon: '🚀', desc: 'Call-to-action section', color: '#1A1B4B' },
-  { type: 'divider', label: 'Spacer/Divider', icon: '➖', desc: 'Blank space or line', color: '#9CA3AF' },
+  { type: 'system_hero_slides', label: 'System: Hero Slides', icon: '🎠', desc: 'Standard homepage sliding poster hero', color: '#1A1B4B' },
+  { type: 'system_credentials', label: 'System: Credentials', icon: '🎓', desc: 'Standard credentials/monk certificates row', color: '#1A1B4B' },
+  { type: 'system_logos', label: 'System: Corporate Logos', icon: '🏢', desc: 'Standard corporate trainer logos slider', color: '#1A1B4B' },
+  { type: 'system_featured', label: 'System: Featured Cards', icon: '📦', desc: 'Standard featured book, academy & reading cards', color: '#1A1B4B' },
+  { type: 'system_about', label: 'System: Biography', icon: '👤', desc: 'Standard biography section of Radheshyam Das', color: '#1A1B4B' },
+  { type: 'system_books', label: 'System: Shopify Books', icon: '📚', desc: 'Standard featured Shopify books grid', color: '#DA9B5B' },
+  { type: 'system_youtube', label: 'System: YouTube Playlist', icon: '📺', desc: 'Standard recent YouTube lectures playlist', color: '#DC2626' }
 ];
 
-// ─── Default props for each block type ──────────────────────────────
+// ─── Default props for each block type (Extended) ──────────────────────────────
 const DEFAULT_PROPS = {
+  system_hero_slides: {
+    autoplayInterval: 5000,
+    heroSlides: [
+      'https://lh3.googleusercontent.com/d/1Bpk-lc_U4E2Gxo8_9b-43X-fHbrYWwrU',
+      'https://lh3.googleusercontent.com/d/1MN4z91XjyCUFfuOPKDCeBse8TwAfJRVg',
+      'https://lh3.googleusercontent.com/d/1O3fWg2DJQe9OjftyazsN51GsieQlFHTI',
+      'https://lh3.googleusercontent.com/d/11w6VyjYDU2nnpu2dCZxmEI1J6CIknPd2',
+      'https://lh3.googleusercontent.com/d/1TyVI1qZG_H-_sV4AMjx4s0KMK9uL9OZ9',
+      'https://lh3.googleusercontent.com/d/1vLIoTs884mJS5e_X0TElAwSFqtCFPzxt',
+      'https://lh3.googleusercontent.com/d/1Rf589EQudojyzXvW-VoslX9-85tlcZYY',
+      'https://lh3.googleusercontent.com/d/1xiif-If20kRnW9Y_uLyu97L9dNLAOi1d',
+      'https://lh3.googleusercontent.com/d/1bMzO5xj3RjhY-yzWvblG1TIHSklYEjsw',
+      'https://lh3.googleusercontent.com/d/1bj0d9uI_GxIiOxnWDZ8NGRkqxd8J-Jrt',
+      'https://lh3.googleusercontent.com/d/10mK9cOKdMWbFdY6-54eMf8k8NttVQvqT',
+      'https://lh3.googleusercontent.com/d/1V2dkDXRKYxUnhr6svJku7bFeqsvDEgzE',
+      'https://lh3.googleusercontent.com/d/1EiBnGGZEEbhHbEAtKrkWaxVj2rjssowf',
+      'https://lh3.googleusercontent.com/d/1gh3Xk7FzDUldPCd99ZtrE9PH6H93guN_',
+      'https://lh3.googleusercontent.com/d/1CXURMsM6guqQh9zT_RxeNOJGZbGBrI-3'
+    ]
+  },
+  system_credentials: {
+    credentials: [
+      { src: "https://lh3.googleusercontent.com/d/19yYbEATwSgrOVfuKk339h6j6qVNY48Nw", alt: "IIT Mumbai Topper" },
+      { src: "https://lh3.googleusercontent.com/d/1zHSviGsVWpcjqEEcDClEht0qNihIQ8qp", alt: "Temple President ISKCON Pune" },
+      { src: "https://lh3.googleusercontent.com/d/1etXzaXu2p4rmW81PrMW6T-bHRfKIZzSQ", alt: "Temple Management Council Member ISKCON Abids" },
+      { src: "https://lh3.googleusercontent.com/d/1vu3f15JL_oJ8LAiYq4WItoVSH4Of5uEz", alt: "Global Duty Officer Youth Training ISKCON" }
+    ]
+  },
+  system_logos: {
+    title: 'Corporate Trainer',
+    autoplayInterval: 25,
+    logos: [
+      { name: 'Amazon', logo: 'https://lh3.googleusercontent.com/d/1DF9uSwnpkjGQ9OXDNGDR8B-dCiuJaPX4' },
+      { name: 'Infosys', logo: 'https://lh3.googleusercontent.com/d/1oFHK0JU99lHxpGuqwiXqox-Nm6BhFxqx' },
+      { name: 'Microsoft', logo: 'https://lh3.googleusercontent.com/d/Sr0qsDkIeZMEw3u2oTZh_RM8qbsFMhFs' },
+      { name: 'Copart', logo: 'https://lh3.googleusercontent.com/d/1iL1K0SP21l_qL6Kk6ffnLIadsd-jZuwY' },
+      { name: 'Cognizant', logo: 'https://lh3.googleusercontent.com/d/1vUpMGwycvntOjh3tAgaeO7lMLqB6SdJ_' },
+      { name: 'Tata Technologies', logo: 'https://lh3.googleusercontent.com/d/1-3jI0h1ee7fKUs_P2LB_xAqrqSKm5ZNE' },
+      { name: 'Bank of America', logo: 'https://lh3.googleusercontent.com/d/1OEC-o5xewzCsEU-MzH2Hs07_I6EHpfTI' },
+      { name: 'Deutsche Bank', logo: 'https://lh3.googleusercontent.com/d/13i_fpLr15wL6Y3LeTwzMjDftxMR-Y1WX' },
+      { name: 'Persistent', logo: 'https://lh3.googleusercontent.com/d/1-9Qxn6bc__GW5b3v3GEQdU4EukG9THUK' }
+    ]
+  },
+  system_featured: {
+    featuredCards: [
+      { type: 'book', badge: 'Featured Book', title: 'Wisdom Eye', desc: 'Laying the foundation for character and personal leadership success.', image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483', link: '/books', linkText: 'View All Books' },
+      { type: 'academy', badge: 'Scripture Academy', title: 'Certified Courses', desc: 'Auto-graded quizzes, certification, and discussions under the guidance of Radheshyam Das.', image: 'https://gaurangadarshandas.com/images/courses/8aab8f0c77c546568fd0c9c430ef6547_dw6z4v.png', link: '/courses', linkText: 'Explore Academy' },
+      { type: 'reading', badge: 'Daily Reading', title: 'Daily Reading Wisdom', desc: 'Start your day with spiritual inspiration and logical insights from timeless scriptures.', image: '', icon: 'BookOpenCheck', link: '/daily-reading', linkText: 'Read Daily Verse' }
+    ]
+  },
+  system_about: {
+    heading: 'Radheshyam Das',
+    avatar: 'https://lh3.googleusercontent.com/d/1MN4z91XjyCUFfuOPKDCeBse8TwAfJRVg',
+    bio1: 'Radheshyam Das is an IIT Mumbai Topper who dedicated his life as a full-time monk, youth educator, and author. Born in a devout family near Madurai, his childhood was fascinated by Vedic chants and philosophical classics.',
+    bio2: 'After top ranking at IIT Mumbai, working as a Senior Research Fellow and mechanical engineer at top companies, he took up the role of a celibate monk. He designed the DYS (Discover Your Self) and GAME (Gita for All Made Easy) course structures which are taught across leading universities.',
+    background: '#FAF8F5'
+  },
+  system_books: {
+    heading: 'Featured Books',
+    subLabel: 'Publications',
+    viewAllUrl: 'https://voicepublication.in',
+    books: [
+      { id: 1, title: 'The Happiness Paradox (SS Series - Book 1)', price: '₹170.00', url: 'https://voicepublication.in/products/the-happiness-paradox', image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/TheHappinessParadox-cover.jpg?v=1780304890' },
+      { id: 3, title: 'Decoding the Self (CC Series - Book 1)', price: '₹200.00', url: 'https://voicepublication.in/products/decoding-the-self', image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/TCCDecodingtheself-cover.jpg?v=1780305591' },
+      { id: 5, title: 'Your Best Friend', price: '₹280.00', url: 'https://voicepublication.in/products/your-best-friend', image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/YourBestFriend-front.jpg?v=1764746523' },
+      { id: 6, title: 'Wisdom Eye (Course 1) - Laying the Foundation for Success', price: '₹150.00', url: 'https://voicepublication.in/products/wisdom-eye', image: 'https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483' }
+    ]
+  },
+  system_youtube: {
+    heading: 'Radheshyam Das YouTube Lectures',
+    subLabel: 'Media Lectures',
+    subscribeUrl: 'https://www.youtube.com/channel/UC9Pap1xwEQAo7X1tKqpcpWg',
+    customVideos: []
+  },
   hero: {
     title: 'Transform Your Life with Vedic Wisdom',
     subtitle: 'Join thousands of students on a journey of self-discovery and spiritual growth.',
@@ -76,6 +170,30 @@ const DEFAULT_PROPS = {
     paddingY: 56,
     maxWidth: '800px',
   },
+  rich_text: {
+    content: '<h2><b>Empower Your Spiritual Journey</b></h2><p>Here you can write custom rich text content. Modify sizes, headings, add lists, links, or styles manually to highlight key concepts.</p>',
+    background: '#ffffff',
+    textColor: '#1f2937',
+    paddingY: 48,
+    maxWidth: '900px',
+    align: 'left'
+  },
+  floating_text: {
+    content: '<h2><b>Floating Text Box</b></h2><p>Drag the ✥ handle to position me on a section — stays in place on all screen sizes!</p>',
+    textColor: '#1f2937',
+    background: '#ffffff',
+    borderColor: '#e5e7eb',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    width: 320,
+    topPercent: 55,
+    leftPercent: 58,
+    zIndex: 50,
+    shadow: true,
+    positionMode: 'anchor',
+    anchorBlockId: null,
+  },
   two_column: {
     leftType: 'image',
     leftHeading: '',
@@ -103,6 +221,35 @@ const DEFAULT_PROPS = {
     imageHeight: 380,
     imageFit: 'cover',
   },
+  three_column: {
+    col1Heading: 'Veda studies',
+    col1Content: 'Explore the depths of ancient texts and historical timelines.',
+    col1Image: '',
+    col2Heading: 'Meditation',
+    col2Content: 'Practice daily mindfulness and deep spiritual introspection.',
+    col2Image: '',
+    col3Heading: 'Yoga & Living',
+    col3Content: 'Bridging wellness philosophy to your daily work life.',
+    col3Image: '',
+    background: '#ffffff',
+    paddingY: 60,
+    textColor: '#4b5563',
+    headingColor: '#1a1b4b',
+    gap: 24
+  },
+  four_column: {
+    col1Title: 'Bhakti Yoga',
+    col1Text: 'The path of devotion.',
+    col2Title: 'Jnana Yoga',
+    col2Text: 'The path of knowledge.',
+    col3Title: 'Karma Yoga',
+    col3Text: 'The path of action.',
+    col4Title: 'Raja Yoga',
+    col4Text: 'The path of meditation.',
+    background: '#fafafa',
+    paddingY: 50,
+    gap: 16
+  },
   video: {
     url: '',
     title: 'Watch Course Introduction',
@@ -120,6 +267,14 @@ const DEFAULT_PROPS = {
     background: '#fff',
     paddingY: 32,
     maxWidth: '900px',
+  },
+  gallery: {
+    title: 'Photo Gallery',
+    images: [],
+    columns: 3,
+    background: '#ffffff',
+    paddingY: 48,
+    imageHeight: 250
   },
   features: {
     eyebrow: 'What You Will Learn',
@@ -161,6 +316,82 @@ const DEFAULT_PROPS = {
       { name: 'Anita Patel', role: 'Doctor, Delhi', rating: 5, text: 'I was skeptical at first, but this course genuinely helped me find balance in my demanding professional life.' },
     ],
   },
+  team_cards: {
+    heading: 'Spiritual Guides & Speakers',
+    background: '#ffffff',
+    paddingY: 60,
+    items: [
+      { name: 'Radheshyam Das', title: 'VOICE Director', bio: 'Renowned Vedic teacher with 30+ years of teaching experience.', avatar: '' }
+    ]
+  },
+  timeline: {
+    heading: 'Historical Journey',
+    background: '#fafafa',
+    paddingY: 60,
+    items: [
+      { title: 'Founding Voice', date: '1996', text: 'VOICE was founded to impart value-education classes.' },
+      { title: 'Wisdom Eye Portal', date: '2024', text: 'Launched the online platform to expand access to seekers worldwide.' }
+    ]
+  },
+  accordion: {
+    heading: 'Frequently Asked Questions',
+    background: '#fff',
+    paddingY: 60,
+    items: [
+      { q: 'Who is this course for?', a: 'This course is designed for students, professionals, and seekers of all backgrounds who want to deepen their understanding of life, spirituality, and personal leadership based on Vedic principles.' },
+      { q: 'Do I need any prior knowledge?', a: 'No prior knowledge of Vedic philosophy is required. The course is designed to be accessible to complete beginners while also offering depth for more advanced students.' },
+      { q: 'How long will I have access?', a: 'You will get lifetime access to all course content. Learn at your own pace and revisit lessons whenever you like.' },
+      { q: 'Is there a certificate?', a: 'Yes! Upon successful completion of the course, you will receive a digital certificate that can be shared on LinkedIn and other platforms.' },
+    ],
+  },
+  countdown: {
+    heading: '🔥 Limited Time Offer',
+    subheading: 'Enroll before this exclusive offer expires!',
+    targetDate: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 16),
+    accentColor: '#FF9F1C',
+    background: '#1A1B4B',
+    expiredText: 'Offer has ended!',
+    paddingY: 48,
+  },
+  cta: {
+    heading: 'Ready to Transform Your Life?',
+    subheading: 'Join thousands of students who have already started their journey.',
+    btnText: 'Enroll Now — Start Learning Today',
+    btnColor: '#FF9F1C',
+    btnTextColor: '#1A1B4B',
+    background: 'linear-gradient(135deg, #1A1B4B, #2D1B69)',
+    paddingY: 64,
+    note: '',
+  },
+  divider: {
+    height: 48,
+    background: 'transparent',
+    showLine: false,
+    lineColor: '#E5E7EB',
+  },
+  banner: {
+    text: '📢 Announcement: Live Gita discussion with Radheshyam Prabhu this Saturday 7 PM IST!',
+    background: '#FF9F1C',
+    textColor: '#1A1B4B',
+    linkText: 'Register Here',
+    linkUrl: '',
+    paddingY: 12
+  },
+  html_embed: {
+    html: '<div style="padding: 20px; border: 2px dashed #ccc; text-align: center;"><b>Custom Embed Area</b><br/>Paste map IFRAME, widgets, or custom HTML tags in the block properties panel.</div>',
+    background: '#ffffff',
+    paddingY: 24
+  },
+  slider: {
+    autoplayInterval: 4000,
+    height: 400,
+    background: '#ffffff',
+    paddingY: 40,
+    slides: [
+      { image: 'https://lh3.googleusercontent.com/d/1Bpk-lc_U4E2Gxo8_9b-43X-fHbrYWwrU', title: 'Welcome to our platform', subtitle: 'Timeless teachings and values for modern seekers', linkUrl: '' },
+      { image: 'https://lh3.googleusercontent.com/d/1MN4z91XjyCUFfuOPKDCeBse8TwAfJRVg', title: 'Discover Yourself', subtitle: 'Begin your journey of spiritual and personal growth', linkUrl: '' }
+    ]
+  },
   instructor: {
     heading: 'Meet Your Instructor',
     name: 'Radheshyam Das',
@@ -198,32 +429,7 @@ const DEFAULT_PROPS = {
       { q: 'How long will I have access?', a: 'You will get lifetime access to all course content. Learn at your own pace and revisit lessons whenever you like.' },
       { q: 'Is there a certificate?', a: 'Yes! Upon successful completion of the course, you will receive a digital certificate that can be shared on LinkedIn and other platforms.' },
     ],
-  },
-  countdown: {
-    heading: '🔥 Limited Time Offer',
-    subheading: 'Enroll before this exclusive offer expires!',
-    targetDate: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 16),
-    accentColor: '#FF9F1C',
-    background: '#1A1B4B',
-    expiredText: 'Offer has ended!',
-    paddingY: 48,
-  },
-  cta: {
-    heading: 'Ready to Transform Your Life?',
-    subheading: 'Join thousands of students who have already started their journey.',
-    btnText: 'Enroll Now — Start Learning Today',
-    btnColor: '#FF9F1C',
-    btnTextColor: '#1A1B4B',
-    background: 'linear-gradient(135deg, #1A1B4B, #2D1B69)',
-    paddingY: 64,
-    note: '',
-  },
-  divider: {
-    height: 48,
-    background: 'transparent',
-    showLine: false,
-    lineColor: '#E5E7EB',
-  },
+  }
 };
 
 function genId() {
@@ -495,15 +701,21 @@ const ImageInput = ({ field, value, onChange, placeholder = 'https://...' }) => 
   );
 };
 
-const Textarea = ({ field, rows = 3, placeholder = '' }) => {
-  const { p, set } = useContext(PropsContext);
+const Textarea = ({ field, rows = 3, placeholder = '', rich = true }) => {
+  const { p, set, setBatch } = useContext(PropsContext);
   return (
-    <textarea
+    <RichTextEditor
       value={p[field] ?? ''}
-      onChange={e => set(field, e.target.value)}
+      onChange={html => {
+        if (p.textAnimation && p.textAnimation !== 'none') {
+          setBatch({ [field]: html, _previewTrigger: (p._previewTrigger || 0) + 1 });
+        } else {
+          set(field, html);
+        }
+      }}
       rows={rows}
+      rich={rich}
       placeholder={placeholder}
-      style={{ ...inputStyle, resize: 'vertical', minHeight: `${rows * 24}px` }}
     />
   );
 };
@@ -537,6 +749,22 @@ const ColorRow = ({ field, label: cLabel }) => {
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <input type="color" value={p[field]?.startsWith('#') ? p[field] : '#1A1B4B'} onChange={e => set(field, e.target.value)} style={{ width: '36px', height: '32px', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '2px' }} />
         <input type="text" value={p[field] ?? ''} onChange={e => set(field, e.target.value)} placeholder="#1A1B4B or gradient" style={{ ...inputStyle, flex: 1 }} />
+        <button
+          type="button"
+          onClick={() => set(field, 'transparent')}
+          style={{
+            padding: '6px 10px',
+            fontSize: '11px',
+            fontWeight: '600',
+            background: p[field] === 'transparent' ? '#EC4899' : '#F3F4F6',
+            color: p[field] === 'transparent' ? '#FFF' : '#374151',
+            border: '1px solid #D1D5DB',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          🚫 Trans
+        </button>
       </div>
     </Field>
   );
@@ -548,8 +776,730 @@ const SectionTitle = ({ children }) => (
   </div>
 );
 
-// ─── Properties Panel Component ──────────────────────────────────────
-function PropsPanel({ block, onChange, onTypeChange }) {
+// ─── Animation & Text Effects support ────────────────────────────────
+const ANIMATION_OPTIONS = [
+  { value: 'none', label: '— None —' },
+  { value: 'fade-in', label: '✨ Fade In' },
+  { value: 'fade-up', label: '⬆️ Fade Up' },
+  { value: 'fade-down', label: '⬇️ Fade Down' },
+  { value: 'fade-left', label: '➡️ Fade Left' },
+  { value: 'fade-right', label: '⬅️ Fade Right' },
+  { value: 'zoom-in', label: '🔍 Zoom In' },
+  { value: 'zoom-out', label: '🔎 Zoom Out' },
+  { value: 'flip-up', label: '🔄 Flip Up' },
+  { value: 'flip-left', label: '↩️ Flip Left' },
+  { value: 'flip-right', label: '↪️ Flip Right' },
+  { value: 'bounce-in', label: '🏀 Bounce In' },
+  { value: 'slide-up', label: '🚀 Slide Up' },
+  { value: 'slide-down', label: '📥 Slide Down' },
+  { value: 'slide-left', label: '📲 Slide Left' },
+  { value: 'slide-right', label: '📳 Slide Right' },
+  { value: 'rotate-in', label: '🌀 Rotate In' },
+  { value: 'skew-up', label: '📐 Skew Up' },
+  { value: 'blur-in', label: '🌫️ Blur In' },
+  { value: 'roll-in', label: '🎳 Roll In' },
+  { value: 'swing-in', label: '🎵 Swing In' },
+  { value: 'elastic-up', label: '🎸 Elastic Up' },
+  { value: 'pulse-in', label: '💓 Pulse In' },
+];
+
+const EASING_OPTIONS = [
+  { value: 'ease', label: 'Ease (smooth)' },
+  { value: 'ease-in', label: 'Ease In (accelerate)' },
+  { value: 'ease-out', label: 'Ease Out (decelerate)' },
+  { value: 'ease-in-out', label: 'Ease In-Out (balanced)' },
+  { value: 'linear', label: 'Linear (constant)' },
+  { value: 'cubic-bezier(0.34,1.56,0.64,1)', label: 'Spring (overshoot)' },
+  { value: 'cubic-bezier(0.25,0.46,0.45,0.94)', label: 'Quint (snappy)' },
+  { value: 'cubic-bezier(0.68,-0.55,0.265,1.55)', label: 'Back (elastic)' },
+];
+
+const AnimatedText = ({ text, animation = 'none', trigger }) => {
+  const [displayed, setDisplayed] = useState('');
+  const [start, setStart] = useState(false);
+
+  useEffect(() => {
+    setStart(false);
+    const id = requestAnimationFrame(() => setStart(true));
+    return () => cancelAnimationFrame(id);
+  }, [trigger, text]);
+
+  const hasHtml = /<[a-z/]/i.test(text);
+
+  useEffect(() => {
+    if (!start || !text) return;
+    if (!hasHtml && (animation === 'typewriter' || animation === 'pencil' || animation === 'quill')) {
+      let i = 0;
+      setDisplayed('');
+      const interval = setInterval(() => {
+        setDisplayed(text.substring(0, i + 1));
+        i++;
+        if (i >= text.length) {
+          clearInterval(interval);
+        }
+      }, animation === 'typewriter' ? 35 : 45);
+      return () => clearInterval(interval);
+    } else {
+      setDisplayed(text);
+    }
+  }, [text, start, animation, trigger, hasHtml]);
+
+  if (!text) return null;
+
+  if (animation === 'none') {
+    return hasHtml ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <span>{text}</span>;
+  }
+
+  if (hasHtml) {
+    if (animation === 'typewriter' || animation === 'pencil' || animation === 'quill') {
+      const isHandwritten = animation === 'pencil' || animation === 'quill';
+      return (
+        <>
+          <style>{`
+            @keyframes sa-typing-sweep-anim {
+              from { clip-path: inset(0 100% 0 0); }
+              to { clip-path: inset(0 0 0 0); }
+            }
+          `}</style>
+          <span 
+            className={`sa-typing-sweep ${isHandwritten ? 'sa-handwritten-text' : ''}`}
+            style={{ 
+              display: 'inline-block', 
+              animation: start ? 'sa-typing-sweep-anim 1.5s ease-out forwards' : 'none',
+              overflow: 'hidden',
+              verticalAlign: 'bottom',
+              fontStyle: animation === 'quill' ? 'italic' : 'normal'
+            }}
+            dangerouslySetInnerHTML={{ __html: text }}
+          />
+        </>
+      );
+    }
+    
+    let className = "";
+    let style = { display: 'inline-block' };
+    
+    if (animation === 'word-fade' || animation === 'slide-up' || animation === 'clip-slide' || animation === 'fade-up') {
+      className = "sa-formatted-slide-up";
+      style.animation = start ? "sa-slide-up-anim 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards" : "none";
+      style.opacity = start ? 1 : 0;
+    } else if (animation === 'focus-blur' || animation === 'blur-in') {
+      className = "sa-formatted-blur-in";
+      style.animation = start ? "sa-blur-in-anim 0.7s ease-out forwards" : "none";
+      style.opacity = start ? 1 : 0;
+    } else if (animation === 'scale-pop' || animation === 'bounce-in') {
+      className = "sa-formatted-scale-pop";
+      style.animation = start ? "sa-scale-pop-anim 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" : "none";
+      style.opacity = start ? 1 : 0;
+    } else if (animation === 'sparkle') {
+      className = "sa-sparkle-text";
+    } else if (animation === 'rainbow') {
+      className = "sa-rainbow-text";
+    } else if (animation === 'neon-flicker') {
+      className = "sa-neon-flicker-text";
+    } else {
+      className = "sa-formatted-fade-in";
+      style.animation = start ? "sa-fade-in-anim 0.5s ease-out forwards" : "none";
+      style.opacity = start ? 1 : 0;
+    }
+
+    return (
+      <>
+        <style>{`
+          @keyframes sa-slide-up-anim {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes sa-blur-in-anim {
+            from { opacity: 0; filter: blur(6px); transform: scale(0.96); }
+            to { opacity: 1; filter: blur(0); transform: scale(1); }
+          }
+          @keyframes sa-scale-pop-anim {
+            from { opacity: 0; transform: scale(0.3); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          @keyframes sa-fade-in-anim {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}</style>
+        <span className={className} style={style} dangerouslySetInnerHTML={{ __html: text }} />
+      </>
+    );
+  }
+
+  if (animation === 'typewriter') {
+    return (
+      <span>
+        {displayed}
+        {displayed.length < text.length && <span className="sa-typing-cursor" />}
+      </span>
+    );
+  }
+
+  if (animation === 'pencil') {
+    return (
+      <span className="sa-handwritten-text">
+        {displayed}
+        {displayed.length < text.length && (
+          <span style={{ display: 'inline-block', animation: 'sa-pencil-write 0.4s infinite alternate', fontSize: '1.2em', verticalAlign: 'middle', marginLeft: '3px' }}>✏️</span>
+        )}
+      </span>
+    );
+  }
+
+  if (animation === 'quill') {
+    return (
+      <span className="sa-handwritten-text" style={{ fontStyle: 'italic' }}>
+        {displayed}
+        {displayed.length < text.length && (
+          <span style={{ display: 'inline-block', animation: 'sa-pencil-write 0.5s infinite alternate-reverse', fontSize: '1.2em', verticalAlign: 'middle', marginLeft: '3px' }}>✒️</span>
+        )}
+      </span>
+    );
+  }
+
+  const words = text.split(' ');
+
+  if (animation === 'word-fade') {
+    return (
+      <span style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              transform: start ? 'translateY(0)' : 'translateY(8px)',
+              transition: `opacity 0.4s ease ${idx * 0.08}s, transform 0.4s ease ${idx * 0.08}s`,
+              marginRight: '0.22em'
+            }}
+          >
+            {w}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (animation === 'focus-blur') {
+    return (
+      <span style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              filter: start ? 'blur(0px)' : 'blur(6px)',
+              transform: start ? 'scale(1)' : 'scale(0.96)',
+              transition: `opacity 0.5s ease ${idx * 0.08}s, filter 0.5s ease ${idx * 0.08}s, transform 0.5s ease ${idx * 0.08}s`,
+              marginRight: '0.22em'
+            }}
+          >
+            {w}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (animation === 'sparkle') {
+    return (
+      <span style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, idx) => (
+          <span
+            key={idx}
+            className="sa-sparkle-text"
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              transition: `opacity 0.4s ease ${idx * 0.08}s`,
+              marginRight: '0.22em'
+            }}
+          >
+            {w}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (animation === 'rainbow') {
+    return (
+      <span className="sa-rainbow-text" style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              transition: `opacity 0.4s ease ${idx * 0.08}s`,
+              marginRight: '0.22em'
+            }}
+          >
+            {w}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (animation === 'neon-flicker') {
+    return (
+      <span className={start ? "sa-neon-flicker-text" : ""} style={{ display: 'inline' }}>
+        {text}
+      </span>
+    );
+  }
+
+  if (animation === 'clip-slide') {
+    return (
+      <span style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              overflow: 'hidden',
+              verticalAlign: 'bottom',
+              marginRight: '0.22em',
+              paddingBottom: '2px'
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                transform: start ? 'translateY(0)' : 'translateY(105%)',
+                transition: `transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${idx * 0.08}s`
+              }}
+            >
+              {w}
+            </span>
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (animation === 'fly-in') {
+    return (
+      <span style={{ display: 'inline', flexWrap: 'wrap', overflow: 'hidden' }}>
+        {words.map((w, idx) => {
+          const fromLeft = idx % 2 === 0;
+          return (
+            <span
+              key={idx}
+              style={{
+                display: 'inline-block',
+                opacity: start ? 1 : 0,
+                transform: start ? 'translateX(0)' : `translateX(${fromLeft ? '-30px' : '30px'})`,
+                transition: `opacity 0.45s ease ${idx * 0.08}s, transform 0.45s ease ${idx * 0.08}s`,
+                marginRight: '0.22em'
+              }}
+            >
+              {w}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
+
+  if (animation === 'scale-pop') {
+    return (
+      <span style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              transform: start ? 'scale(1)' : 'scale(0)',
+              transition: `opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 0.08}s, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 0.08}s`,
+              marginRight: '0.22em'
+            }}
+          >
+            {w}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (animation === 'letter-merge') {
+    return (
+      <span style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              letterSpacing: start ? 'normal' : '6px',
+              transition: `opacity 0.45s ease ${idx * 0.08}s, letter-spacing 0.45s ease ${idx * 0.08}s`,
+              marginRight: '0.22em'
+            }}
+          >
+            {w}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  const chars = Array.from(text);
+
+  if (animation === 'bounce') {
+    return (
+      <span style={{ display: 'inline' }}>
+        {chars.map((c, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              transform: start ? 'translateY(0)' : 'translateY(12px)',
+              transition: `opacity 0.25s ease ${idx * 0.03}s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 0.03}s`,
+              whiteSpace: c === ' ' ? 'pre' : 'normal'
+            }}
+          >
+            {c}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (animation === 'wave-sine') {
+    return (
+      <span style={{ display: 'inline' }}>
+        {chars.map((c, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              animation: start ? `sa-wave-sine-anim 2.5s infinite ease-in-out` : 'none',
+              animationDelay: `${idx * 0.05}s`,
+              whiteSpace: c === ' ' ? 'pre' : 'normal'
+            }}
+          >
+            {c}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (animation === 'flip') {
+    return (
+      <span style={{ display: 'inline', perspective: '300px' }}>
+        {words.map((w, idx) => (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              opacity: start ? 1 : 0,
+              transform: start ? 'rotateX(0deg)' : 'rotateX(-90deg)',
+              transformOrigin: 'top center',
+              transition: `opacity 0.45s ease ${idx * 0.08}s, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 0.08}s`,
+              marginRight: '0.22em'
+            }}
+          >
+            {w}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  return <span>{text}</span>;
+};
+
+const AnimationSection = () => {
+  const { p, setBatch } = useContext(PropsContext);
+  const [previewKey, setPreviewKey] = useState(0);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const anim = p.animation || 'none';
+  const dur = p.animationDuration ?? 0.8;
+  const delay = p.animationDelay ?? 0;
+  const ease = p.animationEasing ?? 'ease-out';
+
+  const ANIM_ITEMS = [
+    { value: 'none', icon: '✕', label: 'None' },
+    { value: 'fade-in', icon: '✦', label: 'Fade' },
+    { value: 'fade-up', icon: '↑', label: 'Fade Up' },
+    { value: 'fade-down', icon: '↓', label: 'Fade Down' },
+    { value: 'fade-left', icon: '→', label: 'Fade ←' },
+    { value: 'fade-right', icon: '←', label: 'Fade →' },
+    { value: 'zoom-in', icon: '⊕', label: 'Zoom In' },
+    { value: 'zoom-out', icon: '⊖', label: 'Zoom Out' },
+    { value: 'slide-up', icon: '⇑', label: 'Slide Up' },
+    { value: 'slide-down', icon: '⇓', label: 'Slide Down' },
+    { value: 'slide-left', icon: '⇒', label: 'Slide ←' },
+    { value: 'slide-right', icon: '⇐', label: 'Slide →' },
+    { value: 'flip-up', icon: '⟳', label: 'Flip Up' },
+    { value: 'flip-left', icon: '↻', label: 'Flip L' },
+    { value: 'flip-right', icon: '↺', label: 'Flip R' },
+    { value: 'bounce-in', icon: '◎', label: 'Bounce' },
+    { value: 'rotate-in', icon: '↕', label: 'Rotate' },
+    { value: 'blur-in', icon: '◌', label: 'Blur In' },
+    { value: 'elastic-up', icon: '⤴', label: 'Elastic' },
+    { value: 'swing-in', icon: '♫', label: 'Swing' },
+    { value: 'pulse-in', icon: '◉', label: 'Pulse' },
+    { value: 'roll-in', icon: '●', label: 'Roll In' },
+    { value: 'skew-up', icon: '⟋', label: 'Skew' },
+  ];
+
+  const PRESETS = [
+    { name: 'Gentle', color: '#059669', lightBg: '#ECFDF5', dur: 0.8, delay: 0, ease: 'ease-out' },
+    { name: 'Snappy', color: '#2563EB', lightBg: '#EFF6FF', dur: 0.45, delay: 0, ease: 'cubic-bezier(0.25,0.46,0.45,0.94)' },
+    { name: 'Dramatic', color: '#7C3AED', lightBg: '#F5F3FF', dur: 1.2, delay: 0.1, ease: 'ease-in-out' },
+    { name: 'Playful', color: '#D97706', lightBg: '#FFFBEB', dur: 0.9, delay: 0, ease: 'cubic-bezier(0.34,1.56,0.64,1)' },
+    { name: 'Cinematic', color: '#DC2626', lightBg: '#FEF2F2', dur: 1.5, delay: 0.2, ease: 'ease' },
+  ];
+
+  const currentPreset = PRESETS.find(pr =>
+    Math.abs(pr.dur - dur) < 0.06 && Math.abs(pr.delay - delay) < 0.06 && pr.ease === ease
+  );
+
+  const handleAnimSelect = (val) => {
+    const updates = { animation: val };
+    if (val !== 'none' && (!p.animationDuration || anim === 'none')) {
+      updates.animationDuration = 0.8;
+      updates.animationDelay = 0;
+      updates.animationEasing = 'ease-out';
+    }
+    setBatch(updates);
+    if (val !== 'none') setPreviewKey(k => k + 1);
+  };
+
+  const applyPreset = (preset) => {
+    setBatch({ animationDuration: preset.dur, animationDelay: preset.delay, animationEasing: preset.ease });
+    setPreviewKey(k => k + 1);
+  };
+
+  const selectedAnimItem = ANIM_ITEMS.find(a => a.value === anim);
+
+  return (
+    <div>
+      <SectionTitle>✨ Scroll Animation</SectionTitle>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', marginBottom: '12px' }}>
+        {ANIM_ITEMS.map(item => {
+          const isNone = item.value === 'none';
+          const isSelected = anim === item.value;
+          return (
+            <button
+              key={item.value}
+              onClick={() => handleAnimSelect(item.value)}
+              style={{
+                background: isSelected ? 'linear-gradient(135deg, #4F46E5, #7C3AED)' : isNone ? '#fff' : '#F5F3FF',
+                color: isSelected ? '#fff' : isNone ? '#9CA3AF' : '#5B21B6',
+                border: isSelected ? '2px solid #4F46E5' : isNone ? '1.5px dashed #D1D5DB' : '1.5px solid #DDD6FE',
+                borderRadius: '8px',
+                padding: '7px 3px 6px',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '3px',
+                transition: 'all 0.15s',
+                boxShadow: isSelected ? '0 3px 10px rgba(79,70,229,0.35)' : 'none',
+                outline: 'none',
+              }}
+            >
+              <span style={{ fontSize: '16px', lineHeight: 1, display: 'block' }}>{item.icon}</span>
+              <span style={{ fontSize: '9.5px', lineHeight: 1.2, textAlign: 'center', fontWeight: isSelected ? '700' : '600' }}>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {anim !== 'none' && (
+        <div style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%)', border: '1.5px solid #C4B5FD', borderRadius: '12px', padding: '12px' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '800', color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '7px' }}>
+              🎨 Style — {currentPreset ? currentPreset.name : 'Custom'}
+            </div>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              {PRESETS.map(preset => {
+                const isActive = currentPreset?.name === preset.name;
+                return (
+                  <button
+                    key={preset.name}
+                    onClick={() => applyPreset(preset)}
+                    title={`Duration: ${preset.dur}s, Delay: ${preset.delay}s`}
+                    style={{
+                      background: isActive ? preset.color : preset.lightBg,
+                      color: isActive ? '#fff' : preset.color,
+                      border: `1.5px solid ${isActive ? preset.color : preset.color + '60'}`,
+                      borderRadius: '20px',
+                      padding: '4px 11px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      outline: 'none',
+                      boxShadow: isActive ? `0 2px 8px ${preset.color}40` : 'none',
+                    }}
+                  >
+                    {preset.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '12px', borderTop: '1px dashed #C4B5FD', paddingTop: '10px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!p.animationStagger}
+                onChange={e => setBatch({ animationStagger: e.target.checked, _previewTrigger: (p._previewTrigger || 0) + 1 })}
+                style={{ accentColor: '#7C3AED' }}
+              />
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#5B21B6' }}>✨ Stagger child elements in sequence</span>
+            </label>
+          </div>
+
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '800', color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '7px' }}>
+              👁 Preview
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+              <div
+                key={previewKey}
+                data-sa-animation={anim}
+                className="sa-visible"
+                style={{
+                  '--sa-dur': `${dur}s`,
+                  '--sa-delay': '0s',
+                  '--sa-ease': ease,
+                  flex: 1,
+                  minHeight: '48px',
+                  background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  gap: '6px',
+                  overflow: 'hidden',
+                }}
+              >
+                <span>{selectedAnimItem?.icon}</span>
+                <span>{selectedAnimItem?.label} effect</span>
+              </div>
+              <button
+                onClick={() => {
+                  setPreviewKey(k => k + 1);
+                  setBatch({ _previewTrigger: (p._previewTrigger || 0) + 1 });
+                }}
+                title="Replay preview"
+                style={{
+                  background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0 14px',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 3px 10px rgba(79,70,229,0.35)',
+                }}
+              >
+                ▶
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowAdvanced(v => !v)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', color: '#7C3AED', fontWeight: '700', padding: 0, display: 'flex', alignItems: 'center', gap: '4px', outline: 'none', marginBottom: showAdvanced ? '8px' : 0 }}
+          >
+            ⚙ Advanced {showAdvanced ? '▲' : '▼'}
+          </button>
+
+          {showAdvanced && (
+            <div style={{ paddingTop: '10px', borderTop: '1px dashed #C4B5FD' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#4B5563', width: '56px', flexShrink: 0 }}>Duration</span>
+                <input type="range" min="0.1" max="2.5" step="0.1" value={dur}
+                  onChange={e => { setBatch({ animationDuration: parseFloat(e.target.value), _previewTrigger: (p._previewTrigger || 0) + 1 }); setPreviewKey(k => k + 1); }}
+                  style={{ flex: 1, accentColor: '#7C3AED' }} />
+                <span style={{ fontSize: '11px', color: '#7C3AED', fontWeight: '700', width: '32px', textAlign: 'right' }}>{dur}s</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#4B5563', width: '56px', flexShrink: 0 }}>Delay</span>
+                <input type="range" min="0" max="2" step="0.1" value={delay}
+                  onChange={e => setBatch({ animationDelay: parseFloat(e.target.value), _previewTrigger: (p._previewTrigger || 0) + 1 })}
+                  style={{ flex: 1, accentColor: '#7C3AED' }} />
+                <span style={{ fontSize: '11px', color: '#7C3AED', fontWeight: '700', width: '32px', textAlign: 'right' }}>{delay}s</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#4B5563', width: '56px', flexShrink: 0 }}>Easing</span>
+                <select value={ease} onChange={e => setBatch({ animationEasing: e.target.value, _previewTrigger: (p._previewTrigger || 0) + 1 })}
+                  style={{ ...inputStyle, flex: 1, fontSize: '11px', padding: '4px 8px' }}>
+                  {EASING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const TextAnimationSection = () => {
+  const { p, setBatch } = useContext(PropsContext);
+  const textAnim = p.textAnimation || 'none';
+
+  const TEXT_ANIM_OPTIONS = [
+    { value: 'none', label: '— None (Static Text) —' },
+    { value: 'typewriter', label: '⌨️ Typewriter (Keyboard)' },
+    { value: 'pencil', label: '✏️ Handwriting (Pencil)' },
+    { value: 'quill', label: '✒️ Feather Quill (Ink Writer)' },
+    { value: 'word-fade', label: '✨ Word Fade & Rise' },
+    { value: 'focus-blur', label: '🔍 Focus & Blur Reveal' },
+    { value: 'sparkle', label: '🌟 Gold Shine & Sparkle' },
+    { value: 'rainbow', label: '🌈 Rainbow Gradient Sweep' },
+    { value: 'bounce', label: '⚽ Bounce Letter Wave' },
+    { value: 'flip', label: '🔄 3D Flip Reveal' },
+    { value: 'fly-in', label: '✈️ Fly In (Left/Right)' },
+    { value: 'scale-pop', label: '💥 Elastic Scale Pop' },
+    { value: 'letter-merge', label: '↔️ Letter Space Collapse' },
+    { value: 'neon-flicker', label: '💡 Neon Sign Flicker' },
+    { value: 'clip-slide', label: '🎞️ Slide Up & Clip Reveal' },
+    { value: 'wave-sine', label: '🌊 Sine Wave Float' },
+  ];
+
+  return (
+    <div style={{ borderTop: '1.5px solid #E5E7EB', paddingTop: '14px', marginTop: '14px' }}>
+      <SectionTitle>📖 Text Appearance Effect</SectionTitle>
+      <Field label="Text Animation Style">
+        <select
+          value={textAnim}
+          onChange={e => setBatch({ textAnimation: e.target.value, _previewTrigger: (p._previewTrigger || 0) + 1 })}
+          style={{ ...inputStyle, background: '#fff' }}
+        >
+          {TEXT_ANIM_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </Field>
+    </div>
+  );
+};
+
+function PropsPanel({ block, onChange, onTypeChange, allBlocks = [] }) {
   if (!block) return (
     <div style={{ padding: '32px 20px', textAlign: 'center', color: '#9CA3AF' }}>
       <Layers size={32} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
@@ -559,17 +1509,18 @@ function PropsPanel({ block, onChange, onTypeChange }) {
 
   const p = block.props;
   const set = (key, val) => onChange({ ...block, props: { ...p, [key]: val } });
+  const setBatch = (updates) => onChange({ ...block, props: { ...p, ...updates } });
 
   const renderContent = () => {
     switch (block.type) {
       case 'hero': return (
         <div style={propsScroll}>
           <SectionTitle>Content</SectionTitle>
-          <Field label="Badge Text"><Input field="badge" placeholder="🌟 Featured Course" /></Field>
+          <Field label="Badge Text"><Textarea field="badge" rows={1} placeholder="🌟 Featured Wisdom" /></Field>
           <Field label="Main Title"><Textarea field="title" rows={2} /></Field>
           <Field label="Subtitle"><Textarea field="subtitle" rows={3} /></Field>
-          <Field label="CTA Button Text"><Input field="ctaText" placeholder="Enroll Now" /></Field>
-          <Field label="Secondary Button (optional)"><Input field="secondaryCta" placeholder="Watch Preview" /></Field>
+          <Field label="CTA Button Text"><Textarea field="ctaText" rows={1} placeholder="Explore Courses" /></Field>
+          <Field label="Secondary Button (optional)"><Textarea field="secondaryCta" rows={1} placeholder="Watch Preview" /></Field>
 
           <SectionTitle>Design & Layout</SectionTitle>
           <Field label="Layout Style"><Select field="layoutMode" options={[{ value: 'split', label: 'Split (2 Columns)' }, { value: 'full_width', label: 'Full Width (Centered)' }]} /></Field>
@@ -606,22 +1557,73 @@ function PropsPanel({ block, onChange, onTypeChange }) {
       case 'text': return (
         <div style={propsScroll}>
           <SectionTitle>Content</SectionTitle>
-          <Field label="Eyebrow (small top label)"><Input field="eyebrow" placeholder="About This Course" /></Field>
-          <Field label="Heading"><Input field="heading" placeholder="Main heading" /></Field>
+          <Field label="Eyebrow"><Textarea field="eyebrow" rows={1} placeholder="Top label" /></Field>
+          <Field label="Heading"><Textarea field="heading" rows={2} placeholder="Main heading" /></Field>
           <Field label="Body Text"><Textarea field="content" rows={6} /></Field>
 
           <SectionTitle>Design</SectionTitle>
-          <ColorRow field="background" label="Background" />
+          <ColorRow field="background" label="Background Color" />
+          <ColorRow field="headingColor" label="Heading Text Color" />
+          <ColorRow field="textColor" label="Body Text Color" />
           <Field label="Text Alignment"><Select field="align" options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} /></Field>
+          <Field label="Heading Size (px)"><Input field="headingSize" type="number" min={16} max={72} /></Field>
           <Field label="Font Size (px)"><Input field="fontSize" type="number" min={12} max={24} /></Field>
           <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={160} /></Field>
+        </div>
+      );
+
+      case 'rich_text': return (
+        <div style={propsScroll}>
+          <SectionTitle>Content</SectionTitle>
+          <Field label="HTML Content" hint="Use standard HTML formatting tags like <b>, <i>, <ul>, <p>, <h2>"><Textarea field="content" rows={10} /></Field>
+          <SectionTitle>Styling</SectionTitle>
+          <ColorRow field="background" label="Background" />
+          <ColorRow field="textColor" label="Text Color" />
+          <Field label="Text Alignment"><Select field="align" options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} /></Field>
+          <Field label="Max Width"><Input field="maxWidth" placeholder="900px" /></Field>
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={160} /></Field>
+        </div>
+      );
+
+      case 'floating_text': return (
+        <div style={propsScroll}>
+          <SectionTitle>Floating Content</SectionTitle>
+          <Field label="Content"><Textarea field="content" rows={6} /></Field>
+          <SectionTitle>Positioning</SectionTitle>
+          <Field label="Pin to Section" hint="Text position is % inside this section — responsive on all screens">
+            <Select
+              field="anchorBlockId"
+              options={allBlocks
+                .filter(b => b.type !== 'floating_text')
+                .map(b => ({
+                  value: b.id,
+                  label: `${BLOCK_TYPES.find(t => t.type === b.type)?.icon || ''} ${BLOCK_TYPES.find(t => t.type === b.type)?.label || b.type}`,
+                }))}
+            />
+          </Field>
+          <Field label="Top (% within section)"><Input field="topPercent" type="number" min={0} max={95} step={0.5} /></Field>
+          <Field label="Left (% within section)"><Input field="leftPercent" type="number" min={0} max={95} step={0.5} /></Field>
+          <Field label="Width (px)"><Input field="width" type="number" min={50} max={1200} /></Field>
+          <Field label="Z-Index"><Input field="zIndex" type="number" min={0} max={1000} /></Field>
+          
+          <SectionTitle>Styling</SectionTitle>
+          <ColorRow field="background" label="Background Color" />
+          <ColorRow field="textColor" label="Text Color" />
+          <ColorRow field="borderColor" label="Border Color" />
+          <Field label="Border Width (px)"><Input field="borderWidth" type="number" min={0} max={10} /></Field>
+          <Field label="Border Radius (px)"><Input field="borderRadius" type="number" min={0} max={50} /></Field>
+          <Field label="Padding (px)"><Input field="padding" type="number" min={0} max={100} /></Field>
+          <Toggle field="shadow" label="Show drop shadow" />
+          
+          <TextAnimationSection />
+          <AnimationSection />
         </div>
       );
 
       case 'video': return (
         <div style={propsScroll}>
           <Field label="YouTube URL" hint="Paste any YouTube video URL"><Input field="url" placeholder="https://youtube.com/watch?v=..." /></Field>
-          <Field label="Section Title"><Input field="title" placeholder="Watch Course Introduction" /></Field>
+          <Field label="Section Title"><Input field="title" placeholder="Watch Wisdom Introduction" /></Field>
           <ColorRow field="background" label="Background Color" />
           <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={120} /></Field>
         </div>
@@ -641,11 +1643,39 @@ function PropsPanel({ block, onChange, onTypeChange }) {
         </div>
       );
 
+      case 'gallery': return (
+        <div style={propsScroll}>
+          <SectionTitle>Content</SectionTitle>
+          <Field label="Section Title"><Input field="title" /></Field>
+          <Field label="Columns"><Select field="columns" options={[{ value: 2, label: '2' }, { value: 3, label: '3' }, { value: 4, label: '4' }]} /></Field>
+          <Field label="Image Heights (px)"><Input field="imageHeight" type="number" /></Field>
+          <ColorRow field="background" label="Background" />
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" /></Field>
+
+          <SectionTitle>Gallery Items</SectionTitle>
+          {(p.images || []).map((img, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Image {i + 1}</span>
+                <button onClick={() => set('images', (p.images || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
+              </div>
+              <ImageInput
+                value={img.src || ''}
+                onChange={val => set('images', (p.images || []).map((item, j) => j === i ? { ...item, src: val } : item))}
+                placeholder="Upload image"
+              />
+              <input placeholder="Caption" value={img.caption || ''} onChange={e => set('images', (p.images || []).map((item, j) => j === i ? { ...item, caption: e.target.value } : item))} style={{ ...inputStyle, marginTop: '6px' }} />
+            </div>
+          ))}
+          <button onClick={() => set('images', [...(p.images || []), { src: '', caption: '' }])} style={addItemBtn}><Plus size={13} /> Add Image</button>
+        </div>
+      );
+
       case 'features': return (
         <div style={propsScroll}>
           <SectionTitle>Heading</SectionTitle>
           <Field label="Eyebrow"><Input field="eyebrow" placeholder="What You Will Learn" /></Field>
-          <Field label="Heading"><Input field="heading" placeholder="Course Highlights" /></Field>
+          <Field label="Heading"><Input field="heading" placeholder="Highlights" /></Field>
           <Field label="Subheading"><Input field="subheading" /></Field>
 
           <SectionTitle>Layout</SectionTitle>
@@ -694,6 +1724,7 @@ function PropsPanel({ block, onChange, onTypeChange }) {
           <Field label="Section Heading"><Input field="heading" /></Field>
           <ColorRow field="background" label="Background" />
           <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={160} /></Field>
+          <Field label="Autoplay Speed (ms)" hint="Speed in milliseconds. E.g. 5000 for 5 seconds. Set to 0 to disable."><Input field="autoplayInterval" type="number" step={500} min={0} /></Field>
           <SectionTitle>Testimonial Items</SectionTitle>
           {(p.items || []).map((item, i) => (
             <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
@@ -717,7 +1748,251 @@ function PropsPanel({ block, onChange, onTypeChange }) {
               </select>
             </div>
           ))}
-          <button onClick={() => set('items', [...(p.items || []), { name: 'Student Name', role: 'City', text: 'Amazing course!', rating: 5 }])} style={addItemBtn}><Plus size={13} /> Add Review</button>
+          <button onClick={() => set('items', [...(p.items || []), { name: 'Student Name', role: 'City', text: 'Amazing class!', rating: 5 }])} style={addItemBtn}><Plus size={13} /> Add Review</button>
+        </div>
+      );
+
+      case 'team_cards': return (
+        <div style={propsScroll}>
+          <SectionTitle>Content</SectionTitle>
+          <Field label="Section Heading"><Input field="heading" /></Field>
+          <ColorRow field="background" label="Background" />
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" /></Field>
+
+          <SectionTitle>Team Members</SectionTitle>
+          {(p.items || []).map((item, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Member {i + 1}</span>
+                <button onClick={() => set('items', (p.items || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
+              </div>
+              <input placeholder="Name" value={item.name || ''} onChange={e => set('items', (p.items || []).map((it, j) => j === i ? { ...it, name: e.target.value } : it))} style={{ ...inputStyle, marginBottom: '6px' }} />
+              <input placeholder="Title / Role" value={item.title || ''} onChange={e => set('items', (p.items || []).map((it, j) => j === i ? { ...it, title: e.target.value } : it))} style={{ ...inputStyle, marginBottom: '6px' }} />
+              <div style={{ marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: '600', color: '#4B5563', marginBottom: '4px' }}>Avatar Image</label>
+                <ImageInput
+                  value={item.avatar || ''}
+                  onChange={val => set('items', (p.items || []).map((it, j) => j === i ? { ...it, avatar: val } : it))}
+                  placeholder="Upload photo"
+                />
+              </div>
+              <textarea placeholder="Bio" value={item.bio || ''} onChange={e => set('items', (p.items || []).map((it, j) => j === i ? { ...it, bio: e.target.value } : it))} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+            </div>
+          ))}
+          <button onClick={() => set('items', [...(p.items || []), { name: 'Member Name', title: 'Role', bio: 'Short bio...', avatar: '' }])} style={addItemBtn}><Plus size={13} /> Add Member</button>
+        </div>
+      );
+
+      case 'timeline': return (
+        <div style={propsScroll}>
+          <SectionTitle>Content</SectionTitle>
+          <Field label="Section Heading"><Input field="heading" /></Field>
+          <ColorRow field="background" label="Background" />
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" /></Field>
+
+          <SectionTitle>Timeline Items</SectionTitle>
+          {(p.items || []).map((item, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Step {i + 1}</span>
+                <button onClick={() => set('items', (p.items || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
+              </div>
+              <input placeholder="Date / Year (e.g. 2026)" value={item.date || ''} onChange={e => set('items', (p.items || []).map((it, j) => j === i ? { ...it, date: e.target.value } : it))} style={{ ...inputStyle, marginBottom: '6px' }} />
+              <input placeholder="Title" value={item.title || ''} onChange={e => set('items', (p.items || []).map((it, j) => j === i ? { ...it, title: e.target.value } : it))} style={{ ...inputStyle, marginBottom: '6px' }} />
+              <textarea placeholder="Text content" value={item.text || ''} onChange={e => set('items', (p.items || []).map((it, j) => j === i ? { ...it, text: e.target.value } : it))} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+            </div>
+          ))}
+          <button onClick={() => set('items', [...(p.items || []), { title: 'New Milestone', date: '2026', text: 'Detail of milestone...' }])} style={addItemBtn}><Plus size={13} /> Add Timeline Step</button>
+        </div>
+      );
+
+      case 'accordion': return (
+        <div style={propsScroll}>
+          <Field label="Section Heading"><Input field="heading" /></Field>
+          <ColorRow field="background" label="Background" />
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={160} /></Field>
+          <SectionTitle>Questions (Accordion)</SectionTitle>
+          {(p.items || []).map((item, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Q&A {i + 1}</span>
+                <button onClick={() => set('items', (p.items || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
+              </div>
+              <input placeholder="Question" value={item.q || ''} onChange={e => set('items', (p.items || []).map((it, j) => j === i ? { ...it, q: e.target.value } : it))} style={{ ...inputStyle, marginBottom: '6px' }} />
+              <textarea placeholder="Answer" value={item.a || ''} onChange={e => set('items', (p.items || []).map((it, j) => j === i ? { ...it, a: e.target.value } : it))} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+            </div>
+          ))}
+          <button onClick={() => set('items', [...(p.items || []), { q: 'New Question?', a: 'Answer text...' }])} style={addItemBtn}><Plus size={13} /> Add Question</button>
+        </div>
+      );
+
+      case 'countdown': return (
+        <div style={propsScroll}>
+          <Field label="Heading"><Input field="heading" /></Field>
+          <Field label="Subheading"><Input field="subheading" /></Field>
+          <Field label="Target Date & Time" hint="Pick when the countdown expires"><input type="datetime-local" value={p.targetDate || ''} onChange={e => set('targetDate', e.target.value)} style={inputStyle} /></Field>
+          <Field label="Expired Message"><Input field="expiredText" placeholder="Offer has ended!" /></Field>
+          <ColorRow field="background" label="Background" />
+          <ColorRow field="accentColor" label="Number Color" />
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={120} /></Field>
+        </div>
+      );
+
+      case 'cta': return (
+        <div style={propsScroll}>
+          <Field label="Heading"><Input field="heading" /></Field>
+          <Field label="Subheading"><Input field="subheading" /></Field>
+          <Field label="Button Text"><Input field="btnText" /></Field>
+          <Field label="Fine Print / Note"><Input field="note" placeholder="30-Day Money-Back Guarantee" /></Field>
+          <SectionTitle>Design</SectionTitle>
+          <Field label="Background"><Input field="background" placeholder="gradient or hex" /></Field>
+          <ColorRow field="btnColor" label="Button Color" />
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" /></Field>
+        </div>
+      );
+
+      case 'two_column': return (
+        <div style={propsScroll}>
+          <SectionTitle>Left Column</SectionTitle>
+          <Field label="Left Column Type"><Select field="leftType" options={[{ value: 'text', label: 'Text/CTA' }, { value: 'image', label: 'Image' }, { value: 'video', label: 'YouTube Video' }]} /></Field>
+          {p.leftType === 'text' && (
+            <>
+              <Field label="Left Heading"><Input field="leftHeading" /></Field>
+              <Field label="Left Body Text"><Textarea field="leftContent" rows={4} /></Field>
+              <Field label="Left Button Text"><Input field="leftCtaText" placeholder="optional" /></Field>
+            </>
+          )}
+          {p.leftType === 'image' && <Field label="Left Image"><ImageInput field="leftImage" placeholder="Upload or enter URL" /></Field>}
+          {p.leftType === 'video' && <Field label="Left YouTube URL"><Input field="leftVideoUrl" placeholder="https://..." /></Field>}
+
+          <SectionTitle>Right Column</SectionTitle>
+          <Field label="Right Column Type"><Select field="rightType" options={[{ value: 'text', label: 'Text/CTA' }, { value: 'image', label: 'Image' }, { value: 'video', label: 'YouTube Video' }]} /></Field>
+          {p.rightType === 'text' && (
+            <>
+              <Field label="Right Heading"><Input field="rightHeading" /></Field>
+              <Field label="Right Body Text"><Textarea field="rightContent" rows={4} /></Field>
+              <Field label="Right Button Text"><Input field="rightCtaText" placeholder="optional" /></Field>
+            </>
+          )}
+          {p.rightType === 'image' && <Field label="Right Image"><ImageInput field="rightImage" placeholder="Upload or enter URL" /></Field>}
+          {p.rightType === 'video' && <Field label="Right YouTube URL"><Input field="rightVideoUrl" placeholder="https://..." /></Field>}
+
+          <SectionTitle>Design</SectionTitle>
+          <ColorRow field="background" label="Background" />
+          <Field label="Column Split Widths"><Input field="leftWidth" placeholder="50% 50% or 1.2fr 0.8fr" /></Field>
+          <Field label="Gap (px)"><Input field="gap" type="number" min={0} max={120} /></Field>
+          <Toggle field="imageShadow" label="Image drop shadow" />
+          <Field label="Image Height (px)"><Input field="imageHeight" type="number" min={100} max={800} /></Field>
+          <Field label="Image Fit"><Select field="imageFit" options={[{ value: 'cover', label: 'Cover' }, { value: 'contain', label: 'Contain' }]} /></Field>
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={160} /></Field>
+        </div>
+      );
+
+      case 'three_column': return (
+        <div style={propsScroll}>
+          <ColorRow field="background" label="Background" />
+          <ColorRow field="textColor" label="Text Color" />
+          <ColorRow field="headingColor" label="Heading Color" />
+          <Field label="Gap between columns (px)"><Input field="gap" type="number" /></Field>
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" /></Field>
+
+          <SectionTitle>Column 1</SectionTitle>
+          <Field label="Col 1 Heading"><Input field="col1Heading" /></Field>
+          <Field label="Col 1 Text"><Textarea field="col1Content" /></Field>
+          <Field label="Col 1 Image"><ImageInput field="col1Image" /></Field>
+
+          <SectionTitle>Column 2</SectionTitle>
+          <Field label="Col 2 Heading"><Input field="col2Heading" /></Field>
+          <Field label="Col 2 Text"><Textarea field="col2Content" /></Field>
+          <Field label="Col 2 Image"><ImageInput field="col2Image" /></Field>
+
+          <SectionTitle>Column 3</SectionTitle>
+          <Field label="Col 3 Heading"><Input field="col3Heading" /></Field>
+          <Field label="Col 3 Text"><Textarea field="col3Content" /></Field>
+          <Field label="Col 3 Image"><ImageInput field="col3Image" /></Field>
+        </div>
+      );
+
+      case 'four_column': return (
+        <div style={propsScroll}>
+          <ColorRow field="background" label="Background" />
+          <Field label="Gap between columns (px)"><Input field="gap" type="number" /></Field>
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" /></Field>
+
+          <SectionTitle>Column 1</SectionTitle>
+          <Field label="Title"><Input field="col1Title" /></Field>
+          <Field label="Text"><Input field="col1Text" /></Field>
+          <SectionTitle>Column 2</SectionTitle>
+          <Field label="Title"><Input field="col2Title" /></Field>
+          <Field label="Text"><Input field="col2Text" /></Field>
+          <SectionTitle>Column 3</SectionTitle>
+          <Field label="Title"><Input field="col3Title" /></Field>
+          <Field label="Text"><Input field="col3Text" /></Field>
+          <SectionTitle>Column 4</SectionTitle>
+          <Field label="Title"><Input field="col4Title" /></Field>
+          <Field label="Text"><Input field="col4Text" /></Field>
+        </div>
+      );
+
+      case 'divider': return (
+        <div style={propsScroll}>
+          <Field label="Height (px)"><Input field="height" type="number" min={8} max={200} /></Field>
+          <ColorRow field="background" label="Background Color" />
+          <Toggle field="showLine" label="Show horizontal line" />
+          {p.showLine && <ColorRow field="lineColor" label="Line Color" />}
+        </div>
+      );
+
+      case 'banner': return (
+        <div style={propsScroll}>
+          <Field label="Banner Text"><Input field="text" /></Field>
+          <ColorRow field="background" label="Banner Color" />
+          <ColorRow field="textColor" label="Text Color" />
+          <Field label="Link Text"><Input field="linkText" /></Field>
+          <Field label="Link URL"><Input field="linkUrl" /></Field>
+          <Field label="Padding Y (px)"><Input field="paddingY" type="number" /></Field>
+        </div>
+      );
+
+      case 'html_embed': return (
+        <div style={propsScroll}>
+          <Field label="Raw HTML / Embed Code" hint="IFRAME, maps, widgets or raw HTML elements"><Textarea field="html" rows={12} rich={false} /></Field>
+          <ColorRow field="background" label="Background" />
+          <Field label="Padding Y (px)"><Input field="paddingY" type="number" /></Field>
+        </div>
+      );
+
+      case 'slider': return (
+        <div style={propsScroll}>
+          <SectionTitle>Slider Settings</SectionTitle>
+          <Field label="Autoplay Delay (ms)"><Input field="autoplayInterval" type="number" min={1000} step={500} /></Field>
+          <Field label="Height (px)"><Input field="height" type="number" min={100} max={1000} /></Field>
+          <ColorRow field="background" label="Background Color" />
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={0} max={120} /></Field>
+
+          <SectionTitle>Slides</SectionTitle>
+          {(p.slides || []).map((slide, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Slide {i + 1}</span>
+                <button onClick={() => set('slides', (p.slides || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}><X size={14} /></button>
+              </div>
+              <div style={{ marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: '600', color: '#4B5563', marginBottom: '4px' }}>Slide Image</label>
+                <ImageInput
+                  value={slide.image || ''}
+                  onChange={val => set('slides', (p.slides || []).map((s, j) => j === i ? { ...s, image: val } : s))}
+                  placeholder="Upload or enter image URL"
+                />
+              </div>
+              <input placeholder="Slide Title (optional)" value={slide.title || ''} onChange={e => set('slides', (p.slides || []).map((s, j) => j === i ? { ...s, title: e.target.value } : s))} style={{ ...inputStyle, marginBottom: '6px' }} />
+              <input placeholder="Slide Subtitle (optional)" value={slide.subtitle || ''} onChange={e => set('slides', (p.slides || []).map((s, j) => j === i ? { ...s, subtitle: e.target.value } : s))} style={{ ...inputStyle, marginBottom: '6px' }} />
+              <input placeholder="Link URL (optional)" value={slide.linkUrl || ''} onChange={e => set('slides', (p.slides || []).map((s, j) => j === i ? { ...s, linkUrl: e.target.value } : s))} style={inputStyle} />
+            </div>
+          ))}
+          <button onClick={() => set('slides', [...(p.slides || []), { image: '', title: '', subtitle: '', linkUrl: '' }])} style={addItemBtn}>
+            <Plus size={13} /> Add Slide
+          </button>
         </div>
       );
 
@@ -801,86 +2076,163 @@ function PropsPanel({ block, onChange, onTypeChange }) {
         </div>
       );
 
-      case 'countdown': return (
+      case 'system_about': return (
         <div style={propsScroll}>
+          <SectionTitle>Biography Content</SectionTitle>
           <Field label="Heading"><Input field="heading" /></Field>
-          <Field label="Subheading"><Input field="subheading" /></Field>
-          <Field label="Target Date & Time" hint="Pick when the countdown expires"><input type="datetime-local" value={p.targetDate || ''} onChange={e => set('targetDate', e.target.value)} style={inputStyle} /></Field>
-          <Field label="Expired Message"><Input field="expiredText" placeholder="Offer has ended!" /></Field>
-          <ColorRow field="background" label="Background" />
-          <ColorRow field="accentColor" label="Number Color" />
-          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={120} /></Field>
-        </div>
-      );
-
-      case 'cta': return (
-        <div style={propsScroll}>
-          <Field label="Heading"><Input field="heading" /></Field>
-          <Field label="Subheading"><Input field="subheading" /></Field>
-          <Field label="Button Text"><Input field="btnText" /></Field>
-          <Field label="Fine Print / Note"><Input field="note" placeholder="30-Day Money-Back Guarantee" /></Field>
-          <SectionTitle>Design</SectionTitle>
-          <Field label="Background"><Input field="background" placeholder="gradient or hex" /></Field>
-          <ColorRow field="btnColor" label="Button Color" />
-          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" /></Field>
-        </div>
-      );
-
-      case 'two_column': return (
-        <div style={propsScroll}>
-          <SectionTitle>Left Column</SectionTitle>
-          <Field label="Left Column Type"><Select field="leftType" options={[{ value: 'text', label: 'Text/CTA' }, { value: 'image', label: 'Image' }, { value: 'video', label: 'YouTube Video' }]} /></Field>
-          {(p.leftType === 'text' || !p.leftType) && (
-            <>
-              <Field label="Left Heading"><Input field="leftHeading" /></Field>
-              <Field label="Left Body Text"><Textarea field="leftContent" rows={4} /></Field>
-              <Field label="Left Button Text"><Input field="leftCtaText" placeholder="optional" /></Field>
-              {p.leftCtaText && (
-                <>
-                  <Field label="Left Button Color"><Input field="leftCtaColor" /></Field>
-                  <Field label="Left Button Text Color"><Input field="leftCtaTextColor" /></Field>
-                </>
-              )}
-            </>
-          )}
-          {p.leftType === 'image' && <Field label="Left Image"><ImageInput field="leftImage" placeholder="Upload or enter URL" /></Field>}
-          {p.leftType === 'video' && <Field label="Left YouTube URL"><Input field="leftVideoUrl" placeholder="https://..." /></Field>}
-
-          <SectionTitle>Right Column</SectionTitle>
-          <Field label="Right Column Type"><Select field="rightType" options={[{ value: 'text', label: 'Text/CTA' }, { value: 'image', label: 'Image' }, { value: 'video', label: 'YouTube Video' }]} /></Field>
-          {p.rightType === 'text' && (
-            <>
-              <Field label="Right Heading"><Input field="rightHeading" /></Field>
-              <Field label="Right Body Text"><Textarea field="rightContent" rows={4} /></Field>
-              <Field label="Right Button Text"><Input field="rightCtaText" placeholder="optional" /></Field>
-              {p.rightCtaText && (
-                <>
-                  <Field label="Right Button Color"><Input field="rightCtaColor" /></Field>
-                  <Field label="Right Button Text Color"><Input field="rightCtaTextColor" /></Field>
-                </>
-              )}
-            </>
-          )}
-          {p.rightType === 'image' && <Field label="Right Image"><ImageInput field="rightImage" placeholder="Upload or enter URL" /></Field>}
-          {p.rightType === 'video' && <Field label="Right YouTube URL"><Input field="rightVideoUrl" placeholder="https://..." /></Field>}
-
-          <SectionTitle>Design</SectionTitle>
-          <ColorRow field="background" label="Background" />
-          <Field label="Column Split" hint="e.g. '1.2fr 0.8fr' or '1fr 1fr'"><Input field="leftWidth" placeholder="1.2fr 0.8fr" /></Field>
-          <Field label="Gap (px)"><Input field="gap" type="number" min={0} max={120} /></Field>
-          <Toggle field="imageShadow" label="Image drop shadow" />
-          <Field label="Image Height (px)"><Input field="imageHeight" type="number" min={100} max={800} /></Field>
-          <Field label="Image Fit"><Select field="imageFit" options={[{ value: 'cover', label: 'Cover (fill & crop)' }, { value: 'contain', label: 'Contain (fit inside)' }]} /></Field>
-          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" min={20} max={160} /></Field>
-        </div>
-      );
-
-      case 'divider': return (
-        <div style={propsScroll}>
-          <Field label="Height (px)"><Input field="height" type="number" min={8} max={200} /></Field>
+          <Field label="Biography Image"><ImageInput field="avatar" /></Field>
+          <Field label="Bio Paragraph 1"><Textarea field="bio1" rows={6} /></Field>
+          <Field label="Bio Paragraph 2"><Textarea field="bio2" rows={6} /></Field>
           <ColorRow field="background" label="Background Color" />
-          <Toggle field="showLine" label="Show horizontal line" />
-          {p.showLine && <ColorRow field="lineColor" label="Line Color" />}
+        </div>
+      );
+
+      case 'system_hero_slides': return (
+        <div style={propsScroll}>
+          <SectionTitle>Hero Slider Settings</SectionTitle>
+          <Field label="Autoplay Speed (ms)" hint="Speed in milliseconds. E.g. 5000 for 5 seconds. Set to 0 to disable."><Input field="autoplayInterval" type="number" step={500} min={0} /></Field>
+          <SectionTitle>Slider Images</SectionTitle>
+          {(p.heroSlides || []).map((slide, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Slide {i + 1}</span>
+                <button onClick={() => set('heroSlides', (p.heroSlides || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
+              </div>
+              <ImageInput
+                value={slide || ''}
+                onChange={val => set('heroSlides', (p.heroSlides || []).map((it, j) => j === i ? val : it))}
+                placeholder="Upload slide image"
+              />
+            </div>
+          ))}
+          <button onClick={() => set('heroSlides', [...(p.heroSlides || []), ''])} style={addItemBtn}><Plus size={13} /> Add Slide Image</button>
+        </div>
+      );
+
+      case 'system_logos': return (
+        <div style={propsScroll}>
+          <SectionTitle>Logos Slider Settings</SectionTitle>
+          <Field label="Section Title"><Input field="title" /></Field>
+          <Field label="Marquee Speed (seconds)" hint="Time to complete a full scroll loop (lower = faster)."><Input field="autoplayInterval" type="number" step={1} min={2} /></Field>
+          
+          <SectionTitle>Logos</SectionTitle>
+          {(p.logos || []).map((logo, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Logo {i + 1}</span>
+                <button onClick={() => set('logos', (p.logos || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}><X size={14} /></button>
+              </div>
+              <div style={{ marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: '600', color: '#4B5563', marginBottom: '4px' }}>Logo Image</label>
+                <ImageInput
+                  value={logo.logo || ''}
+                  onChange={val => set('logos', (p.logos || []).map((l, j) => j === i ? { ...l, logo: val } : l))}
+                  placeholder="Upload or enter URL"
+                />
+              </div>
+              <input placeholder="Company Name" value={logo.name || ''} onChange={e => set('logos', (p.logos || []).map((l, j) => j === i ? { ...l, name: e.target.value } : l))} style={inputStyle} />
+            </div>
+          ))}
+          <button onClick={() => set('logos', [...(p.logos || []), { logo: '', name: '' }])} style={addItemBtn}>
+            <Plus size={13} /> Add Logo
+          </button>
+        </div>
+      );
+
+      case 'system_credentials': return (
+        <div style={propsScroll}>
+          <SectionTitle>Credentials Settings</SectionTitle>
+          <p style={{ fontSize: '11px', color: '#6B7280', margin: '0 0 12px 0' }}>Upload image certificates or achievements. They will auto-scroll on mobile view.</p>
+          {(p.credentials || []).map((cred, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Credential {i + 1}</span>
+                <button onClick={() => set('credentials', (p.credentials || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}><X size={14} /></button>
+              </div>
+              <div style={{ marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: '600', color: '#4B5563', marginBottom: '4px' }}>Certificate Image</label>
+                <ImageInput
+                  value={cred.src || ''}
+                  onChange={val => set('credentials', (p.credentials || []).map((c, j) => j === i ? { ...c, src: val } : c))}
+                  placeholder="Upload or enter URL"
+                />
+              </div>
+              <input placeholder="Label / Alt text (e.g. IIT Topper)" value={cred.alt || ''} onChange={e => set('credentials', (p.credentials || []).map((c, j) => j === i ? { ...c, alt: e.target.value } : c))} style={inputStyle} />
+            </div>
+          ))}
+          <button onClick={() => set('credentials', [...(p.credentials || []), { src: '', alt: '' }])} style={addItemBtn}>
+            <Plus size={13} /> Add Credential
+          </button>
+        </div>
+      );
+
+      case 'system_featured': return (
+        <div style={propsScroll}>
+          <SectionTitle>Featured Cards Settings</SectionTitle>
+          <p style={{ fontSize: '11px', color: '#6B7280', margin: '0 0 12px 0' }}>Configure the 3 featured promo cards.</p>
+          {(p.featuredCards || []).map((card, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#1A1B4B', marginBottom: '8px' }}>Card {i + 1} ({card.badge})</div>
+              <Field label="Badge/Eyebrow"><input value={card.badge || ''} onChange={e => set('featuredCards', (p.featuredCards || []).map((c, j) => j === i ? { ...c, badge: e.target.value } : c))} style={inputStyle} /></Field>
+              <Field label="Title"><input value={card.title || ''} onChange={e => set('featuredCards', (p.featuredCards || []).map((c, j) => j === i ? { ...c, title: e.target.value } : c))} style={inputStyle} /></Field>
+              <Field label="Description"><textarea value={card.desc || ''} onChange={e => set('featuredCards', (p.featuredCards || []).map((c, j) => j === i ? { ...c, desc: e.target.value } : c))} rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></Field>
+              <Field label="Link URL"><input value={card.link || ''} onChange={e => set('featuredCards', (p.featuredCards || []).map((c, j) => j === i ? { ...c, link: e.target.value } : c))} style={inputStyle} /></Field>
+              <Field label="Link Text"><input value={card.linkText || ''} onChange={e => set('featuredCards', (p.featuredCards || []).map((c, j) => j === i ? { ...c, linkText: e.target.value } : c))} style={inputStyle} /></Field>
+              <Field label="Card Image (leave blank for reading icon)"><ImageInput value={card.image || ''} onChange={val => set('featuredCards', (p.featuredCards || []).map((c, j) => j === i ? { ...c, image: val } : c))} placeholder="Upload or enter URL" /></Field>
+            </div>
+          ))}
+        </div>
+      );
+
+      case 'system_books': return (
+        <div style={propsScroll}>
+          <SectionTitle>Shopify Books Settings</SectionTitle>
+          <Field label="Section Heading"><Input field="heading" /></Field>
+          <Field label="Sub Label / Eyebrow"><Input field="subLabel" /></Field>
+          <Field label="View All URL"><Input field="viewAllUrl" /></Field>
+
+          <SectionTitle>Featured Books</SectionTitle>
+          {(p.books || []).map((book, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Book {i + 1}</span>
+                <button onClick={() => set('books', (p.books || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}><X size={14} /></button>
+              </div>
+              <Field label="Book Cover"><ImageInput value={book.image || ''} onChange={val => set('books', (p.books || []).map((b, j) => j === i ? { ...b, image: val } : b))} placeholder="Upload or enter URL" /></Field>
+              <Field label="Book Title"><input value={book.title || ''} onChange={e => set('books', (p.books || []).map((b, j) => j === i ? { ...b, title: e.target.value } : b))} style={inputStyle} /></Field>
+              <Field label="Price Label"><input value={book.price || ''} onChange={e => set('books', (p.books || []).map((b, j) => j === i ? { ...b, price: e.target.value } : b))} style={inputStyle} /></Field>
+              <Field label="Purchase Link"><input value={book.url || ''} onChange={e => set('books', (p.books || []).map((b, j) => j === i ? { ...b, url: e.target.value } : b))} style={inputStyle} /></Field>
+            </div>
+          ))}
+          <button onClick={() => set('books', [...(p.books || []), { image: '', title: 'New Book', price: '₹150.00', url: '' }])} style={addItemBtn}>
+            <Plus size={13} /> Add Book
+          </button>
+        </div>
+      );
+
+      case 'system_youtube': return (
+        <div style={propsScroll}>
+          <SectionTitle>YouTube Settings</SectionTitle>
+          <Field label="Section Heading"><Input field="heading" /></Field>
+          <Field label="Sub Label / Eyebrow"><Input field="subLabel" /></Field>
+          <Field label="Subscribe Channel URL"><Input field="subscribeUrl" /></Field>
+
+          <SectionTitle>Custom Video Playlist</SectionTitle>
+          <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 10px' }}>Add specific videos manually (overrides auto-fetch).</p>
+          {(p.customVideos || []).map((video, i) => (
+            <div key={i} style={{ background: '#F9FAFB', borderRadius: '10px', padding: '12px', marginBottom: '10px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280' }}>Video {i + 1}</span>
+                <button onClick={() => set('customVideos', (p.customVideos || []).filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}><X size={14} /></button>
+              </div>
+              <Field label="YouTube Video ID (11 chars)"><input value={video.id || ''} onChange={e => set('customVideos', (p.customVideos || []).map((v, j) => j === i ? { ...v, id: e.target.value } : v))} style={inputStyle} placeholder="E.g. 1Bpk-lc_U4E" /></Field>
+              <Field label="Video Title"><input value={video.title || ''} onChange={e => set('customVideos', (p.customVideos || []).map((v, j) => j === i ? { ...v, title: e.target.value } : v))} style={inputStyle} placeholder="E.g. Wisdom Lecture" /></Field>
+              <Field label="Thumbnail Image URL"><ImageInput value={video.thumbnail || ''} onChange={val => set('customVideos', (p.customVideos || []).map((v, j) => j === i ? { ...v, thumbnail: val } : v))} placeholder="Leave blank for default" /></Field>
+            </div>
+          ))}
+          <button onClick={() => set('customVideos', [...(p.customVideos || []), { id: '', title: '', thumbnail: '', publishedAt: new Date().toISOString() }])} style={addItemBtn}>
+            <Plus size={13} /> Add Video
+          </button>
         </div>
       );
 
@@ -891,7 +2243,7 @@ function PropsPanel({ block, onChange, onTypeChange }) {
   };
 
   return (
-    <PropsContext.Provider value={{ p, set }}>
+    <PropsContext.Provider value={{ p, set, setBatch }}>
       {onTypeChange && block.type !== 'hero' && block.type !== '__row__' && (
         <div style={{ padding: '14px 16px', borderBottom: '1px solid #F3F4F6', background: '#FFFBEB' }}>
           <label style={{ display: 'block', fontSize: '10px', fontWeight: '800', color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>🔄 Swap Block Type</label>
@@ -907,6 +2259,12 @@ function PropsPanel({ block, onChange, onTypeChange }) {
         </div>
       )}
       {renderContent()}
+      {block.type !== 'divider' && block.type !== 'banner' && (
+        <div style={{ padding: '0 16px' }}>
+          <AnimationSection />
+          <TextAnimationSection />
+        </div>
+      )}
     </PropsContext.Provider>
   );
 }
@@ -963,6 +2321,7 @@ export default function PageBuilderPage() {
   const dragFromPalette = useRef(null);
   // For resizing columns
   const resizingRef = useRef(null);
+  const canvasContentRef = useRef(null);
 
   // Load existing layout
   useEffect(() => {
@@ -972,7 +2331,7 @@ export default function PageBuilderPage() {
       const data = await res.json();
       setCourse(data);
       setIsSpecial(data.is_special || false);
-      setBlocks(data.custom_layout?.blocks || []);
+      setBlocks(migrateFloatingBlocks(data.custom_layout?.blocks || []));
       setLoading(false);
     };
     load();
@@ -1022,6 +2381,10 @@ export default function PageBuilderPage() {
   // ── Add top-level block ──────────────────────────────────────────
   const addBlock = (type, afterIdx = blocks.length - 1) => {
     const newBlock = createBlock(type);
+    if (type === 'floating_text') {
+      const anchorId = resolveAnchorBlockId(blocks, newBlock.id) || (afterIdx >= 0 && blocks[afterIdx]?.type !== 'floating_text' ? blocks[afterIdx].id : null);
+      newBlock.props = { ...newBlock.props, anchorBlockId: anchorId, positionMode: 'anchor' };
+    }
     const newBlocks = [...blocks];
     newBlocks.splice(afterIdx + 1, 0, newBlock);
     setBlocks(newBlocks);
@@ -1259,6 +2622,12 @@ export default function PageBuilderPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Save failed.'); return; }
+      
+      // Clear sessionStorage cache so the live page reloads fresh database layout
+      if (course?.slug) {
+        sessionStorage.removeItem(`landing_course_${course.slug}`);
+      }
+      
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch { setError('An error occurred.'); }
@@ -1361,6 +2730,7 @@ export default function PageBuilderPage() {
 
         {/* CENTER — Canvas */}
         <div style={{ overflowY: 'auto', background: '#E5E7EB', padding: '24px 32px' }}>
+          <div ref={canvasContentRef} style={{ position: 'relative' }}>
           {/* Drop zone at top */}
           <DropZone idx={0} dragOverIdx={dragOverIdx} onDragOver={handleDragOver} onDrop={handleDrop} onDragLeave={() => setDragOverIdx(null)} />
 
@@ -1393,7 +2763,18 @@ export default function PageBuilderPage() {
             const isRowSelected = isRowBlock && (selectedRowId === block.id || block.columns.some(c => c.block.id === selectedId));
 
             return (
-              <div key={block.id} className="canvas-block">
+              <div
+                key={`${block.id}-${block.props?.animation || 'none'}-${block.props?.animationDuration ?? 0.8}-${block.props?.animationDelay ?? 0}-${block.props?.animationEasing ?? 'ease-out'}-${block.props?.animationStagger ? 'stagger' : 'no-stagger'}-${block.props?.textAnimation || 'none'}-${block.props?._previewTrigger || 0}`}
+                className="canvas-block sa-visible"
+                data-sa-animation={block.props?.animation || 'none'}
+                data-sa-stagger={block.props?.animationStagger ? 'true' : undefined}
+                style={{
+                  width: '100%',
+                  '--sa-dur': `${block.props?.animationDuration ?? 0.8}s`,
+                  '--sa-delay': '0s',
+                  '--sa-ease': block.props?.animationEasing ?? 'ease-out',
+                }}
+              >
                 {isRowBlock ? (
                   /* ── Row Container ── */
                   <div
@@ -1439,7 +2820,22 @@ export default function PageBuilderPage() {
                         const isColBlockSelected = selectedId === col.block.id;
                         const bt = BLOCK_TYPES.find(b => b.type === col.block.type);
                         return (
-                          <div key={col.block.id} style={{ display: 'flex', flex: 'none', width: `${col.width}%`, position: 'relative', minWidth: 0 }}>
+                          <div
+                            key={`${col.block.id}-${col.block.props?.animation || 'none'}-${col.block.props?.animationDuration ?? 0.8}-${col.block.props?.animationDelay ?? 0}-${col.block.props?.animationEasing ?? 'ease-out'}-${col.block.props?.animationStagger ? 'stagger' : 'no-stagger'}-${col.block.props?.textAnimation || 'none'}-${col.block.props?._previewTrigger || 0}`}
+                            data-sa-animation={col.block.props?.animation || 'none'}
+                            data-sa-stagger={col.block.props?.animationStagger ? 'true' : undefined}
+                            className="sa-visible"
+                            style={{
+                              display: 'flex',
+                              flex: 'none',
+                              width: `${col.width}%`,
+                              position: 'relative',
+                              minWidth: 0,
+                              '--sa-dur': `${col.block.props?.animationDuration ?? 0.8}s`,
+                              '--sa-delay': '0s',
+                              '--sa-ease': col.block.props?.animationEasing ?? 'ease-out',
+                            }}
+                          >
                             {/* Column content */}
                             <div
                               onClick={e => { e.stopPropagation(); setSelectedId(col.block.id); setSelectedRowId(block.id); }}
@@ -1465,7 +2861,7 @@ export default function PageBuilderPage() {
                                   <button title="Delete Column" onClick={e => { e.stopPropagation(); deleteColumnFromRow(block.id, colIdx); }} style={{ ...actionBtn, padding: '2px 5px', color: '#DC2626' }}><X size={11} /></button>
                                 </div>
                               </div>
-                              <BlockPreview block={col.block} />
+                              <BlockPreview block={col.block} onChange={updateBlock} />
                             </div>
 
                             {/* Resize handle (between columns) */}
@@ -1496,7 +2892,7 @@ export default function PageBuilderPage() {
                 ) : (
                   /* ── Regular Block ── */
                   <div
-                    draggable
+                    draggable={block.type !== 'floating_text'}
                     onDragStart={e => handleDragStart(e, idx)}
                     onDragOver={e => handleDragOver(e, idx + 1)}
                     onDrop={e => handleDrop(e, idx + 1)}
@@ -1505,17 +2901,33 @@ export default function PageBuilderPage() {
                     className="block-hover"
                     style={{
                       position: 'relative',
-                      background: '#fff',
+                      background: block.type === 'floating_text' ? 'transparent' : '#fff',
                       borderRadius: '12px',
-                      border: `2px solid ${isSelected ? '#FF9F1C' : 'transparent'}`,
-                      marginBottom: '4px',
+                      border: block.type === 'floating_text' ? `2px dashed ${isSelected ? '#EC4899' : 'transparent'}` : `2px solid ${isSelected ? '#FF9F1C' : 'transparent'}`,
+                      marginBottom: block.type === 'floating_text' ? '0' : '4px',
+                      height: block.type === 'floating_text' ? '0' : 'auto',
                       cursor: 'pointer',
-                      overflow: 'hidden',
-                      boxShadow: isSelected ? '0 0 0 3px rgba(255,159,28,0.2)' : '0 2px 8px rgba(0,0,0,0.06)',
+                      overflow: 'visible',
+                      boxShadow: block.type === 'floating_text' ? 'none' : (isSelected ? '0 0 0 3px rgba(255,159,28,0.2)' : '0 2px 8px rgba(0,0,0,0.06)'),
                       transition: 'border-color 0.15s, box-shadow 0.15s',
                     }}>
                     {/* Block label bar */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: isSelected ? '#FFF8EE' : '#F9FAFB', borderBottom: '1px solid #F3F4F6' }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      background: isSelected ? '#FFF8EE' : '#F9FAFB',
+                      borderBottom: '1px solid #F3F4F6',
+                      position: block.type === 'floating_text' ? 'absolute' : 'static',
+                      top: block.type === 'floating_text' ? '-36px' : 'auto',
+                      left: block.type === 'floating_text' ? '0' : 'auto',
+                      width: block.type === 'floating_text' ? '280px' : 'auto',
+                      zIndex: block.type === 'floating_text' ? 100 : 'auto',
+                      borderRadius: block.type === 'floating_text' ? '8px' : '0',
+                      boxShadow: block.type === 'floating_text' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                      border: block.type === 'floating_text' ? '1px solid #E5E7EB' : 'none',
+                    }}>
                       <GripVertical size={14} color="#D1D5DB" style={{ cursor: 'grab', flexShrink: 0 }} />
                       <span style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#FF9F1C' : '#9CA3AF', flex: 1 }}>
                         {BLOCK_TYPES.find(b => b.type === block.type)?.icon} {BLOCK_TYPES.find(b => b.type === block.type)?.label || block.type}
@@ -1532,8 +2944,28 @@ export default function PageBuilderPage() {
                       </div>
                     </div>
 
-                    {/* Block preview */}
-                    <BlockPreview block={block} />
+                    {/* Block preview — content area is the anchor target (matches live site) */}
+                    <div data-block-id={block.type !== 'floating_text' ? block.id : undefined} style={{ position: 'relative' }}>
+                    {block.type === 'floating_text' ? (
+                      <div style={{ padding: '10px 14px', fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                        Pinned to section — Top: {block.props?.topPercent ?? 55}%, Left: {block.props?.leftPercent ?? 58}% (drag box on canvas)
+                      </div>
+                    ) : (
+                      <BlockPreview block={block} onChange={updateBlock} />
+                    )}
+
+                    {blocks.filter(f => f.type === 'floating_text' && f.props?.anchorBlockId === block.id).map(f => (
+                      <BlockPreview
+                        key={f.id}
+                        block={f}
+                        onChange={updateBlock}
+                        canvasRef={canvasContentRef}
+                        anchorOverlay
+                        isSelected={selectedId === f.id}
+                        onSelect={() => { setSelectedId(f.id); setSelectedRowId(null); }}
+                      />
+                    ))}
+                    </div>
                   </div>
                 )}
 
@@ -1563,6 +2995,8 @@ export default function PageBuilderPage() {
               </div>
             </div>
           )}
+
+          </div>
         </div>
 
         {/* RIGHT — Properties Panel */}
@@ -1575,7 +3009,7 @@ export default function PageBuilderPage() {
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {selectedBlock
-              ? <PropsPanel block={selectedBlock} onChange={updateBlock} onTypeChange={changeBlockType} />
+              ? <PropsPanel block={selectedBlock} onChange={updateBlock} onTypeChange={changeBlockType} allBlocks={blocks} />
               : selectedRow
                 ? <RowPropsPanel row={selectedRow} onUpdateRow={updateRow} />
                 : (
@@ -1586,6 +3020,8 @@ export default function PageBuilderPage() {
                 )
             }
           </div>
+        </div>
+      </div>
       {previewActive && (
         <div style={{ position: 'fixed', inset: 0, background: '#fff', zIndex: 99999, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Preview Toolbar */}
@@ -1603,40 +3039,47 @@ export default function PageBuilderPage() {
             <SpecialCourseLanding
               course={{ ...course, custom_layout: { blocks } }}
               isEnrolled={false}
-              onEnroll={() => {}}
-              slug={course?.slug}
+              user={null}
             />
           </div>
         </div>
       )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Drop Zone ───────────────────────────────────────────────────────
-function DropZone({ idx, dragOverIdx, onDragOver, onDrop, onDragLeave }) {
-  const active = dragOverIdx === idx;
-  return (
-    <div
-      onDragOver={e => { e.preventDefault(); e.stopPropagation(); onDragOver(e, idx); }}
-      onDrop={e => { e.stopPropagation(); onDrop(e, idx); }}
-      onDragLeave={onDragLeave}
-      style={{ height: active ? '48px' : '8px', borderRadius: '8px', background: active ? 'rgba(255,159,28,0.2)' : 'transparent', border: active ? '2px dashed #FF9F1C' : '2px dashed transparent', transition: 'all 0.15s', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {active && <span style={{ fontSize: '12px', color: '#FF9F1C', fontWeight: '600' }}>Drop here</span>}
     </div>
   );
 }
 
 // ─── Block Preview (simplified canvas render) ────────────────────────
-function BlockPreview({ block }) {
-  const p = block.props;
+function BlockPreview({ block, onChange, canvasRef, anchorOverlay = false, isSelected = false, onSelect }) {
+  const [isFocused, setIsFocused] = useState(false);
+  const floatingContentRef = useRef(null);
+  const floatingBoxRef = useRef(null);
+  const p = block.props || {};
+
+  useEffect(() => {
+    const el = floatingContentRef.current;
+    if (!el || isFocused || block.type !== 'floating_text') return;
+    const html = p.content || '<p>Click to edit text</p>';
+    if (el.innerHTML !== html) el.innerHTML = html;
+  }, [block.type, p.content, isFocused]);
+
+  const animText = (text) => {
+    if (!text) return '';
+    const anim = block.props?.textAnimation;
+    const trigger = block.props?._previewTrigger;
+    if (anim && anim !== 'none') {
+      return <AnimatedText key={`${trigger}-${text}`} text={text} animation={anim} trigger={trigger} />;
+    }
+    const hasHtml = /<[a-z/]/i.test(text);
+    if (hasHtml) {
+      return <span dangerouslySetInnerHTML={{ __html: text }} />;
+    }
+    return text;
+  };
 
   const previewStyle = {
-    pointerEvents: 'none',
-    userSelect: 'none',
-    overflow: 'hidden',
+    pointerEvents: 'auto', // Enable pointer events for inline editing and dragging
+    userSelect: 'text',
+    overflow: 'visible',
   };
 
   const getYouTubeId = (url) => {
@@ -1653,26 +3096,26 @@ function BlockPreview({ block }) {
       const isSplit = p.layoutMode === 'split';
 
       return (
-        <div style={{ ...previewStyle, ...bgStyle, padding: '32px 20px', color: '#fff', position: 'relative' }}>
+        <div style={{ ...previewStyle, pointerEvents: 'none', ...bgStyle, padding: '32px 20px', color: '#fff', position: 'relative' }}>
           {p.backgroundImage && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${p.overlayOpacity ?? 0.5})`, zIndex: 1 }} />}
           <div style={{ position: 'relative', zIndex: 2, display: isSplit ? 'grid' : 'block', gridTemplateColumns: isSplit ? '1.2fr 0.8fr' : 'none', gap: '20px', alignItems: 'center' }}>
             <div style={{ textAlign: p.align === 'center' ? 'center' : 'left' }}>
               {p.badge && (
                 <span style={{ display: 'inline-block', background: 'rgba(255,159,28,0.2)', color: '#FF9F1C', padding: '3px 10px', borderRadius: '9999px', fontSize: '9px', fontWeight: '700', marginBottom: '8px' }}>
-                  {p.badge}
+                  {animText(p.badge)}
                 </span>
               )}
-              <h1 style={{ fontSize: '20px', fontWeight: '900', color: p.textColor || '#fff', marginBottom: '8px', fontFamily: 'Outfit, sans-serif', lineHeight: 1.2 }}>
-                {p.title || 'Course Title'}
+              <h1 style={{ fontSize: `${Math.round((p.titleSize || 48) * 0.42)}px`, fontWeight: '900', color: p.textColor || '#fff', marginBottom: '8px', fontFamily: 'Outfit, sans-serif', lineHeight: 1.2 }}>
+                {animText(p.title || 'Course Title')}
               </h1>
               {p.subtitle && (
-                <p style={{ fontSize: '11px', color: p.subtitleColor || 'rgba(255,255,255,0.8)', marginBottom: '14px', lineHeight: 1.4 }}>
-                  {p.subtitle}
+                <p style={{ fontSize: `${Math.round((p.subtitleSize || 18) * 0.6)}px`, color: p.subtitleColor || 'rgba(255,255,255,0.8)', marginBottom: '14px', lineHeight: 1.4 }}>
+                  {animText(p.subtitle)}
                 </p>
               )}
               {p.ctaText && (
                 <button style={{ background: p.ctaColor || '#FF9F1C', color: p.ctaTextColor || '#fff', border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '11px', fontWeight: '800' }}>
-                  {p.ctaText}
+                  {animText(p.ctaText)}
                 </button>
               )}
             </div>
@@ -1696,20 +3139,140 @@ function BlockPreview({ block }) {
 
     case 'text':
       return (
-        <div style={{ ...previewStyle, background: p.background || '#fff', padding: '24px 20px' }}>
+        <div style={{ ...previewStyle, pointerEvents: 'none', background: p.background || '#fff', padding: `${Math.round((p.paddingY || 56) / 2.5)}px 20px` }}>
           <div style={{ textAlign: p.align || 'left' }}>
-            {p.eyebrow && <p style={{ fontSize: '9px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{p.eyebrow}</p>}
-            {p.heading && <h2 style={{ fontSize: '16px', fontWeight: '800', color: p.headingColor || '#1A1B4B', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>{p.heading}</h2>}
-            {p.content && <div style={{ fontSize: '11px', color: p.textColor || '#4B5563', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{p.content}</div>}
+            {p.eyebrow && <p style={{ fontSize: '9px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{animText(p.eyebrow)}</p>}
+            {p.heading && <h2 style={{ fontSize: `${Math.round((p.headingSize || 32) * 0.5)}px`, fontWeight: '800', color: p.headingColor || '#1A1B4B', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>{animText(p.heading)}</h2>}
+            {p.content && <div style={{ fontSize: `${Math.round((p.fontSize || 16) * 0.7)}px`, color: p.textColor || '#4B5563', lineHeight: p.lineHeight || 1.6, whiteSpace: 'pre-wrap' }}>{animText(p.content)}</div>}
           </div>
         </div>
       );
+
+    case 'rich_text':
+      return (
+        <div style={{ ...previewStyle, pointerEvents: 'none', background: p.background || '#fff', padding: `${(p.paddingY || 48) / 2.5}px 20px` }}>
+          <div style={{ textAlign: p.align || 'left', color: p.textColor || '#1f2937', fontSize: `${Math.round((p.fontSize || 16) * 0.7)}px`, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: p.content || '' }} />
+        </div>
+      );
+
+    case 'floating_text': {
+      const handleMouseDown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const boxEl = floatingBoxRef.current;
+        if (!boxEl) return;
+
+        const boxRect = boxEl.getBoundingClientRect();
+        const offsetX = e.clientX - boxRect.left;
+        const offsetY = e.clientY - boxRect.top;
+        const anchorEl = getAnchorElement(p.anchorBlockId, canvasRef?.current);
+
+        const onMouseMove = (ev) => {
+          const boxWidth = p.width !== undefined ? p.width : 280;
+          const boxHeight = boxEl.offsetHeight || 120;
+          const position = buildAnchorPosition(ev.clientX, ev.clientY, offsetX, offsetY, anchorEl, boxWidth, boxHeight);
+
+          onChange?.({
+            ...block,
+            props: { ...p, ...position, anchorBlockId: p.anchorBlockId },
+          });
+        };
+
+        const onMouseUp = () => {
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+      };
+
+      const boxWidth = p.width !== undefined ? p.width : 280;
+      const pos = resolveAnchorPosition(p);
+
+      const boxStyle = {
+        position: 'absolute',
+        top: pos.top,
+        left: pos.left,
+        width: `${boxWidth}px`,
+        maxWidth: 'min(90%, calc(100% - 16px))',
+        background: p.background || '#ffffff',
+        color: p.textColor || '#1f2937',
+        padding: `${p.padding !== undefined ? p.padding : 16}px`,
+        borderRadius: `${p.borderRadius !== undefined ? p.borderRadius : 12}px`,
+        border: p.borderWidth ? `${p.borderWidth}px solid ${p.borderColor || '#e5e7eb'}` : `1.5px solid ${isSelected ? '#EC4899' : '#e5e7eb'}`,
+        boxShadow: p.shadow ? '0 10px 30px rgba(0,0,0,0.12)' : 'none',
+        fontSize: '13px',
+        zIndex: (p.zIndex || 50) + (isSelected ? 10 : 0),
+        boxSizing: 'border-box',
+        pointerEvents: 'auto',
+        cursor: 'default',
+      };
+
+      const boxInner = (
+        <div ref={floatingBoxRef} style={boxStyle} onClick={e => { e.stopPropagation(); onSelect?.(); }}>
+          <div
+            onMouseDown={handleMouseDown}
+            style={{
+              position: 'absolute',
+              top: '4px',
+              right: '4px',
+              width: '18px',
+              height: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'move',
+              background: '#F3F4F6',
+              border: '1.5px solid #EC4899',
+              borderRadius: '4px',
+              fontSize: '10px',
+              userSelect: 'none',
+              color: '#EC4899',
+              fontWeight: 'bold',
+              zIndex: 20,
+            }}
+            title="Drag to position on page"
+          >
+            ✥
+          </div>
+          <div
+            ref={floatingContentRef}
+            contentEditable
+            suppressContentEditableWarning
+            onFocus={() => setIsFocused(true)}
+            onInput={e => {
+              onChange?.({
+                ...block,
+                props: { ...p, content: e.currentTarget.innerHTML, positionMode: 'page' },
+              });
+            }}
+            onBlur={e => {
+              setIsFocused(false);
+              onChange?.({
+                ...block,
+                props: { ...p, content: e.currentTarget.innerHTML, positionMode: 'page' },
+              });
+            }}
+            style={{ outline: 'none', minHeight: '24px', paddingTop: '4px' }}
+          />
+        </div>
+      );
+
+      if (anchorOverlay) return boxInner;
+
+      return (
+        <div style={{ ...previewStyle, position: 'relative', minHeight: '120px', padding: '12px', background: 'transparent', overflow: 'visible' }}>
+          {boxInner}
+        </div>
+      );
+    }
 
     case 'video': {
       const ytId = getYouTubeId(p.url);
       return (
         <div style={{ ...previewStyle, background: p.background || '#0F0F0F', padding: '20px', color: '#fff', textAlign: 'center' }}>
-          {p.title && <h3 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px' }}>{p.title}</h3>}
+          {p.title && <h3 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px' }}>{animText(p.title)}</h3>}
           <div style={{ width: '100%', maxWidth: '280px', height: '140px', background: '#1F1F1F', margin: '0 auto', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #333' }}>
             <span style={{ fontSize: '32px', color: '#FF0000' }}>▶</span>
             <span style={{ fontSize: '10px', color: '#888', marginTop: '6px' }}>{ytId ? 'YouTube Video Connected' : 'Enter YouTube Video URL'}</span>
@@ -1726,7 +3289,7 @@ function BlockPreview({ block }) {
           ) : (
             <div style={{ width: '100%', height: '80px', background: '#F3F4F6', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', border: '1px dashed #D1D5DB' }}>🖼️ Paste Image URL in properties</div>
           )}
-          {p.caption && <p style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '6px', fontStyle: 'italic' }}>{p.caption}</p>}
+          {p.caption && <p style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '6px', fontStyle: 'italic' }}>{animText(p.caption)}</p>}
         </div>
       );
 
@@ -1736,8 +3299,8 @@ function BlockPreview({ block }) {
         <div style={{ ...previewStyle, background: p.background || '#F8F9FE', padding: '24px 20px' }}>
           {p.heading && (
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              {p.eyebrow && <span style={{ fontSize: '8px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase' }}>{p.eyebrow}</span>}
-              <h3 style={{ fontSize: '14px', fontWeight: '800', color: p.headingColor || '#1A1B4B', margin: '2px 0' }}>{p.heading}</h3>
+              {p.eyebrow && <span style={{ fontSize: '8px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase' }}>{animText(p.eyebrow)}</span>}
+              <h3 style={{ fontSize: '14px', fontWeight: '800', color: p.headingColor || '#1A1B4B', margin: '2px 0' }}>{animText(p.heading)}</h3>
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '10px' }}>
@@ -1745,8 +3308,8 @@ function BlockPreview({ block }) {
               <div key={i} style={{ background: '#fff', borderRadius: '8px', padding: '10px', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: p.iconPosition === 'top' ? 'column' : 'row', gap: '8px' }}>
                 {item.icon && <span style={{ fontSize: '16px' }}>{item.icon}</span>}
                 <div>
-                  <h4 style={{ fontSize: '11px', fontWeight: '700', color: '#1A1B4B', margin: '0 0 2px' }}>{item.title}</h4>
-                  <p style={{ fontSize: '9px', color: '#6B7280', margin: 0, lineHeight: 1.3 }}>{item.text}</p>
+                  <h4 style={{ fontSize: '11px', fontWeight: '700', color: '#1A1B4B', margin: '0 0 2px' }}>{animText(item.title)}</h4>
+                  <p style={{ fontSize: '9px', color: '#6B7280', margin: 0, lineHeight: 1.3 }}>{animText(item.text)}</p>
                 </div>
               </div>
             ))}
@@ -1761,8 +3324,8 @@ function BlockPreview({ block }) {
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${(p.items || []).length || 4}, 1fr)`, gap: '12px', textAlign: 'center' }}>
             {(p.items || []).map((item, i) => (
               <div key={i}>
-                <div style={{ fontSize: '20px', fontWeight: '950', color: p.accentColor || '#FF9F1C', fontFamily: 'Outfit, sans-serif' }}>{item.value}</div>
-                <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>{item.label}</div>
+                <div style={{ fontSize: '20px', fontWeight: '955', color: p.accentColor || '#FF9F1C', fontFamily: 'Outfit, sans-serif' }}>{animText(item.value)}</div>
+                <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>{animText(item.label)}</div>
               </div>
             ))}
           </div>
@@ -1772,12 +3335,12 @@ function BlockPreview({ block }) {
     case 'testimonials':
       return (
         <div style={{ ...previewStyle, background: p.background || '#F0F2F5', padding: '24px 20px', textAlign: 'center' }}>
-          {p.heading && <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#1A1B4B', marginBottom: '12px' }}>{p.heading}</h3>}
+          {p.heading && <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#1A1B4B', marginBottom: '12px' }}>{animText(p.heading)}</h3>}
           <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', maxWidth: '480px', margin: '0 auto' }}>
             <p style={{ fontSize: '11px', color: '#374151', fontStyle: 'italic', margin: '0 0 8px' }}>
-              "{(p.items || [])[0]?.text || 'Student feedback goes here.'}"
+              "{animText((p.items || [])[0]?.text || 'Student feedback goes here.')}"
             </p>
-            <div style={{ fontSize: '10px', fontWeight: '700', color: '#1A1B4B' }}>- {(p.items || [])[0]?.name || 'Student Name'}</div>
+            <div style={{ fontSize: '10px', fontWeight: '700', color: '#1A1B4B' }}>- {animText((p.items || [])[0]?.name || 'Student Name')}</div>
           </div>
         </div>
       );
@@ -1792,8 +3355,8 @@ function BlockPreview({ block }) {
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#1A1B4B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '18px' }}>{(p.name || 'R')[0]}</div>
             )}
             <div>
-              <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#1A1B4B', margin: 0 }}>{p.name || 'Instructor'}</h4>
-              <p style={{ fontSize: '10px', color: '#FF9F1C', margin: '2px 0 0', fontWeight: '600' }}>{p.title}</p>
+              <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#1A1B4B', margin: 0 }}>{animText(p.name || 'Instructor')}</h4>
+              <p style={{ fontSize: '10px', color: '#FF9F1C', margin: '2px 0 0', fontWeight: '600' }}>{animText(p.title)}</p>
             </div>
           </div>
         </div>
@@ -1802,7 +3365,7 @@ function BlockPreview({ block }) {
     case 'curriculum':
       return (
         <div style={{ ...previewStyle, background: p.background || '#F8F9FE', padding: '20px' }}>
-          <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', margin: '0 0 6px' }}>{p.heading || 'Course Curriculum'}</h4>
+          <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', margin: '0 0 6px' }}>{animText(p.heading || 'Course Curriculum')}</h4>
           <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: '#374151' }}>
             📚 Curriculum layout is automatically populated from course modules
           </div>
@@ -1814,12 +3377,12 @@ function BlockPreview({ block }) {
         <div style={{ ...previewStyle, background: p.background || '#F0F2F5', padding: '24px 20px' }}>
           <div style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.04)', maxWidth: '360px', margin: '0 auto' }}>
             <div style={{ background: p.headerBg || '#1A1B4B', padding: '12px', color: '#fff', textAlign: 'center', fontSize: '12px', fontWeight: '700' }}>
-              {p.headerTitle || 'Start Learning'}
+              {animText(p.headerTitle || 'Start Learning')}
             </div>
             <div style={{ padding: '16px', textAlign: 'center' }}>
               <div style={{ fontSize: '20px', fontWeight: '900', color: '#1A1B4B', marginBottom: '10px' }}>₹ Price Display</div>
               <button style={{ background: p.btnColor || '#FF9F1C', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 20px', width: '100%', fontSize: '11px', fontWeight: '800' }}>
-                {p.btnText || 'Enroll Now'}
+                {animText(p.btnText || 'Enroll Now')}
               </button>
             </div>
           </div>
@@ -1829,11 +3392,11 @@ function BlockPreview({ block }) {
     case 'faq':
       return (
         <div style={{ ...previewStyle, background: p.background || '#fff', padding: '24px 20px' }}>
-          {p.heading && <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#1A1B4B', marginBottom: '12px', textAlign: 'center' }}>{p.heading}</h3>}
+          {p.heading && <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#1A1B4B', marginBottom: '12px', textAlign: 'center' }}>{animText(p.heading)}</h3>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '500px', margin: '0 auto' }}>
             {(p.items || []).slice(0, 3).map((item, i) => (
               <div key={i} style={{ border: '1px solid #E5E7EB', borderRadius: '6px', padding: '8px 12px', fontSize: '10px', color: '#374151', display: 'flex', justifyContent: 'space-between' }}>
-                <span>❓ {item.q}</span>
+                <span>❓ {animText(item.q)}</span>
                 <span>▼</span>
               </div>
             ))}
@@ -1844,8 +3407,8 @@ function BlockPreview({ block }) {
     case 'countdown':
       return (
         <div style={{ ...previewStyle, background: p.background || '#1A1B4B', padding: '24px 20px', textAlign: 'center', color: '#fff' }}>
-          {p.heading && <h3 style={{ fontSize: '13px', fontWeight: '800', marginBottom: '4px' }}>{p.heading}</h3>}
-          {p.subheading && <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginBottom: '12px' }}>{p.subheading}</p>}
+          {p.heading && <h3 style={{ fontSize: '13px', fontWeight: '800', marginBottom: '4px' }}>{animText(p.heading)}</h3>}
+          {p.subheading && <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginBottom: '12px' }}>{animText(p.subheading)}</p>}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
             {['Days', 'Hours', 'Mins', 'Secs'].map((lbl, i) => (
               <div key={lbl} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 12px', minWidth: '45px' }}>
@@ -1860,12 +3423,12 @@ function BlockPreview({ block }) {
     case 'cta':
       return (
         <div style={{ ...previewStyle, background: p.background || 'linear-gradient(135deg, #1A1B4B, #2D1B69)', padding: '28px 20px', textAlign: 'center', color: '#fff' }}>
-          {p.heading && <h2 style={{ fontSize: '18px', fontWeight: '900', color: '#fff', marginBottom: '6px', fontFamily: 'Outfit, sans-serif' }}>{p.heading}</h2>}
-          {p.subheading && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', marginBottom: '14px', maxWidth: '420px', margin: '0 auto 14px' }}>{p.subheading}</p>}
+          {p.heading && <h2 style={{ fontSize: '18px', fontWeight: '900', color: '#fff', marginBottom: '6px', fontFamily: 'Outfit, sans-serif' }}>{animText(p.heading)}</h2>}
+          {p.subheading && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', marginBottom: '14px', maxWidth: '420px', margin: '0 auto 14px' }}>{animText(p.subheading)}</p>}
           <button style={{ background: p.btnColor || '#FF9F1C', color: p.btnTextColor || '#1A1B4B', border: 'none', borderRadius: '8px', padding: '8px 24px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', fontFamily: 'Outfit, sans-serif' }}>
-            {p.btnText || 'Enroll Now'}
+            {animText(p.btnText || 'Enroll Now')}
           </button>
-          {p.note && <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', marginTop: '10px' }}>{p.note}</p>}
+          {p.note && <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', marginTop: '10px' }}>{animText(p.note)}</p>}
         </div>
       );
 
@@ -1885,21 +3448,21 @@ function BlockPreview({ block }) {
         if (type === 'video') {
           return <div style={{ height: '75px', background: '#000', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px' }}>🎬 Video Preview</div>;
         }
-        
+
         // Text type
         const heading = col === 'left' ? p.leftHeading : p.rightHeading;
         const content = col === 'left' ? p.leftContent : p.rightContent;
         const ctaText = col === 'left' ? p.leftCtaText : p.rightCtaText;
         const ctaColor = col === 'left' ? p.leftCtaColor : p.rightCtaColor;
         const ctaTextColor = col === 'left' ? p.leftCtaTextColor : p.rightCtaTextColor;
-        
+
         return (
           <div style={{ textAlign: 'left' }}>
-            {heading && <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', marginBottom: '4px' }}>{heading}</h4>}
-            {content && <p style={{ fontSize: '9px', color: '#4B5563', lineHeight: 1.4, margin: 0, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{content}</p>}
+            {heading && <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', marginBottom: '4px' }}>{animText(heading)}</h4>}
+            {content && <p style={{ fontSize: '9px', color: '#4B5563', lineHeight: 1.4, margin: 0, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{animText(content)}</p>}
             {ctaText && (
               <button style={{ marginTop: '8px', background: ctaColor || '#FF9F1C', color: ctaTextColor || '#1A1B4B', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '9px', fontWeight: '700' }}>
-                {ctaText}
+                {animText(ctaText)}
               </button>
             )}
           </div>
@@ -1916,11 +3479,293 @@ function BlockPreview({ block }) {
       );
     }
 
+    case 'three_column':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#fff', padding: '24px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: `${p.gap || 20}px` }}>
+            {[1, 2, 3].map(num => {
+              const heading = p[`col${num}Heading`] || `Column ${num}`;
+              const content = p[`col${num}Content`];
+              const img = p[`col${num}Image`];
+              return (
+                <div key={num} style={{ textAlign: 'left' }}>
+                  {img && <img src={img} alt="" style={{ width: '100%', height: '50px', objectFit: 'cover', borderRadius: '4px', marginBottom: '6px' }} />}
+                  <h4 style={{ fontSize: '11px', fontWeight: '800', color: p.headingColor || '#1A1B4B', margin: '0 0 4px 0' }}>{animText(heading)}</h4>
+                  {content && <p style={{ fontSize: '9px', color: p.textColor || '#4B5563', margin: 0, lineHeight: 1.3 }}>{animText(content)}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+
+    case 'four_column':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#fafafa', padding: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: `${p.gap || 16}px` }}>
+            {[1, 2, 3, 4].map(num => {
+              const title = p[`col${num}Title`] || `Col ${num}`;
+              const text = p[`col${num}Text`];
+              return (
+                <div key={num} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid rgba(0,0,0,0.03)', textAlign: 'center' }}>
+                  <h5 style={{ fontSize: '10px', fontWeight: '800', color: '#1A1B4B', margin: '0 0 3px 0' }}>{animText(title)}</h5>
+                  {text && <p style={{ fontSize: '8px', color: '#6B7280', margin: 0, lineHeight: 1.25 }}>{animText(text)}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+
+    case 'gallery':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#ffffff', padding: '20px' }}>
+          {p.title && <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', marginBottom: '10px', textAlign: 'center' }}>{animText(p.title)}</h3>}
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${p.columns || 3}, 1fr)`, gap: '8px' }}>
+            {(p.images && p.images.length > 0 ? p.images : ['', '', '']).slice(0, p.columns || 3).map((img, i) => (
+              <div key={i} style={{ height: '70px', background: '#F3F4F6', borderRadius: '6px', overflow: 'hidden', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '14px' }}>📸</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'team_cards':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#ffffff', padding: '24px 20px' }}>
+          {p.heading && <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', marginBottom: '12px', textAlign: 'center' }}>{animText(p.heading)}</h3>}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {(p.items || []).map((item, i) => (
+              <div key={i} style={{ background: '#F9FAFB', borderRadius: '8px', padding: '10px', border: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '120px', maxWidth: '160px', textAlign: 'center' }}>
+                {item.avatar ? (
+                  <img src={item.avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', marginBottom: '6px' }} />
+                ) : (
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: '700', marginBottom: '6px' }}>{item.name ? item.name[0] : '👤'}</div>
+                )}
+                <div style={{ fontSize: '10px', fontWeight: '800', color: '#1A1B4B' }}>{animText(item.name)}</div>
+                <div style={{ fontSize: '8px', color: '#6B7280', marginTop: '2px' }}>{animText(item.title)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'timeline':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#fafafa', padding: '24px 20px' }}>
+          {p.heading && <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', marginBottom: '16px', textAlign: 'center' }}>{animText(p.heading)}</h3>}
+          <div style={{ borderLeft: '2px solid #7C3AED', paddingLeft: '14px', marginLeft: '20px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
+            {(p.items || []).map((item, i) => (
+              <div key={i} style={{ position: 'relative', textAlign: 'left' }}>
+                <div style={{ position: 'absolute', left: '-20px', top: '2px', width: '10px', height: '10px', borderRadius: '50%', background: '#7C3AED', border: '2px solid #fff' }} />
+                <div style={{ fontSize: '9px', fontWeight: '800', color: '#7C3AED' }}>{animText(item.date)}</div>
+                <h5 style={{ fontSize: '11px', fontWeight: '700', color: '#1A1B4B', margin: '2px 0 1px 0' }}>{animText(item.title)}</h5>
+                <p style={{ fontSize: '9px', color: '#6B7280', margin: 0, lineHeight: 1.3 }}>{animText(item.text)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'accordion':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#fff', padding: '20px' }}>
+          {p.heading && <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', marginBottom: '10px', textAlign: 'center' }}>{animText(p.heading)}</h3>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {(p.items || []).map((item, i) => (
+              <div key={i} style={{ border: '1px solid #E5E7EB', borderRadius: '6px', padding: '8px 10px', fontSize: '9.5px', color: '#374151', display: 'flex', justifyContent: 'space-between', background: '#FAFAFA' }}>
+                <span style={{ fontWeight: '600' }}>❓ {animText(item.q)}</span>
+                <span>➕</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'slider':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#ffffff', padding: '16px 20px', position: 'relative' }}>
+          <div style={{ height: '140px', background: '#F3F4F6', borderRadius: '10px', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E5E7EB' }}>
+            {p.slides && p.slides[0] ? (
+              <>
+                {p.slides[0].image && <img src={p.slides[0].image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />}
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '16px', color: '#fff', textAlign: 'left' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '900', margin: '0 0 4px 0' }}>{animText(p.slides[0].title)}</h4>
+                  <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.8)', margin: 0 }}>{animText(p.slides[0].subtitle)}</p>
+                </div>
+              </>
+            ) : (
+              <span style={{ fontSize: '24px' }}>🎠 Slider Preview</span>
+            )}
+            <div style={{ position: 'absolute', bottom: '6px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '4px' }}>
+              {(p.slides || []).map((_, i) => (
+                <div key={i} style={{ width: '5px', height: '5px', borderRadius: '50%', background: i === 0 ? '#FF9F1C' : 'rgba(255,255,255,0.5)' }} />
+              ))}
+            </div>
+            <div style={{ position: 'absolute', left: '8px', color: '#fff', fontSize: '14px', fontWeight: '900' }}>‹</div>
+            <div style={{ position: 'absolute', right: '8px', color: '#fff', fontSize: '14px', fontWeight: '900' }}>›</div>
+          </div>
+        </div>
+      );
+
+    case 'system_hero_slides':
+      return (
+        <div style={{ ...previewStyle, background: '#1A1B4B', padding: '16px 20px', position: 'relative' }}>
+          <div style={{ height: '140px', background: '#1F1F1F', borderRadius: '10px', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
+            {p.heroSlides && p.heroSlides[0] ? (
+              <img src={p.heroSlides[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+            ) : (
+              <span style={{ color: '#fff', fontSize: '12px' }}>System Hero Poster Slider</span>
+            )}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px', color: '#fff', textAlign: 'left' }}>
+              <div style={{ fontSize: '12px', fontWeight: '900' }}>{animText(p.title || 'Radheshyam Das Courses & Books')}</div>
+              <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.6)' }}>Monk, Author, IIT Alumni</div>
+            </div>
+            <div style={{ position: 'absolute', bottom: '6px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '4px' }}>
+              {(p.heroSlides || []).slice(0, 5).map((_, i) => (
+                <div key={i} style={{ width: '4px', height: '4px', borderRadius: '50%', background: i === 0 ? '#FF9F1C' : 'rgba(255,255,255,0.4)' }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'system_credentials':
+      return (
+        <div style={{ ...previewStyle, background: '#fff', padding: '14px 20px', borderTop: '1px solid #F3F4F6', borderBottom: '1px solid #F3F4F6' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-evenly', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            {(p.credentials || []).map((cred, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#F3F4F6', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {cred.src ? <img src={cred.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: '14px' }}>🎓</span>}
+                </div>
+                <div style={{ fontSize: '8px', color: '#6B7280', fontWeight: '700', textAlign: 'center', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cred.alt}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'system_logos':
+      return (
+        <div style={{ ...previewStyle, background: '#F9FAFB', padding: '16px 20px' }}>
+          {p.title && <div style={{ fontSize: '9px', fontWeight: '800', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px', textAlign: 'center' }}>{animText(p.title)}</div>}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+            {(p.logos || []).slice(0, 5).map((logo, i) => (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.6 }}>
+                {logo.logo ? (
+                  <img src={logo.logo} alt="" style={{ height: '16px', maxWidth: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <span style={{ fontSize: '9px', fontWeight: '700' }}>{logo.name}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'system_featured':
+      return (
+        <div style={{ ...previewStyle, background: '#F8F9FE', padding: '24px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+            {(p.featuredCards || []).map((card, i) => (
+              <div key={i} style={{ background: '#fff', borderRadius: '8px', padding: '10px', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
+                <span style={{ fontSize: '7px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase' }}>{animText(card.badge)}</span>
+                <h4 style={{ fontSize: '10px', fontWeight: '800', color: '#1A1B4B', margin: 0 }}>{animText(card.title)}</h4>
+                <p style={{ fontSize: '8px', color: '#6B7280', margin: 0, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{animText(card.desc)}</p>
+                {card.image && <img src={card.image} alt="" style={{ width: '100%', height: '40px', objectFit: 'cover', borderRadius: '4px', marginTop: 'auto' }} />}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'system_about':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#FAF8F5', padding: '24px 20px' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', maxWidth: '540px', margin: '0 auto', textAlign: 'left' }}>
+            <img src={p.avatar || 'https://lh3.googleusercontent.com/d/1MN4z91XjyCUFfuOPKDCeBse8TwAfJRVg'} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #FF9F1C' }} />
+            <div>
+              <h3 style={{ fontSize: '14px', fontWeight: '900', color: '#1A1B4B', margin: '0 0 4px 0' }}>{animText(p.heading || 'Biography')}</h3>
+              <p style={{ fontSize: '9px', color: '#4B5563', lineHeight: 1.4, margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{animText(p.bio1)}</p>
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'system_books':
+      return (
+        <div style={{ ...previewStyle, background: '#ffffff', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div>
+              {p.subLabel && <span style={{ fontSize: '7.5px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase' }}>{animText(p.subLabel)}</span>}
+              <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', margin: 0 }}>{animText(p.heading || 'Shopify Books')}</h3>
+            </div>
+            <span style={{ fontSize: '8.5px', color: '#FF9F1C', fontWeight: '700' }}>View All →</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {(p.books || []).slice(0, 4).map((book, i) => (
+              <div key={i} style={{ flexShrink: 0, width: '70px', textAlign: 'center' }}>
+                <div style={{ height: '85px', background: '#F3F4F6', borderRadius: '6px', overflow: 'hidden', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {book.image ? <img src={book.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '14px' }}>📚</span>}
+                </div>
+                <div style={{ fontSize: '8px', fontWeight: '700', color: '#1A1B4B', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{animText(book.title)}</div>
+                <div style={{ fontSize: '8px', color: '#FF9F1C', fontWeight: '800' }}>{book.price}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'system_youtube':
+      return (
+        <div style={{ ...previewStyle, background: '#ffffff', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div>
+              {p.subLabel && <span style={{ fontSize: '7.5px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase' }}>{animText(p.subLabel)}</span>}
+              <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', margin: 0 }}>{animText(p.heading || 'YouTube Playlist')}</h3>
+            </div>
+            <span style={{ fontSize: '8.5px', color: '#DC2626', fontWeight: '700' }}>Subscribe Channel</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            {(p.customVideos || []).slice(0, 2).map((vid, i) => (
+              <div key={i} style={{ background: '#F9FAFB', borderRadius: '6px', border: '1px solid #E5E7EB', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ height: '55px', background: '#111', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {vid.thumbnail ? <img src={vid.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '12px', color: '#fff' }}>📺 Video</span>}
+                  <div style={{ position: 'absolute', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(220,38,38,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '9px', fontWeight: '900' }}>▶</div>
+                </div>
+                <div style={{ fontSize: '8.5px', fontWeight: '700', padding: '4px', color: '#1A1B4B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{animText(vid.title || 'YouTube Lecture')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
     case 'divider':
       return (
         <div style={{ ...previewStyle, background: p.background || 'transparent', padding: '4px 0' }}>
           <div style={{ height: `${(p.height || 48) / 3}px`, display: 'flex', alignItems: 'center' }}>
             {p.showLine && <div style={{ width: '100%', height: '1px', background: p.lineColor || '#E5E7EB' }} />}
+          </div>
+        </div>
+      );
+
+    case 'banner':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#FF9F1C', color: p.textColor || '#1A1B4B', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '10px', fontWeight: '700', textAlign: 'center' }}>
+          <span>{animText(p.text)}</span>
+          {p.linkText && <span style={{ textDecoration: 'underline', cursor: 'pointer', opacity: 0.8 }}>{animText(p.linkText)} →</span>}
+        </div>
+      );
+
+    case 'html_embed':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#ffffff', padding: '24px 20px', textAlign: 'center' }}>
+          <div style={{ border: '2px dashed #C7D2FE', background: '#EEF2FF', padding: '16px', borderRadius: '8px', color: '#4F46E5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '20px' }}>💻</span>
+            <div style={{ fontSize: '11px', fontWeight: '700' }}>Custom HTML/IFrame Embed Block</div>
+            <div style={{ fontSize: '9px', color: '#6366F1', wordBreak: 'break-all' }}>{p.html ? (p.html.substring(0, 80) + '...') : 'No HTML content added yet'}</div>
           </div>
         </div>
       );
@@ -1978,3 +3823,17 @@ const addItemBtn = {
   justifyContent: 'center',
   marginTop: '4px',
 };
+
+// ─── Drop Zone ───────────────────────────────────────────────────────
+function DropZone({ idx, dragOverIdx, onDragOver, onDrop, onDragLeave }) {
+  const active = dragOverIdx === idx;
+  return (
+    <div
+      onDragOver={e => { e.preventDefault(); e.stopPropagation(); onDragOver(e, idx); }}
+      onDrop={e => { e.stopPropagation(); onDrop(e, idx); }}
+      onDragLeave={onDragLeave}
+      style={{ height: active ? '48px' : '8px', borderRadius: '8px', background: active ? 'rgba(255,159,28,0.2)' : 'transparent', border: active ? '2px dashed #FF9F1C' : '2px dashed transparent', transition: 'all 0.15s', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+      {active && <span style={{ fontSize: '12px', color: '#FF9F1C', fontWeight: '600' }}>Drop here</span>}
+    </div>
+  );
+}

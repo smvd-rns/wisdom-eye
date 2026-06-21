@@ -7,6 +7,7 @@ import {
   ArrowLeft, Clock, Award, AlertCircle, HelpCircle, Check,
   ChevronRight, ChevronLeft, Loader2, CheckCircle2, XCircle, FileText
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 
 export default function StudentQuizPage() {
   const { slug, quizId } = useParams();
@@ -198,7 +199,9 @@ export default function StudentQuizPage() {
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <div style={styles.container}>
+    <div className="quiz-page-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#0c0a1c', position: 'relative' }}>
+      <Navbar />
+      <div style={{ ...styles.container, flex: 1, minHeight: 'auto' }}>
       {/* Decorative ambient glowing backdrops */}
       <div className="ambient-glow" />
       <div className="ambient-glow-2" />
@@ -491,10 +494,23 @@ export default function StudentQuizPage() {
           </div>
         </div>
       )}
+      </div>
       
       {/* Global CSS overrides for micro-interactions and ambient depth */}
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 900px) {
+          .quiz-page-root {
+            padding-bottom: 100px !important;
+          }
+          .glass-card {
+            padding: 24px 16px !important;
+            margin: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+        }
         
         .ambient-glow {
           position: absolute;
