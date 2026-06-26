@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard, BookOpen, Users, Tag, CreditCard,
   BarChart2, LogOut, ChevronRight, Menu, X, BookMarked,
-  GraduationCap, ClipboardCheck, Settings, Loader2, Home, Globe, Layers, Database, ShieldCheck
+  GraduationCap, ClipboardCheck, Settings, Loader2, Home, Globe, Layers, Database, ShieldCheck, User
 } from 'lucide-react';
 
 const NAV = [
@@ -18,6 +18,7 @@ const NAV = [
   { href: '/lms-admin/payments', label: 'Payments', icon: CreditCard },
   { href: '/lms-admin/reports', label: 'Reports', icon: BarChart2 },
   { href: '/lms-admin/grading', label: 'Grading Queue', icon: ClipboardCheck },
+  { href: '/lms-admin/profile', label: 'My Profile', icon: User },
 ];
 
 export default function LmsAdminLayout({ children }) {
@@ -181,16 +182,16 @@ export default function LmsAdminLayout({ children }) {
 
         <div style={styles.sidebarFooter}>
           {user && (
-            <div style={styles.userBox}>
+            <Link href="/lms-admin/profile" style={{ ...styles.userBox, textDecoration: 'none' }} title="View Profile">
               <div style={styles.avatar}>{user.name?.[0]?.toUpperCase()}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={styles.userName}>{user.name}</div>
                 <div style={styles.userRole}>{user.role}</div>
               </div>
-              <button onClick={handleLogout} style={styles.logoutBtn} title="Sign out">
+              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} style={styles.logoutBtn} title="Sign out">
                 <LogOut size={15} />
               </button>
-            </div>
+            </Link>
           )}
         </div>
       </aside>
