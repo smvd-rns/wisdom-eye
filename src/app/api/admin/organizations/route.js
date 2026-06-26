@@ -104,8 +104,8 @@ export async function POST(req) {
       .maybeSingle();
     const routingMode = routingModeSetting ? routingModeSetting.value : 'simulation';
 
-    const hostHeader = req.headers.get('host') || 'wisdom-eye.in';
-    let baseDomain = 'wisdom-eye.in';
+    const hostHeader = req.headers.get('host') || 'edulms.co.in';
+    let baseDomain = 'edulms.co.in';
     let protocol = 'https';
     let loginUrl = '';
 
@@ -115,7 +115,7 @@ export async function POST(req) {
       if (cleanHost.includes('localhost') || cleanHost.includes('127.0.0.1')) {
         loginUrl = `http://${hostHeader}/login?tenant=${request.subdomain_slug}`;
       } else {
-        loginUrl = `https://wisdom-eye.vercel.app/login?tenant=${request.subdomain_slug}`;
+        loginUrl = `https://edulms.co.in/login?tenant=${request.subdomain_slug}`;
       }
     } else {
       // In Custom Domain / Production mode, use the subdomain pattern
@@ -128,6 +128,9 @@ export async function POST(req) {
         if (parts.length >= 2) {
           baseDomain = parts.slice(-2).join('.');
         }
+        if (baseDomain === 'vercel.app' || baseDomain === 'wisdom-eye.in' || baseDomain === 'in') {
+          baseDomain = 'edulms.co.in';
+        }
         loginUrl = `${protocol}://${request.subdomain_slug}.${baseDomain}/login`;
       }
     }
@@ -137,7 +140,7 @@ export async function POST(req) {
       .insert({
         name: request.org_name,
         slug: request.subdomain_slug,
-        custom_domain: `${request.subdomain_slug}.wisdom-eye.in`,
+        custom_domain: `${request.subdomain_slug}.edulms.co.in`,
         primary_color: '#FF9F1C',
         secondary_color: '#1A1B4B'
       })
