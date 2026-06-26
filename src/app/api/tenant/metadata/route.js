@@ -14,7 +14,7 @@ export async function GET(req) {
         name: 'Wisdom Eye',
         slogan: 'Vedic Character & Leadership Mentoring',
         description: 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
-        address: 'Govardhan Ecovillage, Wada, Maharashtra',
+        address: 'ISKCON NVCC, Katraj-Kondhwa Road, Hare Krishna Chowk, Pune, Maharashtra 411048',
         email: 'manager@voicepune.com',
         phone: '+91 8605036000'
       });
@@ -35,7 +35,7 @@ export async function GET(req) {
       secondary_color: org.secondary_color || '#1A1B4B',
       slogan: org.slogan || 'Vedic Character & Leadership Mentoring',
       description: org.description || 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
-      address: org.address || 'Govardhan Ecovillage, Wada, Maharashtra',
+      address: org.address || 'ISKCON NVCC, Katraj-Kondhwa Road, Hare Krishna Chowk, Pune, Maharashtra 411048',
       email: org.email || 'manager@voicepune.com',
       phone: org.phone || '+91 8605036000',
       facebook_url: org.facebook_url || 'https://facebook.com',
