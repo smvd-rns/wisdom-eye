@@ -1,5 +1,6 @@
-let cachedVideos = null;
-let lastFetched = 0;
+// Cache key: playlistId -> { videos, lastFetched }
+const videosCache = new Map();
+const playlistCache = new Map();
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 function extractVideoId(url) {
@@ -21,6 +22,99 @@ function parseISO8601Duration(duration) {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
+async function resolvePlaylistId(channelUrl, apiKey) {
+  if (!channelUrl) return 'UU9Pap1xwEQAo7X1tKqpcpWg';
+  
+  if (playlistCache.has(channelUrl)) {
+    return playlistCache.get(channelUrl);
+  }
+
+  try {
+    // 1. If it's already a channel ID (UC...) or playlist ID (UU...)
+    const cleanUrl = channelUrl.trim();
+    if (cleanUrl.match(/^(UC|UU)[a-zA-Z0-9_-]{22}$/)) {
+      const playlistId = cleanUrl.startsWith('UC') ? 'UU' + cleanUrl.substring(2) : cleanUrl;
+      playlistCache.set(channelUrl, playlistId);
+      return playlistId;
+    }
+
+    // 2. Extract channel ID from channel URL (e.g. /channel/UC...)
+    const channelIdMatch = cleanUrl.match(/\/channel\/(UC[a-zA-Z0-9_-]{22})/);
+    if (channelIdMatch) {
+      const playlistId = 'UU' + channelIdMatch[1].substring(2);
+      playlistCache.set(channelUrl, playlistId);
+      return playlistId;
+    }
+
+    // 3. Try to extract username or handle
+    let handle = null;
+    let username = null;
+
+    if (cleanUrl.includes('@')) {
+      const handleMatch = cleanUrl.match(/@([a-zA-Z0-9_-]+)/);
+      if (handleMatch) handle = '@' + handleMatch[1];
+    } else {
+      const cMatch = cleanUrl.match(/\/(?:c|user)\/([a-zA-Z0-9_-]+)/);
+      if (cMatch) {
+        username = cMatch[1];
+      } else {
+        const parts = cleanUrl.split('/');
+        const lastPart = parts[parts.length - 1];
+        if (lastPart && lastPart !== 'youtube.com' && lastPart !== 'www.youtube.com') {
+          if (lastPart.startsWith('@')) {
+            handle = lastPart;
+          } else {
+            handle = '@' + lastPart;
+            username = lastPart;
+          }
+        }
+      }
+    }
+
+    let resolvedChannelId = null;
+
+    if (handle) {
+      const apiRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?handle=${encodeURIComponent(handle)}&part=contentDetails&key=${apiKey}`);
+      if (apiRes.ok) {
+        const apiData = await apiRes.json();
+        if (apiData.items && apiData.items.length > 0) {
+          resolvedChannelId = apiData.items[0].id;
+        }
+      }
+    }
+
+    if (!resolvedChannelId && username) {
+      const apiRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?forUsername=${encodeURIComponent(username)}&part=contentDetails&key=${apiKey}`);
+      if (apiRes.ok) {
+        const apiData = await apiRes.json();
+        if (apiData.items && apiData.items.length > 0) {
+          resolvedChannelId = apiData.items[0].id;
+        }
+      }
+    }
+
+    if (!resolvedChannelId) {
+      const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?q=${encodeURIComponent(handle || username || cleanUrl)}&type=channel&part=snippet&key=${apiKey}`);
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        if (searchData.items && searchData.items.length > 0) {
+          resolvedChannelId = searchData.items[0].id.channelId;
+        }
+      }
+    }
+
+    if (resolvedChannelId && resolvedChannelId.startsWith('UC')) {
+      const playlistId = 'UU' + resolvedChannelId.substring(2);
+      playlistCache.set(channelUrl, playlistId);
+      return playlistId;
+    }
+  } catch (err) {
+    console.error('Error resolving playlist ID from channel URL:', err);
+  }
+
+  return 'UU9Pap1xwEQAo7X1tKqpcpWg';
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const videoUrl = searchParams.get('url');
@@ -29,7 +123,6 @@ export async function GET(request) {
     try {
       const videoId = extractVideoId(videoUrl);
       if (videoId) {
-        // Fetch via YouTube Data API (unblocked domain 'googleapis.com') to get both title and duration
         const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyBMh3y_e7r18Dr7JSOoZGPYIe-ZZ7mp3zc';
         const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails&key=${apiKey}`;
         const apiRes = await fetch(apiUrl);
@@ -49,7 +142,6 @@ export async function GET(request) {
         }
       }
 
-      // Fallback: Fetch via noembed.com (unblocked proxy service) to resolve at least the title
       const noembedUrl = `https://noembed.com/embed?url=${encodeURIComponent(videoUrl)}`;
       const res = await fetch(noembedUrl);
       if (res.ok) {
@@ -69,22 +161,27 @@ export async function GET(request) {
     }
   }
 
-  const now = Date.now();
-  
-  // Return in-memory cache if fresh
-  if (cachedVideos && (now - lastFetched < CACHE_DURATION)) {
-    return Response.json(cachedVideos, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=3600',
-      }
-    });
-  }
-  
   try {
+    const { getActiveTenant } = await import('@/lib/tenant');
+    const tenant = await getActiveTenant(request);
     const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyBMh3y_e7r18Dr7JSOoZGPYIe-ZZ7mp3zc';
-    const playlistId = process.env.YOUTUBE_PLAYLIST_ID || 'UU9Pap1xwEQAo7X1tKqpcpWg';
-    const url = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${playlistId}&part=snippet&maxResults=50&key=${apiKey}`;
     
+    // Resolve playlistId from active tenant's youtube_url
+    const youtubeUrl = tenant?.youtube_url;
+    const playlistId = await resolvePlaylistId(youtubeUrl, apiKey);
+
+    const now = Date.now();
+    const cached = videosCache.get(playlistId);
+    
+    if (cached && (now - cached.lastFetched < CACHE_DURATION)) {
+      return Response.json(cached.videos, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=3600',
+        }
+      });
+    }
+    
+    const url = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${playlistId}&part=snippet&maxResults=50&key=${apiKey}`;
     const res = await fetch(url, { next: { revalidate: 86400 } });
     if (!res.ok) {
       throw new Error(`YouTube API returned status ${res.status}`);
@@ -98,8 +195,7 @@ export async function GET(request) {
       publishedAt: item.snippet.publishedAt
     })) || [];
     
-    cachedVideos = videos;
-    lastFetched = now;
+    videosCache.set(playlistId, { videos, lastFetched: now });
     
     return Response.json(videos, {
       headers: {
@@ -108,15 +204,6 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('Error fetching YouTube videos:', error);
-    
-    // Return cached videos as a fallback if the API fails
-    if (cachedVideos) {
-      return Response.json(cachedVideos, {
-        headers: {
-          'Cache-Control': 'public, s-maxage=300', // Short cache on failure
-        }
-      });
-    }
     
     return Response.json({ error: error.message }, { status: 500 });
   }

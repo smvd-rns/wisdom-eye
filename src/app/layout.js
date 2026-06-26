@@ -47,7 +47,7 @@ export default async function RootLayout({ children }) {
               name: tenant.name || 'Wisdom Eye',
               slogan: tenant.slogan || 'Vedic Character & Leadership Mentoring',
               description: tenant.description || 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
-              address: tenant.address || 'Govardhan Ecovillage, Wada, Maharashtra',
+              address: tenant.address || 'ISKCON NVCC, Katraj-Kondhwa Road, Hare Krishna Chowk, Pune, Maharashtra 411048',
               email: tenant.email || 'manager@voicepune.com',
               phone: tenant.phone || '+91 8605036000'
             })};`

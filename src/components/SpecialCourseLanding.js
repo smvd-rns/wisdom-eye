@@ -2247,7 +2247,7 @@ export default function SpecialCourseLanding({
                 {activeVideoToRender && (
                   <>
                     <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', background: '#000' }}>
-                      <iframe src={`https://www.youtube-nocookie.com/embed/${activeVideoToRender.id}`} title={activeVideoToRender.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+                      <iframe src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(activeVideoToRender.id)}`} title={activeVideoToRender.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
                     </div>
                     <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', marginTop: '16px', marginBottom: '8px', lineHeight: 1.4 }}>{animText(activeVideoToRender.title, block)}</h3>
                     {activeVideoToRender.publishedAt && <p style={{ fontSize: '12px', color: '#6B7280' }}>Published: {new Date(activeVideoToRender.publishedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>}
@@ -2257,15 +2257,20 @@ export default function SpecialCourseLanding({
               <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '450px' }}>
                 <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#1A1B4B', marginBottom: '16px' }}>Lectures ({liveVideos.length})</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
-                  {liveVideos.map((video) => (
-                    <div key={video.id} onClick={() => setActiveVideo(video)} style={{ display: 'flex', gap: '12px', padding: '8px', borderRadius: '8px', border: '1px solid rgba(26, 27, 75, 0.08)', cursor: 'pointer', background: activeVideoToRender?.id === video.id ? 'rgba(255, 159, 28, 0.15)' : 'transparent', borderColor: activeVideoToRender?.id === video.id ? '#FF9F1C' : 'rgba(26, 27, 75, 0.08)' }}>
-                      <img src={video.thumbnail || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=160'} alt="" style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
-                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
-                        <h5 style={{ fontSize: '13px', fontWeight: '700', lineHeight: 1.35, marginBottom: '4px', color: activeVideoToRender?.id === video.id ? '#FF9F1C' : '#1A1B4B' }}>{animText(video.title, block)}</h5>
-                        {video.publishedAt && <p style={{ fontSize: '11px', color: '#6B7280' }}>{new Date(video.publishedAt).toLocaleDateString()}</p>}
+                  {liveVideos.map((video) => {
+                    const videoId = getYouTubeId(video.id);
+                    const isActive = getYouTubeId(activeVideoToRender?.id) === videoId;
+                    const fallbackThumb = video.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+                    return (
+                      <div key={video.id} onClick={() => setActiveVideo(video)} style={{ display: 'flex', gap: '12px', padding: '8px', borderRadius: '8px', border: '1px solid rgba(26, 27, 75, 0.08)', cursor: 'pointer', background: isActive ? 'rgba(255, 159, 28, 0.15)' : 'transparent', borderColor: isActive ? '#FF9F1C' : 'rgba(26, 27, 75, 0.08)' }}>
+                        <img src={fallbackThumb} alt="" style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
+                          <h5 style={{ fontSize: '13px', fontWeight: '700', lineHeight: 1.35, marginBottom: '4px', color: isActive ? '#FF9F1C' : '#1A1B4B' }}>{animText(video.title, block)}</h5>
+                          {video.publishedAt && <p style={{ fontSize: '11px', color: '#6B7280' }}>{new Date(video.publishedAt).toLocaleDateString()}</p>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

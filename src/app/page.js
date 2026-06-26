@@ -25,6 +25,15 @@ import Footer from '@/components/Footer';
 import SpecialCourseLanding from '@/components/SpecialCourseLanding';
 import { formatImageUrl } from '@/lib/utils';
 
+const getYouTubeId = (url) => {
+  if (!url) return '';
+  const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return url;
+};
+
 // Google Drive uploaded poster images
 const POSTER_IMAGES = [
   'https://lh3.googleusercontent.com/d/1Bpk-lc_U4E2Gxo8_9b-43X-fHbrYWwrU',
@@ -262,13 +271,14 @@ export default function GeneralHomePage() {
   // Load home config or site builder homepage
   useEffect(() => {
     async function loadHomepage() {
+      const slug = getTenantSlug();
       try {
         const pageRes = await fetch('/api/site-pages/%2F'); // slug: '/'
         if (pageRes.ok) {
           const pageData = await pageRes.json();
           if (pageData.page && pageData.page.is_published) {
             setSitePage(pageData.page);
-            sessionStorage.setItem('homepage_site_page', JSON.stringify(pageData.page));
+            sessionStorage.setItem(`homepage_site_page_${slug}`, JSON.stringify(pageData.page));
             setPageLoading(false);
             return;
           }
@@ -281,7 +291,7 @@ export default function GeneralHomePage() {
       fetch('/api/home-config').then(r => r.ok ? r.json() : null).then(data => {
         if (data) {
           setHomeConfig(data);
-          sessionStorage.setItem('homepage_config', JSON.stringify(data));
+          sessionStorage.setItem(`homepage_config_${slug}`, JSON.stringify(data));
         }
       }).catch(() => {});
       setPageLoading(false);
@@ -291,28 +301,30 @@ export default function GeneralHomePage() {
 
   // Helper: get section config
   const getSection = (id) => homeConfig?.sections?.find(s => s.id === id);
+  const isWisdomEye = getTenantSlug() === 'wisdom-eye';
   const isSectionVisible = (id) => {
-    if (!homeConfig) return true; // fallback: show all while loading
+    if (!homeConfig) return isWisdomEye; // fallback: show all while loading on main site only
     const sec = getSection(id);
     return sec ? sec.visible !== false : true;
   };
   const sortedSectionIds = homeConfig?.sections
     ? [...homeConfig.sections].sort((a, b) => a.order - b.order).map(s => s.id)
-    : ['hero', 'credentials', 'logos', 'featured', 'about', 'books', 'youtube'];
+    : (isWisdomEye ? ['hero', 'credentials', 'logos', 'featured', 'about', 'books', 'youtube'] : []);
 
   // Data driven from config or defaults
-  const POSTER_IMAGES_LIVE = homeConfig?.heroSlides?.length > 0 ? homeConfig.heroSlides : POSTER_IMAGES;
-  const FEATURED_BOOKS_LIVE = homeConfig?.featuredBooks?.length > 0 ? homeConfig.featuredBooks : FEATURED_BOOKS;
-  const credentialsData = homeConfig?.credentials?.length > 0 ? homeConfig.credentials : [
+  const POSTER_IMAGES_LIVE = homeConfig?.heroSlides?.length > 0 ? homeConfig.heroSlides : (isWisdomEye ? POSTER_IMAGES : []);
+  const FEATURED_BOOKS_LIVE = homeConfig?.featuredBooks?.length > 0 ? homeConfig.featuredBooks : (isWisdomEye ? FEATURED_BOOKS : []);
+  const credentialsData = homeConfig?.credentials?.length > 0 ? homeConfig.credentials : (isWisdomEye ? [
     { src: "https://lh3.googleusercontent.com/d/19yYbEATwSgrOVfuKk339h6j6qVNY48Nw", alt: "IIT Mumbai Topper" },
     { src: "https://lh3.googleusercontent.com/d/1zHSviGsVWpcjqEEcDClEht0qNihIQ8qp", alt: "Temple President ISKCON Pune" },
     { src: "https://lh3.googleusercontent.com/d/1etXzaXu2p4rmW81PrMW6T-bHRfKIZzSQ", alt: "Temple Management Council Member ISKCON Abids" },
     { src: "https://lh3.googleusercontent.com/d/1vu3f15JL_oJ8LAiYq4WItoVSH4Of5uEz", alt: "Global Duty Officer Youth Training ISKCON" },
-  ];
+  ] : []);
 
   // Fetch YouTube Videos and respect pinned videos order
   useEffect(() => {
     async function fetchVideos() {
+      const slug = getTenantSlug();
       try {
         const res = await fetch('/api/youtube');
         if (res.ok) {
@@ -322,12 +334,12 @@ export default function GeneralHomePage() {
           const rest = data.filter(v => !pinned.includes(v.id));
           const ordered = [...pinnedList, ...rest];
           setYoutubeVideos(ordered);
-          sessionStorage.setItem('homepage_youtube_videos', JSON.stringify(ordered));
+          sessionStorage.setItem(`homepage_youtube_videos_${slug}`, JSON.stringify(ordered));
           if (ordered.length > 0) {
             setActiveVideo(prev => {
               if (prev && ordered.some(v => v.id === prev.id)) return prev;
               const defaultAct = ordered[0];
-              sessionStorage.setItem('homepage_active_video', JSON.stringify(defaultAct));
+              sessionStorage.setItem(`homepage_active_video_${slug}`, JSON.stringify(defaultAct));
               return defaultAct;
             });
           }
@@ -553,7 +565,7 @@ export default function GeneralHomePage() {
               <div style={styles.youtubePlayerContainer}>
                 {activeVideo && (<>
                   <div style={styles.iframeWrapper}>
-                    <iframe src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}`} title={activeVideo.title}
+                    <iframe src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(activeVideo.id)}`} title={activeVideo.title}
                       frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen style={styles.youtubeIframe} />
                   </div>
@@ -564,17 +576,22 @@ export default function GeneralHomePage() {
               <div style={styles.youtubePlaylistContainer}>
                 <h4 style={styles.playlistHeader}>Recent Lectures ({youtubeVideos.length})</h4>
                 <div style={styles.playlistScroll}>
-                  {youtubeVideos.map((video) => (
-                    <div key={video.id} onClick={() => setActiveVideo(video)}
-                      style={{ ...styles.playlistItem, background: activeVideo?.id === video.id ? 'rgba(255, 159, 28, 0.15)' : 'transparent', borderColor: activeVideo?.id === video.id ? '#FF9F1C' : 'rgba(26, 27, 75, 0.08)' }}
-                      className="playlist-item-card">
-                      <img src={video.thumbnail} alt={video.title} style={styles.playlistThumb} />
-                      <div style={styles.playlistItemDetails}>
-                        <h5 style={{ ...styles.playlistItemTitle, color: activeVideo?.id === video.id ? '#FF9F1C' : '#1A1B4B' }}>{video.title}</h5>
-                        <p style={styles.playlistItemDate}>{new Date(video.publishedAt).toLocaleDateString()}</p>
+                  {youtubeVideos.map((video) => {
+                    const videoId = getYouTubeId(video.id);
+                    const isActive = getYouTubeId(activeVideo?.id) === videoId;
+                    const fallbackThumb = video.thumbnail || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+                    return (
+                      <div key={video.id} onClick={() => setActiveVideo(video)}
+                        style={{ ...styles.playlistItem, background: isActive ? 'rgba(255, 159, 28, 0.15)' : 'transparent', borderColor: isActive ? '#FF9F1C' : 'rgba(26, 27, 75, 0.08)' }}
+                        className="playlist-item-card">
+                        <img src={fallbackThumb} alt={video.title} style={styles.playlistThumb} />
+                        <div style={styles.playlistItemDetails}>
+                          <h5 style={{ ...styles.playlistItemTitle, color: isActive ? '#FF9F1C' : '#1A1B4B' }}>{video.title}</h5>
+                          <p style={styles.playlistItemDate}>{new Date(video.publishedAt).toLocaleDateString()}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

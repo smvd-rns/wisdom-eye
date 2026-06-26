@@ -17,21 +17,34 @@ export default function CoursesPage() {
   const [category, setCategory] = useState('All');
   const [categories, setCategories] = useState(['All']);
 
+  const getTenantSlug = () => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__.slug || 'wisdom-eye';
+    }
+    return 'wisdom-eye';
+  };
+
   useEffect(() => {
     try {
-      const cachedCourses = sessionStorage.getItem('catalog_courses');
-      const cachedPackages = sessionStorage.getItem('catalog_packages');
+      const slug = getTenantSlug();
+      const cachedCourses = sessionStorage.getItem(`catalog_courses_${slug}`);
+      const cachedPackages = sessionStorage.getItem(`catalog_packages_${slug}`);
       if (cachedCourses) setCourses(JSON.parse(cachedCourses));
       if (cachedPackages) setPackages(JSON.parse(cachedPackages));
       if (cachedCourses) {
         setLoading(false);
+      } else {
+        setCourses([]);
+        setPackages([]);
+        setLoading(true);
       }
     } catch (e) {}
   }, []);
 
   useEffect(() => {
+    const slug = getTenantSlug();
     try {
-      const cached = sessionStorage.getItem('courses_page_categories');
+      const cached = sessionStorage.getItem(`courses_page_categories_${slug}`);
       if (cached) {
         setCategories(JSON.parse(cached));
       }
@@ -42,12 +55,12 @@ export default function CoursesPage() {
         const res = await fetch('/api/admin/categories');
         if (res.ok) {
           const data = await res.json();
-          let finalCategories = DEFAULT_CATEGORIES;
+          let finalCategories = slug === 'wisdom-eye' ? DEFAULT_CATEGORIES : ['All'];
           if (data.categories && data.categories.length > 0) {
             finalCategories = ['All', ...data.categories];
           }
           setCategories(finalCategories);
-          sessionStorage.setItem('courses_page_categories', JSON.stringify(finalCategories));
+          sessionStorage.setItem(`courses_page_categories_${slug}`, JSON.stringify(finalCategories));
         }
       } catch (err) {
         console.error('Failed to load categories', err);
@@ -58,13 +71,14 @@ export default function CoursesPage() {
 
   useEffect(() => {
     const fetchPackages = async () => {
+      const slug = getTenantSlug();
       try {
         const res = await fetch('/api/packages', { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           const pkgs = data.packages || [];
           setPackages(pkgs);
-          sessionStorage.setItem('catalog_packages', JSON.stringify(pkgs));
+          sessionStorage.setItem(`catalog_packages_${slug}`, JSON.stringify(pkgs));
         }
       } catch (err) {
         console.error('Fetch packages error:', err);
@@ -75,7 +89,8 @@ export default function CoursesPage() {
 
   useEffect(() => {
     const fetchCourses = async () => {
-      const hasCached = sessionStorage.getItem('catalog_courses');
+      const slug = getTenantSlug();
+      const hasCached = sessionStorage.getItem(`catalog_courses_${slug}`);
       if (!hasCached) {
         setLoading(true);
       }
@@ -88,7 +103,7 @@ export default function CoursesPage() {
       setLoading(false);
 
       if (category === 'All' && !search) {
-        sessionStorage.setItem('catalog_courses', JSON.stringify(data.courses || []));
+        sessionStorage.setItem(`catalog_courses_${slug}`, JSON.stringify(data.courses || []));
       }
     };
     const timer = setTimeout(fetchCourses, 300);
