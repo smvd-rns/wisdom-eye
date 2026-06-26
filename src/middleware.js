@@ -45,9 +45,9 @@ export function middleware(request) {
   return response;
 }
 
-// Enable middleware for all routes except static files, images, icons, and fonts
+// Enable middleware for all routes except api, static files, images, icons, and fonts
 export const config = {
   matcher: [
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|json)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|json)$).*)',
   ],
 };

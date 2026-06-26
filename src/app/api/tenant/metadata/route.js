@@ -10,7 +10,7 @@ export async function GET(req) {
     const tenant = await getActiveTenant(req);
 
     if (!tenant || tenant.id === 'default') {
-      return NextResponse.json({
+      const response = NextResponse.json({
         name: 'Wisdom Eye',
         slogan: 'Vedic Character & Leadership Mentoring',
         description: 'Vedic Character & Leadership Mentoring under VOICE and VOICE Publication, ISKCON Pune.',
@@ -18,12 +18,14 @@ export async function GET(req) {
         email: 'manager@voicepune.com',
         phone: '+91 8605036000'
       });
+      response.headers.set('Cache-Control', 'public, max-age=600, s-maxage=600, stale-while-revalidate=60');
+      return response;
     }
 
     const org = tenant;
 
     // Return fields with robust fallback in case database columns do not exist yet
-    return NextResponse.json({
+    const response = NextResponse.json({
       id: org.id,
       name: org.name || 'Wisdom Eye',
       slug: org.slug,
@@ -41,6 +43,8 @@ export async function GET(req) {
       instagram_url: org.instagram_url || 'https://instagram.com',
       linkedin_url: org.linkedin_url || 'https://linkedin.com'
     });
+    response.headers.set('Cache-Control', 'public, max-age=600, s-maxage=600, stale-while-revalidate=60');
+    return response;
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

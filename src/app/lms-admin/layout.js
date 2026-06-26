@@ -37,41 +37,74 @@ export default function LmsAdminLayout({ children }) {
 
   useEffect(() => {
     const init = async () => {
-      // Fetch tenant details
-      const tenantRes = await fetch('/api/tenant/metadata');
-      if (tenantRes.ok) {
-        const tenantData = await tenantRes.json();
-        setTenantName(tenantData.name || '');
-      }
+      try {
+        // Read caches
+        const cachedTenant = sessionStorage.getItem('cached_tenant_name');
+        const cachedUser = sessionStorage.getItem('cached_admin_user');
+        const cachedStats = sessionStorage.getItem('cached_admin_stats');
 
-      const res = await fetch('/api/auth/me');
-      if (!res.ok) { router.push('/login'); return; }
-      const data = await res.json();
-      const role = data.user?.role;
-      const staffRoles = ['superadmin', 'admin', 'course_builder', 'evaluator'];
-      if (!staffRoles.includes(role)) { router.push('/dashboard'); return; }
-      setUser(data.user);
+        if (cachedTenant) {
+          setTenantName(cachedTenant);
+        } else {
+          const tenantRes = await fetch('/api/tenant/metadata');
+          if (tenantRes.ok) {
+            const tenantData = await tenantRes.json();
+            const tName = tenantData.name || 'Wisdom Eye';
+            setTenantName(tName);
+            sessionStorage.setItem('cached_tenant_name', tName);
+          }
+        }
 
-      if (role === 'superadmin') {
-        setNavItems([
-          ...NAV,
-          { href: '/lms-admin/superadmin', label: 'Superadmin Panel', icon: ShieldCheck }
-        ]);
-      } else {
-        setNavItems(NAV);
-      }
+        let activeUser = null;
+        if (cachedUser) {
+          activeUser = JSON.parse(cachedUser);
+          setUser(activeUser);
+        } else {
+          const res = await fetch('/api/auth/me');
+          if (!res.ok) { router.push('/login'); return; }
+          const data = await res.json();
+          activeUser = data.user;
+          setUser(activeUser);
+          sessionStorage.setItem('cached_admin_user', JSON.stringify(activeUser));
+        }
 
-      // Fetch stats
-      const sRes = await fetch('/api/admin/stats');
-      if (sRes.ok) {
-        const sData = await sRes.json();
-        setStats(sData);
+        const role = activeUser?.role;
+        const staffRoles = ['superadmin', 'admin', 'course_builder', 'evaluator'];
+        if (!staffRoles.includes(role)) { router.push('/dashboard'); return; }
+
+        if (role === 'superadmin') {
+          setNavItems([
+            ...NAV,
+            { href: '/lms-admin/superadmin', label: 'Superadmin Panel', icon: ShieldCheck }
+          ]);
+        } else {
+          setNavItems(NAV);
+        }
+
+        if (cachedStats) {
+          setStats(JSON.parse(cachedStats));
+        } else {
+          const sRes = await fetch('/api/admin/stats');
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            setStats(sData);
+            sessionStorage.setItem('cached_admin_stats', JSON.stringify(sData));
+          }
+        }
+      } catch (err) {
+        console.error('Init error', err);
       }
     };
     init();
   }, []);
 
   const handleLogout = async () => {
+    try {
+      sessionStorage.removeItem('cached_tenant_name');
+      sessionStorage.removeItem('cached_admin_user');
+      sessionStorage.removeItem('cached_admin_stats');
+      sessionStorage.removeItem('admin_session_user');
+    } catch (e) {}
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
   };
