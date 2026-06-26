@@ -27,6 +27,8 @@ import { formatImageUrl } from '@/lib/utils';
 
 const getYouTubeId = (url) => {
   if (!url) return '';
+  // Raw 11-char video ID — return directly
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim();
   const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i);
   if (match && match[1]) {
     return match[1];
@@ -126,6 +128,13 @@ const COMPANIES = [
 ];
 
 export default function GeneralHomePage() {
+  const getTenantSlug = () => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
+      return window.__TENANT_DATA__.slug || 'wisdom-eye';
+    }
+    return 'wisdom-eye';
+  };
+
   const [activeSlide, setActiveSlide] = useState(0);
   const [youtubeVideos, setYoutubeVideos] = useState([]);
   const [activeVideo, setActiveVideo] = useState(null);
@@ -326,7 +335,12 @@ export default function GeneralHomePage() {
     async function fetchVideos() {
       const slug = getTenantSlug();
       try {
-        const res = await fetch('/api/youtube');
+        // Use channelId from the youtube section block props if configured
+        const ytSection = homeConfig?.sections?.find(s => s.id === 'youtube');
+        const channelId = ytSection?.props?.channelId || '';
+        const fetchUrl = channelId ? `/api/youtube?channelId=${encodeURIComponent(channelId)}` : '/api/youtube';
+        const res = await fetch(fetchUrl);
+
         if (res.ok) {
           const data = await res.json();
           const pinned = homeConfig?.pinnedVideos || [];
@@ -565,9 +579,15 @@ export default function GeneralHomePage() {
               <div style={styles.youtubePlayerContainer}>
                 {activeVideo && (<>
                   <div style={styles.iframeWrapper}>
-                    <iframe src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(activeVideo.id)}`} title={activeVideo.title}
-                      frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen style={styles.youtubeIframe} />
+                    <iframe
+                      src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(activeVideo.id)}?rel=0&modestbranding=1&playsinline=1`}
+                      title={activeVideo.title}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      style={styles.youtubeIframe}
+                    />
                   </div>
                   <h3 style={styles.activeVideoTitle}>{activeVideo.title}</h3>
                   <p style={styles.activeVideoMeta}>Published: {new Date(activeVideo.publishedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>

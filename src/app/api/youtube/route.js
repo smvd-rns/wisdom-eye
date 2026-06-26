@@ -30,18 +30,12 @@ async function resolvePlaylistId(channelUrl, apiKey) {
   }
 
   try {
-    // 1. If it's already a channel ID (UC...) or playlist ID (UU...)
     const cleanUrl = channelUrl.trim();
-    if (cleanUrl.match(/^(UC|UU)[a-zA-Z0-9_-]{22}$/)) {
-      const playlistId = cleanUrl.startsWith('UC') ? 'UU' + cleanUrl.substring(2) : cleanUrl;
-      playlistCache.set(channelUrl, playlistId);
-      return playlistId;
-    }
 
-    // 2. Extract channel ID from channel URL (e.g. /channel/UC...)
-    const channelIdMatch = cleanUrl.match(/\/channel\/(UC[a-zA-Z0-9_-]{22})/);
+    // 1. Match UC/UU channel/playlist ID anywhere in the URL string
+    const channelIdMatch = cleanUrl.match(/(UC|UU)([a-zA-Z0-9_-]{22})/);
     if (channelIdMatch) {
-      const playlistId = 'UU' + channelIdMatch[1].substring(2);
+      const playlistId = 'UU' + channelIdMatch[2];
       playlistCache.set(channelUrl, playlistId);
       return playlistId;
     }
@@ -117,6 +111,8 @@ async function resolvePlaylistId(channelUrl, apiKey) {
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
+  const channelUrlParam = searchParams.get('channelUrl');
+  const channelIdParam = searchParams.get('channelId');
   const videoUrl = searchParams.get('url');
 
   if (videoUrl) {
@@ -166,9 +162,27 @@ export async function GET(request) {
     const tenant = await getActiveTenant(request);
     const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyBMh3y_e7r18Dr7JSOoZGPYIe-ZZ7mp3zc';
     
-    // Resolve playlistId from active tenant's youtube_url
-    const youtubeUrl = tenant?.youtube_url;
-    const playlistId = await resolvePlaylistId(youtubeUrl, apiKey);
+    let playlistId;
+    
+    if (channelIdParam) {
+      // Direct channel ID provided (e.g. UC9Pap1xwEQAo7X1tKqpcpWg) → convert to uploads playlist
+      const rawId = channelIdParam.trim();
+      if (rawId.startsWith('UC') && rawId.length === 24) {
+        playlistId = 'UU' + rawId.substring(2);
+      } else if (rawId.startsWith('UU') && rawId.length === 24) {
+        playlistId = rawId;
+      } else {
+        // Treat it as a URL/handle and resolve
+        playlistId = await resolvePlaylistId(rawId, apiKey);
+      }
+    } else if (channelUrlParam) {
+      // Full URL or handle provided via query param
+      playlistId = await resolvePlaylistId(channelUrlParam, apiKey);
+    } else {
+      // Fall back to the tenant's saved youtube_url from DB
+      const youtubeUrl = tenant?.youtube_url;
+      playlistId = await resolvePlaylistId(youtubeUrl, apiKey);
+    }
 
     const now = Date.now();
     const cached = videosCache.get(playlistId);

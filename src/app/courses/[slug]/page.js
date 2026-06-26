@@ -62,6 +62,8 @@ export default function CourseLandingPage() {
 
   const getYouTubeId = (url) => {
     if (!url) return null;
+    // Raw 11-char video ID — return directly
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim();
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
@@ -745,11 +747,12 @@ export default function CourseLandingPage() {
                     {previewLesson.type === 'youtube' && (
                       <div style={styles.videoWrapper}>
                         <iframe
-                          src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(previewLesson.content_url)}?autoplay=1&rel=0`}
+                          src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(previewLesson.content_url)}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
                           title={previewLesson.title}
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                           allowFullScreen
+                          referrerPolicy="strict-origin-when-cross-origin"
                           style={styles.iframe}
                         />
                       </div>

@@ -123,9 +123,10 @@ const DEFAULT_PROPS = {
     ]
   },
   system_youtube: {
-    heading: 'Radheshyam Das YouTube Lectures',
-    subLabel: 'Media Lectures',
-    subscribeUrl: 'https://www.youtube.com/channel/UC9Pap1xwEQAo7X1tKqpcpWg',
+    heading: '',
+    subLabel: '',
+    channelId: '',
+    subscribeUrl: '',
     customVideos: []
   },
   hero: {
@@ -1811,7 +1812,8 @@ function PropsPanel({ block, onChange, onTypeChange, allBlocks = [] }) {
           <SectionTitle>YouTube Settings</SectionTitle>
           <Field label="Section Heading"><Input field="heading" /></Field>
           <Field label="Sub Label / Eyebrow"><Input field="subLabel" /></Field>
-          <Field label="Subscribe Channel URL"><Input field="subscribeUrl" /></Field>
+          <Field label="Channel ID (for displaying videos)" hint="Paste the YouTube Channel ID (starts with UC...) to load videos from that channel. Example: UC9Pap1xwEQAo7X1tKqpcpWg"><Input field="channelId" placeholder="UC9Pap1xwEQAo7X1tKqpcpWg" /></Field>
+          <Field label="Subscribe Button URL" hint="Full YouTube channel URL for the Subscribe button. Example: https://www.youtube.com/@YourChannel"><Input field="subscribeUrl" placeholder="https://www.youtube.com/@YourChannel" /></Field>
 
           <SectionTitle>Custom Video Playlist</SectionTitle>
           <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 10px' }}>Add specific videos manually (overrides auto-fetch).</p>

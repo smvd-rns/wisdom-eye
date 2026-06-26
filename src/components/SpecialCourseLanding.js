@@ -702,7 +702,12 @@ export default function SpecialCourseLanding({
 
     async function fetchVideos() {
       try {
-        const res = await fetch('/api/youtube');
+        const ytBlock = (blocks || []).find(b => b.type === 'system_youtube')
+          || (blocks || []).flatMap(b => b.columns || []).map(c => c.block).find(b => b?.type === 'system_youtube');
+        const channelId = ytBlock?.props?.channelId;
+        const fetchUrl = channelId ? `/api/youtube?channelId=${encodeURIComponent(channelId)}` : '/api/youtube';
+
+        const res = await fetch(fetchUrl);
         if (res.ok) {
           const data = await res.json();
           setYoutubeVideos(data);
@@ -812,6 +817,8 @@ export default function SpecialCourseLanding({
 
   const getYouTubeId = (url) => {
     if (!url) return null;
+    // If it looks like a raw 11-char video ID already, return it directly
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim();
     const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i);
     if (match && match[1]) {
       return match[1];
@@ -927,10 +934,11 @@ export default function SpecialCourseLanding({
                 {p.rightAssetType === 'video' && p.rightVideoUrl && (
                   <div style={{ width: '100%', maxWidth: '440px', position: 'relative', paddingTop: '56.25%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
                     <iframe
-                      src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(p.rightVideoUrl)}?rel=0`}
+                      src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(p.rightVideoUrl)}?rel=0&modestbranding=1&playsinline=1`}
                       frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
                       style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
                     />
                   </div>
@@ -1010,11 +1018,12 @@ export default function SpecialCourseLanding({
           )}
           <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <iframe
-              src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0`}
+              src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`}
               title={p.title || 'Course Video'}
               frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
             />
           </div>
@@ -1447,10 +1456,11 @@ export default function SpecialCourseLanding({
         return (
           <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
             <iframe
-              src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0`}
+              src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`}
               frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
             />
           </div>
@@ -1529,7 +1539,15 @@ export default function SpecialCourseLanding({
         </div>
         {previewLesson.type === 'youtube' ? (
           <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
-            <iframe src={`https://www.youtube-nocookie.com/embed/${getYtId(previewLesson.content_url)}?autoplay=1&rel=0`} title={previewLesson.title} frameBorder="0" allow="autoplay; fullscreen" allowFullScreen style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${getYtId(previewLesson.content_url)}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+              title={previewLesson.title}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            />
           </div>
         ) : (
           <div style={{ padding: '24px', maxHeight: '400px', overflowY: 'auto', fontSize: '14px', color: '#374151', lineHeight: 1.6 }}>
@@ -2208,9 +2226,10 @@ export default function SpecialCourseLanding({
   function renderSystemYoutube(block) {
     const pinned = block.props?.pinnedVideos || homeConfig?.pinnedVideos || [];
     const customList = block.props?.customVideos || [];
-    const heading = block.props?.heading || "Radheshyam Das YouTube Lectures";
-    const subLabel = block.props?.subLabel || "Media Lectures";
-    const subscribeUrl = block.props?.subscribeUrl || "https://www.youtube.com/channel/UC9Pap1xwEQAo7X1tKqpcpWg";
+    const heading = block.props?.heading || '';
+    const subLabel = block.props?.subLabel || '';
+    const subscribeUrl = block.props?.subscribeUrl || '';
+    const channelId = block.props?.channelId || '';
 
     let liveVideos = [];
     if (customList.length > 0) {
@@ -2247,7 +2266,15 @@ export default function SpecialCourseLanding({
                 {activeVideoToRender && (
                   <>
                     <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', background: '#000' }}>
-                      <iframe src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(activeVideoToRender.id)}`} title={activeVideoToRender.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+                      <iframe
+                        src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(activeVideoToRender.id)}?rel=0&modestbranding=1&playsinline=1`}
+                        title={activeVideoToRender.title}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                      />
                     </div>
                     <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', marginTop: '16px', marginBottom: '8px', lineHeight: 1.4 }}>{animText(activeVideoToRender.title, block)}</h3>
                     {activeVideoToRender.publishedAt && <p style={{ fontSize: '12px', color: '#6B7280' }}>Published: {new Date(activeVideoToRender.publishedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>}
