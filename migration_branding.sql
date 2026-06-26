@@ -4,6 +4,11 @@ ALTER TABLE organizations ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS address TEXT;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS facebook_url TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS youtube_url TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS instagram_url TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS linkedin_url TEXT;
+
 
 -- Table to store tenant-specific custom course categories
 CREATE TABLE IF NOT EXISTS course_categories (

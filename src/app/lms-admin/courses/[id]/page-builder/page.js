@@ -41,6 +41,7 @@ const BLOCK_TYPES = [
   { type: 'html_embed', label: 'Custom HTML', icon: '💻', desc: 'Raw HTML / Iframe / Map embed', color: '#111827' },
   { type: 'instructor', label: 'Instructor Card', icon: '👨‍🏫', desc: 'About the instructor', color: '#059669' },
   { type: 'curriculum', label: 'Curriculum', icon: '📚', desc: 'Course modules (auto-populated)', color: '#D97706' },
+  { type: 'course_materials', label: 'Course Materials', icon: '📦', desc: 'Course study materials/books (auto-populated)', color: '#FF9F1C' },
   { type: 'enroll_card', label: 'Enroll Card', icon: '💰', desc: 'Price & enroll button', color: '#16A34A' },
   { type: 'faq', label: 'FAQ Accordion', icon: '❓', desc: 'Frequently asked questions', color: '#DC2626' },
   { type: 'system_hero_slides', label: 'System: Hero Slides', icon: '🎠', desc: 'Standard homepage sliding poster hero', color: '#1A1B4B' },
@@ -407,6 +408,12 @@ const DEFAULT_PROPS = {
     heading: 'Course Curriculum',
     subheading: 'Explore all modules and lessons included in this course',
     background: '#F8F9FE',
+    paddingY: 60,
+  },
+  course_materials: {
+    heading: 'Reference Study Materials Included',
+    subLabel: 'These physical study materials/books are fully included with the course fee.',
+    background: '#ffffff',
     paddingY: 60,
   },
   enroll_card: {
@@ -2030,6 +2037,18 @@ function PropsPanel({ block, onChange, onTypeChange, allBlocks = [] }) {
         </div>
       );
 
+      case 'course_materials': return (
+        <div style={propsScroll}>
+          <Field label="Section Heading"><Input field="heading" /></Field>
+          <Field label="Subheading"><Input field="subLabel" /></Field>
+          <ColorRow field="background" label="Background Color" />
+          <Field label="Vertical Padding (px)"><Input field="paddingY" type="number" /></Field>
+          <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px', padding: '12px', fontSize: '12px', color: '#92400E', marginTop: '8px' }}>
+            ℹ️ Reference study materials/books are automatically populated from the main course settings.
+          </div>
+        </div>
+      );
+
       case 'enroll_card': return (
         <div style={propsScroll}>
           <SectionTitle>Card Header</SectionTitle>
@@ -3452,6 +3471,16 @@ function BlockPreview({ block, onChange, canvasRef, anchorOverlay = false, isSel
           <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', margin: '0 0 6px' }}>{animText(p.heading || 'Course Curriculum')}</h4>
           <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: '#374151' }}>
             📚 Curriculum layout is automatically populated from course modules
+          </div>
+        </div>
+      );
+
+    case 'course_materials':
+      return (
+        <div style={{ ...previewStyle, background: p.background || '#ffffff', padding: '20px' }}>
+          <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#1A1B4B', margin: '0 0 6px' }}>{animText(p.heading || 'Reference Study Materials Included')}</h4>
+          <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: '#374151' }}>
+            📦 Reference study materials list is automatically populated from course reference materials settings
           </div>
         </div>
       );

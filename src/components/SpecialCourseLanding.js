@@ -2104,6 +2104,51 @@ export default function SpecialCourseLanding({
     );
   }
 
+  function renderCourseMaterials(block) {
+    if (!course.has_material || !course.materials || course.materials.length === 0) {
+      return (
+        <div key={block.id} style={{ padding: '40px', background: '#F3F4F6', textAlign: 'center', color: '#9CA3AF', borderRadius: '12px', margin: '20px auto', maxWidth: '1000px' }}>
+          📦 Course Materials (No materials added in course settings yet)
+        </div>
+      );
+    }
+    const p = block.props || {};
+    const heading = p.heading || 'Reference Study Materials Included';
+    const subLabel = p.subLabel || 'These physical study materials/books are fully included with the course fee.';
+    const background = p.background || '#ffffff';
+    const paddingY = p.paddingY || 60;
+
+    return (
+      <section key={block.id} style={{ background: background, padding: `${paddingY}px 24px`, fontFamily: 'Outfit, sans-serif' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+          <div style={{ background: '#fff', borderRadius: '24px', border: '1px solid rgba(26,27,75,0.08)', padding: '40px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1A1B4B', marginBottom: '8px', textAlign: 'center' }}>{animText(heading, block)}</h2>
+            <p style={{ color: '#6B7280', fontSize: '15px', textAlign: 'center', marginBottom: '32px' }}>
+              {animText(subLabel, block)}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+              {course.materials.map((mat, i) => (
+                <div key={i} style={{ display: 'flex', gap: '20px', background: '#F8F9FE', padding: '20px', borderRadius: '16px', border: '1px solid rgba(26,27,75,0.04)', transition: 'transform 0.2s', cursor: 'default' }} className="feature-card-hover">
+                  {mat.image_url ? (
+                    <img src={formatImageUrl(mat.image_url)} alt={mat.title} style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                  ) : (
+                    <div style={{ width: '80px', height: '100px', borderRadius: '8px', background: '#EAEBFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <BookOpenCheck size={28} color="#FF9F1C" />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1A1B4B', margin: '0 0 6px 0' }}>{mat.title}</h3>
+                    {mat.description && <p style={{ fontSize: '12px', color: '#6B7280', margin: 0, lineHeight: '1.4' }}>{mat.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   function renderSystemBooks(block) {
     const liveBooks = block.props?.books?.length > 0 ? block.props.books : (homeConfig?.featuredBooks?.length > 0 ? homeConfig.featuredBooks : FEATURED_BOOKS);
     const heading = block.props?.heading || 'Featured Books';
@@ -2280,6 +2325,7 @@ export default function SpecialCourseLanding({
         case 'faq': return renderFaq(block);
         case 'instructor': return renderInstructor(block);
         case 'curriculum': return renderCurriculum(block);
+        case 'course_materials': return renderCourseMaterials(block);
         case 'enroll_card': return renderEnrollCard(block);
         case 'countdown': return renderCountdown(block);
         case 'two_column': return renderTwoColumn(block);

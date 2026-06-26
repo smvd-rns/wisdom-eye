@@ -11,6 +11,52 @@ export default function AdminPaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  const [editingPayment, setEditingPayment] = useState(null);
+  const [shippingStatus, setShippingStatus] = useState('pending_shipment');
+  const [trackingId, setTrackingId] = useState('');
+  const [updating, setUpdating] = useState(false);
+
+  const openEditShipping = (p) => {
+    setEditingPayment(p);
+    setShippingStatus(p.shipping_status || 'pending_shipment');
+    setTrackingId(p.tracking_id || '');
+  };
+
+  const handleUpdateShipping = async () => {
+    setUpdating(true);
+    try {
+      const res = await fetch('/api/admin/payments/tracking', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payment_id: editingPayment.id,
+          shipping_status: shippingStatus,
+          tracking_id: trackingId
+        })
+      });
+      if (res.ok) {
+        setPayments(prev => prev.map(p => {
+          if (p.id === editingPayment.id) {
+            return {
+              ...p,
+              shipping_status: shippingStatus,
+              tracking_id: trackingId
+            };
+          }
+          return p;
+        }));
+        setEditingPayment(null);
+      } else {
+        alert('Failed to update tracking details');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error updating tracking details');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   useEffect(() => {
     const fetchPayments = async () => {
       try {
@@ -117,6 +163,7 @@ export default function AdminPaymentsPage() {
                 <th style={styles.th}>Course Title</th>
                 <th style={styles.th}>Final Amount</th>
                 <th style={styles.th}>Breakdown</th>
+                <th style={styles.th}>Delivery / Shipping</th>
                 <th style={styles.th}>Promo Code</th>
                 <th style={styles.th}>Date</th>
                 <th style={styles.th}>Status</th>
@@ -144,6 +191,48 @@ export default function AdminPaymentsPage() {
                     </div>
                   </td>
                   <td style={styles.td}>
+                    {p.delivery_type === 'pickup' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontWeight: '700', color: '#1A1B4B', fontSize: '11px' }}>🏢 Self Pick Up</span>
+                        <span style={{ fontSize: '10px', color: '#6B7280' }}>Name: {p.shipping_name || p.student?.name}</span>
+                        <span style={{ fontSize: '10px', color: '#6B7280' }}>Phone: {p.shipping_phone}</span>
+                      </div>
+                    )}
+                    {p.delivery_type === 'delivery' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <span style={{ fontWeight: '700', color: '#B57A00', fontSize: '11px' }}>🚚 Home Delivery</span>
+                        <span style={{ fontSize: '10px', color: '#4B5563', lineHeight: '1.4' }}>
+                          {p.shipping_address}, {p.shipping_city}, {p.shipping_state} - {p.shipping_pincode}
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#6B7280' }}>Name: {p.shipping_name} | Phone: {p.shipping_phone}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: '800',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: p.shipping_status === 'shipped' ? '#D1FAE5' : '#FEF3C7',
+                            color: p.shipping_status === 'shipped' ? '#065F46' : '#92400E'
+                          }}>
+                            {p.shipping_status === 'shipped' ? 'SHIPPED' : 'PENDING'}
+                          </span>
+                          {p.tracking_id && <span style={{ fontSize: '9px', color: '#9CA3AF', fontFamily: 'monospace' }}>ID: {p.tracking_id}</span>}
+                          {p.status === 'success' && (
+                            <button 
+                              onClick={() => openEditShipping(p)} 
+                              style={{ border: 'none', background: 'none', color: '#3B82F6', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', padding: 0 }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {(p.delivery_type === 'none' || !p.delivery_type) && (
+                      <span style={{ color: '#9CA3AF' }}>—</span>
+                    )}
+                  </td>
+                  <td style={styles.td}>
                     {p.coupon_code ? (
                       <span style={styles.couponBadge}>{p.coupon_code}</span>
                     ) : (
@@ -168,6 +257,66 @@ export default function AdminPaymentsPage() {
           </table>
         </div>
       )}
+      {/* Edit Shipping Modal */}
+      {editingPayment && (
+        <div style={styles.modalOverlay} onClick={() => setEditingPayment(null)}>
+          <div style={styles.modalBox} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', margin: '0 0 16px 0' }}>Edit Shipping Details</h3>
+            
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Shipping Status</label>
+              <select 
+                value={shippingStatus} 
+                onChange={e => setShippingStatus(e.target.value)} 
+                style={styles.select}
+              >
+                <option value="pending_shipment">Pending Shipment</option>
+                <option value="shipped">Shipped / Dispatched</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Tracking Number / Courier details</label>
+              <input 
+                type="text" 
+                value={trackingId} 
+                onChange={e => setTrackingId(e.target.value)} 
+                placeholder="e.g. DTDC-123456" 
+                style={styles.input} 
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                onClick={() => setEditingPayment(null)} 
+                style={styles.btnSecondary}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleUpdateShipping} 
+                disabled={updating}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '9999px',
+                  background: '#1A1B4B',
+                  color: '#FFF',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  opacity: updating ? 0.7 : 1
+                }}
+              >
+                {updating ? 'Updating...' : 'Save Tracking'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -203,4 +352,9 @@ const styles = {
   couponBadge: { fontSize: '11px', fontWeight: '700', background: '#FFF9DB', color: '#B57A00', padding: '2px 8px', borderRadius: '5px', border: '1px solid #FFE3A8', fontFamily: 'monospace' },
   dateText: { color: '#4B5563' },
   statusBadge: { fontSize: '10px', fontWeight: '800', padding: '2px 8px', borderRadius: '9999px', display: 'inline-block' },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
+  modalBox: { background: '#FFF', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
+  input: { width: '100%', padding: '10px 12px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', background: '#FAFAFA', boxSizing: 'border-box', fontFamily: 'inherit' },
+  select: { width: '100%', padding: '10px 12px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', background: '#FAFAFA', boxSizing: 'border-box', fontFamily: 'inherit', cursor: 'pointer' },
+  btnSecondary: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '9999px', border: '1.5px solid #E5E7EB', cursor: 'pointer', fontSize: '13px', fontWeight: '700', background: '#FFF', color: '#374151', fontFamily: 'Outfit, sans-serif' },
 };

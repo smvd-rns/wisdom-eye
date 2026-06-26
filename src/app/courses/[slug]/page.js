@@ -22,6 +22,25 @@ export default function CourseLandingPage() {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [previewLesson, setPreviewLesson] = useState(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [shippingForm, setShippingForm] = useState({
+    deliveryType: 'pickup',
+    name: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: ''
+  });
+
+  useEffect(() => {
+    if (user) {
+      setShippingForm(prev => ({
+        ...prev,
+        name: user.name || '',
+        phone: user.phone || ''
+      }));
+    }
+  }, [user]);
 
   useEffect(() => {
     try {
@@ -142,8 +161,8 @@ export default function CourseLandingPage() {
     if (!user) { router.push(`/login?redirect=/courses/${slug}`); return; }
     if (isEnrolled) { router.push(`/courses/${slug}/learn`); return; }
     
-    // For special courses, if it has a price, open the checkout modal
-    if (course.is_special && course.price > 0) {
+    // For special courses or courses with reference material, if it has a price, open the checkout modal
+    if ((course.is_special || course.has_material) && course.price > 0) {
       setShowCheckoutModal(true);
     } else {
       // Free course or standard course: enroll directly
@@ -156,12 +175,46 @@ export default function CourseLandingPage() {
     setEnrolling(true);
     const finalPrice = couponResult?.final_price ?? course?.price ?? 0;
 
-    if (finalPrice === 0) {
+    const shippingDetails = {};
+    if (course.has_material) {
+      if (!shippingForm.name.trim() || !shippingForm.phone.trim()) {
+        alert('Please enter your name and phone number for shipping/pickup.');
+        setEnrolling(false);
+        return;
+      }
+      shippingDetails.delivery_type = shippingForm.deliveryType;
+      shippingDetails.shipping_name = shippingForm.name;
+      shippingDetails.shipping_phone = shippingForm.phone;
+
+      if (shippingForm.deliveryType === 'delivery') {
+        if (!shippingForm.address.trim() || !shippingForm.city.trim() || !shippingForm.state.trim() || !shippingForm.pincode.trim()) {
+          alert('Please fill out the complete shipping address.');
+          setEnrolling(false);
+          return;
+        }
+        shippingDetails.shipping_address = shippingForm.address;
+        shippingDetails.shipping_city = shippingForm.city;
+        shippingDetails.shipping_state = shippingForm.state;
+        shippingDetails.shipping_pincode = shippingForm.pincode;
+      }
+    }
+
+    const payload = {
+      coupon_code: couponResult ? coupon : null,
+      ...shippingDetails
+    };
+
+    // If course is free and we chose pickup (no shipping fee), process free enrollment.
+    // Otherwise if it's home delivery, shipping fee makes finalPrice > 0, so go to Razorpay.
+    const calculatedShippingFee = (course.has_material && shippingForm.deliveryType === 'delivery') ? (parseFloat(course.shipping_charges) || 0) : 0;
+    const isFreeEnrollment = finalPrice === 0 && calculatedShippingFee === 0;
+
+    if (isFreeEnrollment) {
       // Free enrollment
       const res = await fetch(`/api/courses/${course.id}/enroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coupon_code: couponResult ? coupon : null }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) { 
@@ -184,7 +237,7 @@ export default function CourseLandingPage() {
       const res = await fetch(`/api/courses/${course.id}/enroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coupon_code: couponResult ? coupon : null }),
+        body: JSON.stringify(payload),
       });
       const orderData = await res.json();
       if (!res.ok) { alert(orderData.error || 'Payment error'); setEnrolling(false); return; }
@@ -226,6 +279,217 @@ export default function CourseLandingPage() {
     return h > 0 ? `${h}h ${m}m` : `${m} min`;
   };
 
+  const renderCheckoutModal = () => {
+    if (!showCheckoutModal) return null;
+
+    const finalBasePrice = couponResult?.final_price ?? course.price ?? 0;
+    const shippingFee = (course.has_material && shippingForm.deliveryType === 'delivery') ? (parseFloat(course.shipping_charges) || 0) : 0;
+    const totalRegistrationPrice = Number(finalBasePrice) + shippingFee;
+
+    return (
+      <div style={styles.modalOverlay} onClick={() => setShowCheckoutModal(false)}>
+        <div style={styles.checkoutModalBox} onClick={e => e.stopPropagation()}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', margin: 0 }}>Confirm Enrollment</h3>
+              <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', margin: 0 }}>
+                {course.has_material ? 'Confirm delivery option and complete checkout.' : 'Review details and apply coupon code below.'}
+              </p>
+            </div>
+            <button onClick={() => setShowCheckoutModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: '22px' }}>×</button>
+          </div>
+
+          <div style={{ background: '#F8F9FE', borderRadius: '12px', padding: '16px', marginBottom: '20px', border: '1px solid rgba(26,27,75,0.06)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Course</div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#1A1B4B', marginTop: '2px' }}>{course.title}</div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '16px', borderTop: '1px dashed #E5E7EB', paddingTop: '12px' }}>
+              <span style={{ fontSize: '13px', color: '#4B5563', fontWeight: '600' }}>Course Fee:</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif' }}>
+                  {finalBasePrice === 0 ? 'Free' : `₹${Number(finalBasePrice).toLocaleString('en-IN')}`}
+                </span>
+                {course.original_price && course.original_price > finalBasePrice && (
+                  <span style={{ fontSize: '13px', color: '#9CA3AF', textDecoration: 'line-through' }}>₹{Number(course.original_price).toLocaleString('en-IN')}</span>
+                )}
+              </div>
+            </div>
+
+            {course.has_material && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#4B5563', fontWeight: '600', marginTop: '8px' }}>
+                <span>Shipping Charges:</span>
+                <span>₹{shippingFee}</span>
+              </div>
+            )}
+
+            {couponResult?.discount_amount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#16A34A', fontWeight: '700', marginTop: '6px' }}>
+                <span>Coupon Discount:</span>
+                <span>- ₹{couponResult.discount_amount}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Shipping Form Fields */}
+          {course.has_material && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#374151', marginBottom: '4px' }}>Your Name *</label>
+                  <input
+                    type="text"
+                    value={shippingForm.name}
+                    onChange={e => setShippingForm(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Full name"
+                    style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '12px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#374151', marginBottom: '4px' }}>Mobile Number *</label>
+                  <input
+                    type="tel"
+                    value={shippingForm.phone}
+                    onChange={e => setShippingForm(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="10-digit mobile"
+                    style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '12px' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#374151', marginBottom: '4px' }}>Distribution Option</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div
+                    onClick={() => setShippingForm(p => ({ ...p, deliveryType: 'pickup' }))}
+                    style={{
+                      border: '1.5px solid',
+                      borderColor: shippingForm.deliveryType === 'pickup' ? '#FF9F1C' : '#E5E7EB',
+                      background: shippingForm.deliveryType === 'pickup' ? '#FFFBEB' : '#FFF',
+                      borderRadius: '8px',
+                      padding: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      fontSize: '12px',
+                      fontWeight: '700'
+                    }}
+                  >
+                    🏢 Self Pick Up
+                    <div style={{ fontSize: '9px', fontWeight: '400', color: '#6B7280', marginTop: '2px' }}>Collect from temple</div>
+                  </div>
+                  <div
+                    onClick={() => setShippingForm(p => ({ ...p, deliveryType: 'delivery' }))}
+                    style={{
+                      border: '1.5px solid',
+                      borderColor: shippingForm.deliveryType === 'delivery' ? '#FF9F1C' : '#E5E7EB',
+                      background: shippingForm.deliveryType === 'delivery' ? '#FFFBEB' : '#FFF',
+                      borderRadius: '8px',
+                      padding: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      fontSize: '12px',
+                      fontWeight: '700'
+                    }}
+                  >
+                    🚚 Parcel Delivery
+                    <div style={{ fontSize: '9px', fontWeight: '400', color: '#6B7280', marginTop: '2px' }}>Charges: ₹{course.shipping_charges}</div>
+                  </div>
+                </div>
+
+                {shippingForm.deliveryType === 'pickup' && (
+                  <div style={{ marginTop: '10px', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#4B5563' }}>
+                    📍 <strong>Pickup Address:</strong> NVCC temple in Katraj-Kondhwa, Pune (Mon-Sun 10 AM - 7 PM)
+                  </div>
+                )}
+              </div>
+
+              {shippingForm.deliveryType === 'delivery' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #E5E7EB', padding: '10px', borderRadius: '8px', background: '#FAFAFA' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#4B5563', marginBottom: '4px' }}>Full Shipping Address *</label>
+                    <textarea
+                      value={shippingForm.address}
+                      onChange={e => setShippingForm(p => ({ ...p, address: e.target.value }))}
+                      placeholder="Flat No, Building, Street, Area"
+                      rows={2}
+                      style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '12px', resize: 'none' }}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#4B5563', marginBottom: '4px' }}>City *</label>
+                      <input
+                        type="text"
+                        value={shippingForm.city}
+                        onChange={e => setShippingForm(p => ({ ...p, city: e.target.value }))}
+                        placeholder="City"
+                        style={{ width: '100%', padding: '6px 8px', border: '1.5px solid #E5E7EB', borderRadius: '6px', fontSize: '11px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#4B5563', marginBottom: '4px' }}>State *</label>
+                      <input
+                        type="text"
+                        value={shippingForm.state}
+                        onChange={e => setShippingForm(p => ({ ...p, state: e.target.value }))}
+                        placeholder="State"
+                        style={{ width: '100%', padding: '6px 8px', border: '1.5px solid #E5E7EB', borderRadius: '6px', fontSize: '11px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: '#4B5563', marginBottom: '4px' }}>Pincode *</label>
+                      <input
+                        type="text"
+                        value={shippingForm.pincode}
+                        onChange={e => setShippingForm(p => ({ ...p, pincode: e.target.value }))}
+                        placeholder="6 digits"
+                        style={{ width: '100%', padding: '6px 8px', border: '1.5px solid #E5E7EB', borderRadius: '6px', fontSize: '11px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Coupon Code Input */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Have a Coupon Code?</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                value={coupon}
+                onChange={e => { setCoupon(e.target.value.toUpperCase()); setCouponResult(null); }}
+                placeholder="Enter code"
+                style={{ flex: 1, padding: '10px 14px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', letterSpacing: '1px', fontFamily: 'monospace' }}
+              />
+              <button onClick={applyCoupon} disabled={applyingCoupon || !coupon.trim()} style={{ padding: '10px 18px', background: '#F3F4F6', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}>
+                {applyingCoupon ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Apply'}
+              </button>
+            </div>
+            {couponResult?.error && <p style={{ color: '#DC2626', fontSize: '12px', marginTop: '6px', marginBottom: 0 }}>{couponResult.error}</p>}
+            {couponResult?.success && <p style={{ color: '#16A34A', fontSize: '12px', marginTop: '6px', marginBottom: 0 }}>✓ Coupon applied! {couponResult.description}</p>}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderTop: '1px solid #E5E7EB', paddingTop: '14px' }}>
+            <div>
+              <span style={{ fontSize: '12px', color: '#6B7280' }}>Total Amount:</span>
+              <h4 style={{ fontSize: '24px', fontWeight: '800', color: '#1A1B4B', margin: 0, fontFamily: 'Outfit, sans-serif' }}>
+                ₹{totalRegistrationPrice}
+              </h4>
+            </div>
+            <button 
+              onClick={handleEnroll} 
+              disabled={enrolling} 
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, #FF9F1C, #E07A5F)', color: '#fff', border: 'none', borderRadius: '12px', padding: '10px 20px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 12px rgba(255,159,28,0.25)' }}
+            >
+              {enrolling ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Processing…</> : totalRegistrationPrice === 0 ? 'Enroll for Free' : `Pay ₹${totalRegistrationPrice}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F0F2F5' }}>
       <Loader2 size={32} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
@@ -254,71 +518,7 @@ export default function CourseLandingPage() {
           onApplyCoupon={applyCoupon}
           slug={slug}
         />
-        {/* Checkout Modal */}
-        {showCheckoutModal && (
-          <div style={styles.modalOverlay} onClick={() => setShowCheckoutModal(false)}>
-            <div style={styles.checkoutModalBox} onClick={e => e.stopPropagation()}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif', margin: 0 }}>Confirm Enrollment</h3>
-                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', margin: 0 }}>Review details and apply coupon code below.</p>
-                </div>
-                <button onClick={() => setShowCheckoutModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: '22px' }}>×</button>
-              </div>
-
-              <div style={{ background: '#F8F9FE', borderRadius: '12px', padding: '16px', marginBottom: '20px', border: '1px solid rgba(26,27,75,0.06)' }}>
-                <div style={{ fontSize: '11px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Course</div>
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#1A1B4B', marginTop: '2px' }}>{course.title}</div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '16px', borderTop: '1px dashed #E5E7EB', paddingTop: '12px' }}>
-                  <span style={{ fontSize: '13px', color: '#4B5563', fontWeight: '600' }}>Price:</span>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <span style={{ fontSize: '20px', fontWeight: '800', color: '#1A1B4B', fontFamily: 'Outfit, sans-serif' }}>
-                      {displayPrice === 0 ? 'Free' : `₹${Number(displayPrice).toLocaleString('en-IN')}`}
-                    </span>
-                    {course.original_price && course.original_price > displayPrice && (
-                      <span style={{ fontSize: '13px', color: '#9CA3AF', textDecoration: 'line-through' }}>₹{Number(course.original_price).toLocaleString('en-IN')}</span>
-                    )}
-                  </div>
-                </div>
-                {couponResult?.discount_amount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#16A34A', fontWeight: '700', marginTop: '6px' }}>
-                    <span>Coupon Discount:</span>
-                    <span>- ₹{couponResult.discount_amount}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Coupon Code Input */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Have a Coupon Code?</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    value={coupon}
-                    onChange={e => { setCoupon(e.target.value.toUpperCase()); setCouponResult(null); }}
-                    placeholder="Enter code"
-                    style={{ flex: 1, padding: '10px 14px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', letterSpacing: '1px', fontFamily: 'monospace' }}
-                  />
-                  <button onClick={applyCoupon} disabled={applyingCoupon || !coupon.trim()} style={{ padding: '10px 18px', background: '#F3F4F6', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}>
-                    {applyingCoupon ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Apply'}
-                  </button>
-                </div>
-                {couponResult?.error && <p style={{ color: '#DC2626', fontSize: '12px', marginTop: '6px', marginBottom: 0 }}>{couponResult.error}</p>}
-                {couponResult?.success && <p style={{ color: '#16A34A', fontSize: '12px', marginTop: '6px', marginBottom: 0 }}>✓ Coupon applied! {couponResult.description}</p>}
-              </div>
-
-              {/* Pay Button */}
-              <button 
-                onClick={handleEnroll} 
-                disabled={enrolling} 
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, #FF9F1C, #E07A5F)', color: '#fff', border: 'none', borderRadius: '14px', padding: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', width: '100%', fontFamily: 'Outfit, sans-serif', boxShadow: '0 6px 20px rgba(255,159,28,0.35)' }}
-              >
-                {enrolling ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing…</> : displayPrice === 0 ? 'Enroll for Free' : 'Proceed to Payment'}
-              </button>
-            </div>
-          </div>
-        )}
+        {renderCheckoutModal()}
       </>
     );
   }
@@ -445,7 +645,7 @@ export default function CourseLandingPage() {
                   Continue Learning →
                 </Link>
               ) : (
-                <button onClick={handleEnroll} disabled={enrolling} style={styles.enrollBtn}>
+                <button onClick={handleEnrollClick} disabled={enrolling} style={styles.enrollBtn}>
                   {enrolling ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing…</> : displayPrice === 0 ? 'Enroll for Free' : 'Enroll Now'}
                 </button>
               )}
@@ -489,6 +689,33 @@ export default function CourseLandingPage() {
             ))}
           </div>
         </div>
+
+        {/* Reference Study Materials Included */}
+        {course.has_material && course.materials && course.materials.length > 0 && (
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Reference Study Materials Included</h2>
+            <p style={{ color: '#4B5563', fontSize: '14px', marginBottom: '20px', marginTop: '-10px' }}>
+              These physical study materials/books are fully included with the course fee. During checkout, you can select self pick up or home delivery.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+              {course.materials.map((mat, i) => (
+                <div key={i} style={{ display: 'flex', gap: '16px', background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid rgba(26,27,75,0.06)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                  {mat.image_url ? (
+                    <img src={formatImageUrl(mat.image_url)} alt={mat.title} style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0, border: '1px solid #E5E7EB' }} />
+                  ) : (
+                    <div style={{ width: '80px', height: '100px', borderRadius: '6px', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <BookOpen size={24} color="#9CA3AF" />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#1A1B4B', margin: '0 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>{mat.title}</h3>
+                    {mat.description && <p style={{ fontSize: '12px', color: '#6B7280', margin: 0, lineHeight: '1.4' }}>{mat.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Curriculum */}
         {course.modules?.length > 0 && (
@@ -644,6 +871,8 @@ export default function CourseLandingPage() {
           </div>
         </div>
       </div>
+
+      {renderCheckoutModal()}
 
       <script src="https://checkout.razorpay.com/v1/checkout.js" />
       <style>{`

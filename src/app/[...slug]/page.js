@@ -56,7 +56,7 @@ export default function DynamicSitePage() {
       <SpecialCourseLanding
         course={page}
         isEnrolled={false}
-        onEnroll={() => {}}
+        onEnroll={() => { window.location.href = '/courses'; }}
         slug={rawSlug}
       />
       <Footer />

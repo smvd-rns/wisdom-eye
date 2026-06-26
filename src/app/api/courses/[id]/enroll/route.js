@@ -10,7 +10,16 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { coupon_code } = await req.json();
+  const { 
+    coupon_code,
+    delivery_type = 'none',
+    shipping_name = null,
+    shipping_phone = null,
+    shipping_address = null,
+    shipping_city = null,
+    shipping_state = null,
+    shipping_pincode = null 
+  } = await req.json();
 
   // 1. Check if student is already enrolled in the course
   const { data: existingEnrollment } = await supabase
@@ -102,6 +111,14 @@ export async function POST(req, { params }) {
     }
   }
 
+  // Calculate shipping charges
+  let shippingAmount = 0;
+  if (course.has_material && delivery_type === 'delivery') {
+    shippingAmount = parseFloat(course.shipping_charges) || 0;
+  }
+  
+  finalPrice += shippingAmount;
+
   // 4. Handle FREE Enrollment (price is 0)
   if (finalPrice <= 0) {
     // Start Supabase Transaction:
@@ -130,7 +147,16 @@ export async function POST(req, { params }) {
         original_amount: basePrice,
         discount_amount: discountAmount,
         final_amount: 0,
-        status: 'success'
+        status: 'success',
+        delivery_type,
+        shipping_name,
+        shipping_phone,
+        shipping_address,
+        shipping_city,
+        shipping_state,
+        shipping_pincode,
+        shipping_amount: 0,
+        shipping_status: course.has_material ? (delivery_type === 'delivery' ? 'pending_shipment' : 'not_applicable') : 'not_applicable'
       })
       .select()
       .single();
@@ -201,7 +227,16 @@ export async function POST(req, { params }) {
         discount_amount: discountAmount,
         final_amount: finalPrice,
         razorpay_order_id: order.id,
-        status: 'pending'
+        status: 'pending',
+        delivery_type,
+        shipping_name,
+        shipping_phone,
+        shipping_address,
+        shipping_city,
+        shipping_state,
+        shipping_pincode,
+        shipping_amount: shippingAmount,
+        shipping_status: course.has_material ? (delivery_type === 'delivery' ? 'pending_shipment' : 'not_applicable') : 'not_applicable'
       });
 
     if (dbError) {

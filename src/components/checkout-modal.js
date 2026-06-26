@@ -281,6 +281,12 @@ export default function CheckoutModal({
               </div>
 
             </div>
+
+            {formData.deliveryType === 'pickup' && (
+              <div style={{ marginTop: '12px', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#4B5563' }}>
+                📍 <strong>Pickup Address:</strong> NVCC temple in Katraj-Kondhwa, Pune (Mon-Sun 10 AM - 7 PM)
+              </div>
+            )}
           </div>
 
           {/* Address Fields - Collapsible Grid */}

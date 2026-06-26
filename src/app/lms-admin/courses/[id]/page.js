@@ -22,8 +22,10 @@ export default function EditCoursePage() {
   const [newCatName, setNewCatName] = useState('');
   const [addingCat, setAddingCat] = useState(false);
 
-  const [uploading, setUploading] = useState(false);
+   const [uploading, setUploading] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState(null);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryTarget, setLibraryTarget] = useState(null);
   const [libraryFiles, setLibraryFiles] = useState([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
 
@@ -66,6 +68,31 @@ export default function EditCoursePage() {
       setUploading(false);
     }
   };
+ 
+  const handleMaterialUpload = async (e, idx) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingIndex(idx);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/upload-drive', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        set('materials', form.materials.map((item, i) => i === idx ? { ...item, image_url: data.url } : item));
+      } else {
+        setError(data.error || 'Upload failed');
+      }
+    } catch (err) {
+      setError('Error uploading image: ' + err.message);
+    } finally {
+      setUploadingIndex(null);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -86,6 +113,9 @@ export default function EditCoursePage() {
         has_certificate: c.has_certificate || false,
         certificate_image_url: c.certificate_image_url || '',
         custom_layout: c.custom_layout || {},
+        has_material: c.has_material || false,
+        materials: c.materials || [],
+        shipping_charges: c.shipping_charges ?? '',
       });
       setLoading(false);
     };
@@ -173,6 +203,7 @@ export default function EditCoursePage() {
           ...form,
           price: parseFloat(form.price) || 0,
           original_price: form.original_price ? parseFloat(form.original_price) : null,
+          shipping_charges: parseFloat(form.shipping_charges) || 0,
         }),
       });
       const data = await res.json();
@@ -285,7 +316,7 @@ export default function EditCoursePage() {
                     <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={uploading} />
                   </label>
 
-                  <button type="button" onClick={() => { loadLibraryFiles(); setShowLibrary(true); }} style={{
+                  <button type="button" onClick={() => { loadLibraryFiles(); setLibraryTarget('thumbnail'); setShowLibrary(true); }} style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -503,6 +534,151 @@ export default function EditCoursePage() {
               )}
             </div>
 
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>📦 Course Reference Materials</h2>
+              <label style={styles.toggleRow}>
+                <input type="checkbox" checked={form.has_material} onChange={e => set('has_material', e.target.checked)} style={{ display: 'none' }} />
+                <div style={{ ...styles.toggle, background: form.has_material ? '#22C55E' : '#D1D5DB' }}>
+                  <div style={{ ...styles.toggleDot, transform: form.has_material ? 'translateX(20px)' : 'translateX(2px)' }} />
+                </div>
+                <span style={styles.toggleLabel}>{form.has_material ? 'Includes reference materials / books' : 'No materials'}</span>
+              </label>
+
+              {form.has_material && (
+                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <Field label="Shipping Charges (₹)">
+                    <input 
+                      type="number" 
+                      value={form.shipping_charges} 
+                      onChange={e => set('shipping_charges', e.target.value)} 
+                      placeholder="e.g. 50" 
+                      min="0" 
+                      step="1" 
+                      style={styles.input} 
+                    />
+                    <span style={styles.hint}>Charges applied for home delivery</span>
+                  </Field>
+
+                  <hr style={{ border: 'none', borderTop: '1px solid #F3F4F6', margin: '8px 0' }} />
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '13px', fontWeight: '700', color: '#111827', margin: 0 }}>Materials List</h3>
+                    <button 
+                      type="button" 
+                      onClick={() => set('materials', [...(form.materials || []), { title: '', description: '', image_url: '' }])}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#1A1B4B',
+                        color: '#FFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '11.5px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      + Add Material
+                    </button>
+                  </div>
+
+                  {(!form.materials || form.materials.length === 0) ? (
+                    <div style={{ textAlign: 'center', padding: '16px', color: '#9CA3AF', fontSize: '12px', background: '#FAFAFA', borderRadius: '8px', border: '1px dashed #E5E7EB' }}>
+                      No materials added yet. Click "+ Add Material" above.
+                    </div>
+                  ) : (
+                    form.materials.map((mat, idx) => (
+                      <div key={idx} style={{ background: '#FAF9F6', padding: '12px', borderRadius: '10px', border: '1px solid #E5E7EB', position: 'relative' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => set('materials', form.materials.filter((_, i) => i !== idx))} 
+                          style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '11px', fontWeight: '700' }}
+                        >
+                          ✕ Remove
+                        </button>
+                        <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '6px', fontWeight: 'bold' }}>Material #{idx + 1}</div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <input 
+                            value={mat.title} 
+                            onChange={e => set('materials', form.materials.map((item, i) => i === idx ? { ...item, title: e.target.value } : item))} 
+                            placeholder="Material / Book Title" 
+                            style={{ ...styles.input, padding: '6px 10px', fontSize: '13px' }} 
+                            required 
+                          />
+                          <textarea 
+                            value={mat.description} 
+                            onChange={e => set('materials', form.materials.map((item, i) => i === idx ? { ...item, description: e.target.value } : item))} 
+                            placeholder="Short description" 
+                            style={{ ...styles.input, padding: '6px 10px', fontSize: '13px', minHeight: '40px', resize: 'vertical' }} 
+                          />
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input 
+                              value={mat.image_url} 
+                              onChange={e => set('materials', form.materials.map((item, i) => i === idx ? { ...item, image_url: e.target.value } : item))} 
+                              placeholder="Image / Photo URL" 
+                              type="url" 
+                              style={{ ...styles.input, padding: '6px 10px', fontSize: '13px', flex: 1 }} 
+                            />
+                            
+                            <label style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              padding: '8px 12px',
+                              background: '#1A1B4B',
+                              color: '#FFF',
+                              borderRadius: '8px',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              opacity: uploadingIndex === idx ? 0.7 : 1,
+                              pointerEvents: uploadingIndex === idx ? 'none' : 'auto',
+                              fontFamily: 'Outfit, sans-serif'
+                            }}>
+                              {uploadingIndex === idx ? (
+                                <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Uploading...</>
+                              ) : (
+                                '🖼️ Upload'
+                              )}
+                              <input type="file" accept="image/*" onChange={e => handleMaterialUpload(e, idx)} style={{ display: 'none' }} disabled={uploadingIndex !== null} />
+                            </label>
+
+                            <button 
+                              type="button" 
+                              onClick={() => { loadLibraryFiles(); setLibraryTarget({ type: 'material', index: idx }); setShowLibrary(true); }} 
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                padding: '8px 12px',
+                                background: '#E5E7EB',
+                                color: '#1F2937',
+                                borderRadius: '8px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                fontFamily: 'Outfit, sans-serif',
+                                border: 'none'
+                              }}
+                            >
+                              📁 Library
+                            </button>
+                          </div>
+                          {mat.image_url && (
+                            <img src={formatImageUrl(mat.image_url)} alt="Preview" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px' }} onError={e => e.target.style.display = 'none'} />
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
             <button type="submit" disabled={saving} style={styles.saveBtn}>
               {saving ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</> : <><Save size={16} /> Save Changes</>}
             </button>
@@ -537,7 +713,11 @@ export default function EditCoursePage() {
                   <div 
                     key={file.id} 
                     onClick={() => {
-                      set('thumbnail_url', file.url);
+                      if (!libraryTarget || libraryTarget === 'thumbnail') {
+                        set('thumbnail_url', file.url);
+                      } else if (libraryTarget?.type === 'material') {
+                        set('materials', form.materials.map((item, i) => i === libraryTarget.index ? { ...item, image_url: file.url } : item));
+                      }
                       setShowLibrary(false);
                     }}
                     style={{

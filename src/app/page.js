@@ -623,7 +623,7 @@ export default function GeneralHomePage() {
         <SpecialCourseLanding
           course={sitePage}
           isEnrolled={isEnrolled}
-          onEnroll={() => {}}
+          onEnroll={() => { window.location.href = '/courses'; }}
           slug="/"
         />
         <Footer />

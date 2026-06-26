@@ -26,13 +26,11 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, serviceKey);
 
 async function run() {
-  const { data: course, error } = await supabase
+  const { data: courses, error } = await supabase
     .from('courses')
-    .select('*')
-    .eq('id', 'f0c7d129-632c-40fc-8ffc-2c4326ea831d')
-    .single();
+    .select('id, title, slug, status, is_special');
   if (error) console.error(error);
-  else console.log(JSON.stringify(course, null, 2));
+  else console.log(JSON.stringify(courses, null, 2));
 }
 
 run();
