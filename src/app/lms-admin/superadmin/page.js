@@ -12,6 +12,8 @@ export default function SuperadminPage() {
   const [successCreds, setSuccessCreds] = useState(null);
   const [deleteOrg, setDeleteOrg] = useState(null); // stores { id, name } or null
   const [routingMode, setRoutingMode] = useState('simulation');
+  const [baseDomain, setBaseDomain] = useState('edulms.co.in');
+  const [savingDomain, setSavingDomain] = useState(false);
 
   const fetchTab = async (type) => {
     try {
@@ -20,6 +22,9 @@ export default function SuperadminPage() {
         const data = await res.json();
         if (data.routingMode) {
           setRoutingMode(data.routingMode);
+        }
+        if (data.baseDomain) {
+          setBaseDomain(data.baseDomain);
         }
         if (type === 'requests') {
           setRequests(data.requests || []);
@@ -55,6 +60,31 @@ export default function SuperadminPage() {
       setErrorMessage('Network error occurred.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveBaseDomain = async () => {
+    setSavingDomain(true);
+    setErrorMessage('');
+    try {
+      const res = await fetch('/api/admin/organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_base_domain', baseDomain })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMessage(data.error || 'Failed to update base domain.');
+      } else {
+        await Promise.all([
+          fetchTab('requests'),
+          fetchTab('active')
+        ]);
+      }
+    } catch (err) {
+      setErrorMessage('Network error occurred.');
+    } finally {
+      setSavingDomain(false);
     }
   };
 
@@ -133,14 +163,14 @@ export default function SuperadminPage() {
   const getOrgUrl = (org) => {
     if (routingMode === 'simulation') {
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? `http://${window.location.host}` : 'https://wisdom-eye.vercel.app';
+      const base = isLocal ? `http://${window.location.host}` : `https://${baseDomain}`;
       return `${base}/login?tenant=${org.slug}`;
     } else {
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       if (isLocal) {
         return `http://${org.slug}.localhost:3000/login`;
       }
-      return `https://${org.custom_domain || `${org.slug}.wisdom-eye.in`}/login`;
+      return `https://${org.custom_domain || `${org.slug}.${baseDomain}`}/login`;
     }
   };
 
@@ -164,60 +194,108 @@ export default function SuperadminPage() {
         </div>
       </div>
 
-      {/* Routing Mode Settings Card */}
+      {/* Routing Mode & Domain Settings Card */}
       <div style={{
         background: '#FAF9F6',
         borderRadius: '16px',
         border: '1.5px solid #FF9F1C',
-        padding: '20px',
+        padding: '24px',
         marginBottom: '24px',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px'
+        flexDirection: 'column',
+        gap: '20px'
       }}>
-        <div>
-          <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#1A1B4B', margin: 0, fontFamily: 'Outfit, sans-serif' }}>Tenant Routing Mode</h3>
-          <p style={{ fontSize: '12px', color: '#6B7280', margin: '4px 0 0 0' }}>
-            Toggle between Vercel Simulation (custom query parameter overrides) and Custom Subdomains.
-          </p>
+        {/* Routing Mode Row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid #E5E7EB', paddingBottom: '20px' }}>
+          <div>
+            <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#1A1B4B', margin: 0, fontFamily: 'Outfit, sans-serif' }}>Tenant Routing Mode</h3>
+            <p style={{ fontSize: '12px', color: '#6B7280', margin: '4px 0 0 0' }}>
+              Toggle between Vercel Simulation (custom query parameter overrides) and Custom Subdomains.
+            </p>
+          </div>
+          <div style={{ display: 'inline-flex', background: '#E5E7EB', borderRadius: '8px', padding: '4px' }}>
+            <button
+              onClick={() => handleToggleRoutingMode('simulation')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '700',
+                fontSize: '12px',
+                fontFamily: 'Outfit, sans-serif',
+                background: routingMode === 'simulation' ? '#FF9F1C' : 'transparent',
+                color: routingMode === 'simulation' ? '#1A1B4B' : '#4B5563',
+                transition: 'all 0.15s'
+              }}
+            >
+              Free Vercel Simulation
+            </button>
+            <button
+              onClick={() => handleToggleRoutingMode('custom_domain')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '700',
+                fontSize: '12px',
+                fontFamily: 'Outfit, sans-serif',
+                background: routingMode === 'custom_domain' ? '#FF9F1C' : 'transparent',
+                color: routingMode === 'custom_domain' ? '#1A1B4B' : '#4B5563',
+                transition: 'all 0.15s'
+              }}
+            >
+              Custom Subdomain
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'inline-flex', background: '#E5E7EB', borderRadius: '8px', padding: '4px' }}>
-          <button
-            onClick={() => handleToggleRoutingMode('simulation')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: '700',
-              fontSize: '12px',
-              fontFamily: 'Outfit, sans-serif',
-              background: routingMode === 'simulation' ? '#FF9F1C' : 'transparent',
-              color: routingMode === 'simulation' ? '#1A1B4B' : '#4B5563',
-              transition: 'all 0.15s'
-            }}
-          >
-            Free Vercel Simulation
-          </button>
-          <button
-            onClick={() => handleToggleRoutingMode('custom_domain')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: '700',
-              fontSize: '12px',
-              fontFamily: 'Outfit, sans-serif',
-              background: routingMode === 'custom_domain' ? '#FF9F1C' : 'transparent',
-              color: routingMode === 'custom_domain' ? '#1A1B4B' : '#4B5563',
-              transition: 'all 0.15s'
-            }}
-          >
-            Custom Subdomain
-          </button>
+
+        {/* Tenant Base Domain Row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#1A1B4B', margin: 0, fontFamily: 'Outfit, sans-serif' }}>Base Tenant Domain</h3>
+            <p style={{ fontSize: '12px', color: '#6B7280', margin: '4px 0 0 0' }}>
+              Configure the root domain to send to new tenants in emails (e.g. <code>edulms.co.in</code>).
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={baseDomain}
+              onChange={(e) => setBaseDomain(e.target.value)}
+              placeholder="e.g. edulms.co.in"
+              style={{
+                padding: '8px 12px',
+                border: '1.5px solid #D1D5DB',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                fontFamily: 'Outfit, sans-serif',
+                width: '240px',
+                outline: 'none',
+                color: '#111827'
+              }}
+            />
+            <button
+              onClick={handleSaveBaseDomain}
+              disabled={savingDomain}
+              style={{
+                background: '#FF9F1C',
+                color: '#1A1B4B',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                fontFamily: 'Outfit, sans-serif'
+              }}
+            >
+              {savingDomain ? 'Saving...' : 'Save Domain'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -257,7 +335,7 @@ export default function SuperadminPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
                       <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#1A1B4B', margin: 0 }}>{req.org_name}</h3>
-                      <span style={{ fontSize: '12px', color: '#6B7280' }}>Desired Subdomain: <strong>{req.subdomain_slug}.wisdom-eye.in</strong></span>
+                      <span style={{ fontSize: '12px', color: '#6B7280' }}>Desired Subdomain: <strong>{req.subdomain_slug}.{baseDomain}</strong></span>
                     </div>
                     <span style={{
                       fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '4px',

@@ -15,13 +15,13 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'active'; // 'active' or 'requests'
 
-    // Fetch routing mode setting
-    const { data: routingModeSetting } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'tenant_routing_mode')
-      .maybeSingle();
+    // Fetch routing mode and base domain settings
+    const [{ data: routingModeSetting }, { data: baseDomainSetting }] = await Promise.all([
+      supabase.from('settings').select('value').eq('key', 'tenant_routing_mode').maybeSingle(),
+      supabase.from('settings').select('value').eq('key', 'tenant_base_domain').maybeSingle()
+    ]);
     const routingMode = routingModeSetting ? routingModeSetting.value : 'simulation';
+    const baseDomain = baseDomainSetting ? baseDomainSetting.value : 'edulms.co.in';
 
     if (type === 'requests') {
       const { data: requests, error } = await supabase
@@ -30,7 +30,7 @@ export async function GET(req) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return NextResponse.json({ requests: requests || [], routingMode });
+      return NextResponse.json({ requests: requests || [], routingMode, baseDomain });
     } else {
       const { data: orgs, error } = await supabase
         .from('organizations')
@@ -38,7 +38,7 @@ export async function GET(req) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return NextResponse.json({ organizations: orgs || [], routingMode });
+      return NextResponse.json({ organizations: orgs || [], routingMode, baseDomain });
     }
   } catch (err) {
     console.error('Superadmin GET error:', err);
@@ -55,7 +55,7 @@ export async function POST(req) {
     }
 
     const body = await req.json();
-    const { requestId, action, routingMode: newRoutingMode } = body; // action: 'approve' | 'reject' | 'set_routing_mode'
+    const { requestId, action, routingMode: newRoutingMode, baseDomain: newBaseDomain } = body; // action: 'approve' | 'reject' | 'set_routing_mode' | 'set_base_domain'
 
     if (action === 'set_routing_mode') {
       if (!newRoutingMode || !['simulation', 'custom_domain'].includes(newRoutingMode)) {
@@ -64,6 +64,19 @@ export async function POST(req) {
       const { error } = await supabase
         .from('settings')
         .upsert({ key: 'tenant_routing_mode', value: newRoutingMode });
+
+      if (error) throw error;
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'set_base_domain') {
+      if (!newBaseDomain) {
+        return NextResponse.json({ error: 'Base domain is required.' }, { status: 400 });
+      }
+      const cleanDomain = newBaseDomain.trim().toLowerCase();
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'tenant_base_domain', value: cleanDomain });
 
       if (error) throw error;
       return NextResponse.json({ success: true });
@@ -97,15 +110,15 @@ export async function POST(req) {
     }
 
     // 2. Action is 'approve' -> Register the new Organization (Tenant)
-    const { data: routingModeSetting } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'tenant_routing_mode')
-      .maybeSingle();
+    const [{ data: routingModeSetting }, { data: baseDomainSetting }] = await Promise.all([
+      supabase.from('settings').select('value').eq('key', 'tenant_routing_mode').maybeSingle(),
+      supabase.from('settings').select('value').eq('key', 'tenant_base_domain').maybeSingle()
+    ]);
     const routingMode = routingModeSetting ? routingModeSetting.value : 'simulation';
+    const configuredBaseDomain = baseDomainSetting ? baseDomainSetting.value : 'edulms.co.in';
 
-    const hostHeader = req.headers.get('host') || 'edulms.co.in';
-    let baseDomain = 'edulms.co.in';
+    const hostHeader = req.headers.get('host') || configuredBaseDomain;
+    let baseDomain = configuredBaseDomain;
     let protocol = 'https';
     let loginUrl = '';
 
@@ -115,7 +128,7 @@ export async function POST(req) {
       if (cleanHost.includes('localhost') || cleanHost.includes('127.0.0.1')) {
         loginUrl = `http://${hostHeader}/login?tenant=${request.subdomain_slug}`;
       } else {
-        loginUrl = `https://edulms.co.in/login?tenant=${request.subdomain_slug}`;
+        loginUrl = `https://${configuredBaseDomain}/login?tenant=${request.subdomain_slug}`;
       }
     } else {
       // In Custom Domain / Production mode, use the subdomain pattern
@@ -124,14 +137,7 @@ export async function POST(req) {
         protocol = 'http';
         loginUrl = `${protocol}://${request.subdomain_slug}.${baseDomain}/login`;
       } else {
-        const parts = hostHeader.split('.');
-        if (parts.length >= 2) {
-          baseDomain = parts.slice(-2).join('.');
-        }
-        if (baseDomain === 'vercel.app' || baseDomain === 'wisdom-eye.in' || baseDomain === 'in') {
-          baseDomain = 'edulms.co.in';
-        }
-        loginUrl = `${protocol}://${request.subdomain_slug}.${baseDomain}/login`;
+        loginUrl = `https://${request.subdomain_slug}.${configuredBaseDomain}/login`;
       }
     }
     
@@ -140,7 +146,7 @@ export async function POST(req) {
       .insert({
         name: request.org_name,
         slug: request.subdomain_slug,
-        custom_domain: `${request.subdomain_slug}.edulms.co.in`,
+        custom_domain: `${request.subdomain_slug}.${configuredBaseDomain}`,
         primary_color: '#FF9F1C',
         secondary_color: '#1A1B4B'
       })
