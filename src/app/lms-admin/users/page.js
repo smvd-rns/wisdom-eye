@@ -26,15 +26,32 @@ export default function AdminUsersPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Load current user once on mount (uses sessionStorage cache from Navbar)
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const cached = sessionStorage.getItem('auth_me');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.authenticated) setCurrentUser(parsed.user);
+          return;
+        }
+        const meRes = await fetch('/api/auth/me');
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          if (meData.authenticated) setCurrentUser(meData.user);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadCurrentUser();
+  }, []);
+
   const loadUsers = async () => {
     setLoading(true);
     setError('');
     try {
-      const meRes = await fetch('/api/auth/me');
-      if (meRes.ok) {
-        const meData = await meRes.json();
-        setCurrentUser(meData.user);
-      }
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (roleFilter !== 'All') params.set('role', roleFilter);

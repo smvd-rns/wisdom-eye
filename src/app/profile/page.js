@@ -124,6 +124,7 @@ export default function ProfilePage() {
   }, [router]);
 
   const handleLogout = async () => {
+    sessionStorage.removeItem('auth_me');
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
   };

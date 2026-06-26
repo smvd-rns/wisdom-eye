@@ -30,7 +30,9 @@ export async function GET(req, { params }) {
       }
     }
 
-    return Response.json({ page: data });
+    return Response.json({ page: data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+    });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
   }

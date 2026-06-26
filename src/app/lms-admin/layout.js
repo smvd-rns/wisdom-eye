@@ -105,6 +105,7 @@ export default function LmsAdminLayout({ children }) {
       sessionStorage.removeItem('cached_admin_user');
       sessionStorage.removeItem('cached_admin_stats');
       sessionStorage.removeItem('admin_session_user');
+      sessionStorage.removeItem('auth_me');
     } catch (e) {}
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');

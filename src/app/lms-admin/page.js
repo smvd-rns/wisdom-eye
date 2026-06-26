@@ -14,18 +14,34 @@ export default function LmsAdminDashboard() {
   useEffect(() => {
     const init = async () => {
       try {
-        const [sRes, eRes, oRes] = await Promise.all([
-          fetch('/api/admin/stats'),
-          fetch('/api/admin/recent-enrollments'),
-          fetch('/api/tenant/metadata')
-        ]);
-        if (sRes.ok) setStats(await sRes.json());
+        // Stats: reuse from layout's sessionStorage cache to avoid a duplicate API call
+        const cachedStats = sessionStorage.getItem('cached_admin_stats');
+        if (cachedStats) {
+          setStats(JSON.parse(cachedStats));
+        } else {
+          const sRes = await fetch('/api/admin/stats');
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            setStats(sData);
+            sessionStorage.setItem('cached_admin_stats', JSON.stringify(sData));
+          }
+        }
+
+        // Tenant/org info: reuse from layout's sessionStorage cache
+        const cachedTenantName = sessionStorage.getItem('cached_tenant_name');
+        if (cachedTenantName) {
+          // Build a minimal orgInfo object from what layout cached
+          setOrgInfo({ name: cachedTenantName, slug: window.__TENANT_DATA__?.slug || '' });
+        } else {
+          const oRes = await fetch('/api/tenant/metadata');
+          if (oRes.ok) setOrgInfo(await oRes.json());
+        }
+
+        // Recent enrollments: not cached by layout, fetch fresh
+        const eRes = await fetch('/api/admin/recent-enrollments');
         if (eRes.ok) {
           const eData = await eRes.json();
           setRecentEnrollments(eData.enrollments || []);
-        }
-        if (oRes.ok) {
-          setOrgInfo(await oRes.json());
         }
       } finally {
         setLoading(false);

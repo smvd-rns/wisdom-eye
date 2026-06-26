@@ -29,12 +29,19 @@ export default function Navbar({ onlyBottom = false }) {
   useEffect(() => {
     const loadNav = async () => {
       try {
+        // Use sessionStorage to avoid re-fetching navigation on every page navigation
+        const cached = sessionStorage.getItem('nav_links');
+        if (cached) {
+          setNavLinks(JSON.parse(cached));
+          return;
+        }
         const res = await fetch('/api/site-pages/navigation');
         if (res.ok) {
           const data = await res.json();
           // Filter to only visible links
           const visible = (data.links || []).filter(l => l.is_visible !== false);
           setNavLinks(visible);
+          sessionStorage.setItem('nav_links', JSON.stringify(visible));
         }
       } catch (err) {
         console.error('Failed to load navigation links', err);
@@ -46,12 +53,22 @@ export default function Navbar({ onlyBottom = false }) {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        // Cache auth state for the session to avoid hitting the DB on every page navigation
+        const cachedUser = sessionStorage.getItem('auth_me');
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed.authenticated) setUser(parsed.user);
+          setLoadingUser(false);
+          return;
+        }
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated) {
             setUser(data.user);
           }
+          // Cache both authenticated and unauthenticated state
+          sessionStorage.setItem('auth_me', JSON.stringify(data));
         }
       } catch (err) {
         console.error('Navbar user fetch failed:', err);

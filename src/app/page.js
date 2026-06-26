@@ -146,10 +146,11 @@ export default function GeneralHomePage() {
 
   useEffect(() => {
     try {
-      const cachedVideos = sessionStorage.getItem('homepage_youtube_videos');
-      const cachedActiveVideo = sessionStorage.getItem('homepage_active_video');
-      const cachedConfig = sessionStorage.getItem('homepage_config');
-      const cachedSitePage = sessionStorage.getItem('homepage_site_page');
+      const slug = getTenantSlug();
+      const cachedVideos = sessionStorage.getItem(`homepage_youtube_videos_${slug}`);
+      const cachedActiveVideo = sessionStorage.getItem(`homepage_active_video_${slug}`);
+      const cachedConfig = sessionStorage.getItem(`homepage_config_${slug}`);
+      const cachedSitePage = sessionStorage.getItem(`homepage_site_page_${slug}`);
 
       if (cachedVideos) {
         setYoutubeVideos(JSON.parse(cachedVideos));
@@ -331,9 +332,21 @@ export default function GeneralHomePage() {
   ] : []);
 
   // Fetch YouTube Videos and respect pinned videos order
+  // Only runs when homeConfig is loaded (not null) to avoid double-fetch.
+  // Also skips if videos already loaded from sessionStorage cache.
   useEffect(() => {
+    // Skip if homeConfig hasn't loaded yet (will re-run once it's set)
+    if (homeConfig === null) return;
+
     async function fetchVideos() {
       const slug = getTenantSlug();
+
+      // Skip network call if we already have videos loaded (e.g. from sessionStorage)
+      if (youtubeVideos.length > 0) {
+        setYtLoading(false);
+        return;
+      }
+
       try {
         // Use channelId from the youtube section block props if configured
         const ytSection = homeConfig?.sections?.find(s => s.id === 'youtube');

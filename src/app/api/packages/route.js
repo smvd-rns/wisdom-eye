@@ -23,7 +23,9 @@ export async function GET(req) {
     }
 
     if (!rawPackages || rawPackages.length === 0) {
-      return NextResponse.json({ packages: [] });
+      return NextResponse.json({ packages: [] }, {
+        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+      });
     }
 
     // Sort packages in memory by created_at DESC
@@ -56,7 +58,9 @@ export async function GET(req) {
       };
     });
 
-    return NextResponse.json({ packages: packagesWithCourses });
+    return NextResponse.json({ packages: packagesWithCourses }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+    });
   } catch (err) {
     console.error('Fetch packages exception:', err);
     return NextResponse.json({ error: 'Failed to fetch packages.' }, { status: 500 });

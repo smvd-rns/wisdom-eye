@@ -24,7 +24,11 @@ export async function GET(req) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: 'Failed to fetch courses.' }, { status: 500 });
-  return NextResponse.json({ courses: data || [] });
+  // Only cache unfiltered lists; filtered lists (search/category) bypass CDN
+  const cacheHeader = (!category && !search)
+    ? { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60' }
+    : { 'Cache-Control': 'no-store' };
+  return NextResponse.json({ courses: data || [] }, { headers: cacheHeader });
 }
 
 // POST /api/courses — create new course (admin/course_builder)

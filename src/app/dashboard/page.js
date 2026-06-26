@@ -112,6 +112,7 @@ export default function DashboardPage() {
       sessionStorage.removeItem('dashboard_enrollments');
       sessionStorage.removeItem('dashboard_recommended');
       sessionStorage.removeItem('dashboard_tenant_name');
+      sessionStorage.removeItem('auth_me');
     } catch (e) {}
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');

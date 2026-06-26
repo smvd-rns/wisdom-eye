@@ -22,10 +22,12 @@ export async function GET(req) {
           { label: 'Home', url: '/', is_visible: true, order_index: 1 },
           { label: 'Courses', url: '/courses', is_visible: true, order_index: 2 },
         ]
-      });
+      }, { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' } });
     }
 
-    return Response.json({ links: data || [] });
+    return Response.json({ links: data || [] }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+    });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
   }

@@ -60,11 +60,23 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     const fetchPayments = async () => {
       try {
+        // Check for a fresh cache (2-minute TTL) to avoid redundant heavy queries
+        const cacheRaw = sessionStorage.getItem('admin_payments_cache');
+        if (cacheRaw) {
+          const { data: cached, ts } = JSON.parse(cacheRaw);
+          if (Date.now() - ts < 2 * 60 * 1000) {
+            setPayments(cached.payments || []);
+            setStats(cached.stats || { totalRevenue: 0, totalSales: 0, totalDiscount: 0 });
+            setLoading(false);
+            return;
+          }
+        }
         const res = await fetch('/api/admin/payments');
         if (res.ok) {
           const data = await res.json();
           setPayments(data.payments || []);
           setStats(data.stats || { totalRevenue: 0, totalSales: 0, totalDiscount: 0 });
+          sessionStorage.setItem('admin_payments_cache', JSON.stringify({ data, ts: Date.now() }));
         }
       } catch (err) {
         console.error(err);
