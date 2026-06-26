@@ -1332,12 +1332,15 @@ export default function SpecialCourseLanding({
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <input
                   type="text"
-                  value={coupon}
-                  onChange={e => { setCoupon(e.target.value.toUpperCase()); setCouponResult(null); }}
+                  value={coupon || ''}
+                  onChange={e => { 
+                    if (setCoupon) setCoupon(e.target.value.toUpperCase()); 
+                    if (setCouponResult) setCouponResult(null); 
+                  }}
                   placeholder="Coupon code"
                   style={{ flex: 1, padding: '10px 14px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', letterSpacing: '1px', fontFamily: 'monospace' }}
                 />
-                <button onClick={onApplyCoupon} disabled={applyingCoupon || !coupon.trim()} style={{ padding: '10px 18px', background: '#F3F4F6', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={onApplyCoupon} disabled={applyingCoupon || !coupon?.trim()} style={{ padding: '10px 18px', background: '#F3F4F6', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {applyingCoupon ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Apply'}
                 </button>
               </div>
