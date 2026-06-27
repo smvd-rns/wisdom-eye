@@ -2018,6 +2018,8 @@ export default function SiteBuilderEditorPage() {
   const selectedEntry = selectedId ? findBlock(selectedId) : null;
   const selectedBlock = selectedEntry?.block ?? null;
   const selectedRow = selectedRowId ? blocks.find(b => b.id === selectedRowId) : null;
+  // Parent row of the currently selected block (if block is inside a row)
+  const selectedBlockParentRow = selectedEntry?.rowId ? blocks.find(b => b.id === selectedEntry.rowId) : null;
 
   const createBlock = (type) => {
     if (type === 'two_column') {
@@ -2868,7 +2870,42 @@ export default function SiteBuilderEditorPage() {
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {selectedBlock
-              ? <PropsPanel block={selectedBlock} onChange={updateBlock} onTypeChange={changeBlockType} allBlocks={blocks} />
+              ? (
+                <>
+                  {/* Row Layout strip — shown when the selected block lives inside a row */}
+                  {selectedBlockParentRow && (
+                    <div style={{ borderBottom: '1px solid #E5E7EB', background: '#F8FAFF', padding: '12px 16px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', color: '#6366F1', marginBottom: '8px' }}>⊞ Row Layout</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Vertical Alignment</div>
+                          <select
+                            value={selectedBlockParentRow.rowAlign ?? 'stretch'}
+                            onChange={e => updateRow({ ...selectedBlockParentRow, rowAlign: e.target.value })}
+                            style={{ width: '100%', padding: '6px 8px', border: '1.5px solid #E5E7EB', borderRadius: '6px', fontSize: '11px', background: '#fff' }}
+                          >
+                            <option value="stretch">↕ Stretch (equal height)</option>
+                            <option value="flex-start">⬆ Top</option>
+                            <option value="center">⬌ Middle</option>
+                            <option value="flex-end">⬇ Bottom</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Col Gap (px)</div>
+                          <input
+                            type="number"
+                            value={selectedBlockParentRow.rowGap ?? 16}
+                            onChange={e => updateRow({ ...selectedBlockParentRow, rowGap: Number(e.target.value) })}
+                            min={0} max={60}
+                            style={{ width: '100%', padding: '6px 8px', border: '1.5px solid #E5E7EB', borderRadius: '6px', fontSize: '11px', background: '#fff', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <PropsPanel block={selectedBlock} onChange={updateBlock} onTypeChange={changeBlockType} allBlocks={blocks} />
+                </>
+              )
               : selectedRow
                 ? <RowPropsPanel row={selectedRow} onUpdateRow={updateRow} />
                 : (
