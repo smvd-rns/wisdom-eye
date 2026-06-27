@@ -3263,19 +3263,25 @@ const AnimatedText = ({ text, animation = 'none', trigger }) => {
 
   if (animation === 'bounce') {
     return (
-      <span style={{ display: 'inline' }}>
-        {chars.map((c, idx) => (
-          <span
-            key={idx}
-            style={{
-              display: 'inline-block',
-              opacity: start ? 1 : 0,
-              transform: start ? 'translateY(0)' : 'translateY(12px)',
-              transition: `opacity 0.25s ease ${idx * 0.03}s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 0.03}s`,
-              whiteSpace: c === ' ' ? 'pre' : 'normal'
-            }}
-          >
-            {c}
+      <span style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, wordIdx) => (
+          <span key={wordIdx} style={{ display: 'inline-block', whiteSpace: 'nowrap', marginRight: '0.22em' }}>
+            {Array.from(w).map((c, charIdx) => {
+              const globalIdx = text.indexOf(w) + charIdx;
+              return (
+                <span
+                  key={charIdx}
+                  style={{
+                    display: 'inline-block',
+                    opacity: start ? 1 : 0,
+                    transform: start ? 'translateY(0)' : 'translateY(12px)',
+                    transition: `opacity 0.25s ease ${globalIdx * 0.03}s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) ${globalIdx * 0.03}s`,
+                  }}
+                >
+                  {c}
+                </span>
+              );
+            })}
           </span>
         ))}
       </span>
@@ -3284,19 +3290,25 @@ const AnimatedText = ({ text, animation = 'none', trigger }) => {
 
   if (animation === 'wave-sine') {
     return (
-      <span style={{ display: 'inline' }}>
-        {chars.map((c, idx) => (
-          <span
-            key={idx}
-            style={{
-              display: 'inline-block',
-              opacity: start ? 1 : 0,
-              animation: start ? `sa-wave-sine-anim 2.5s infinite ease-in-out` : 'none',
-              animationDelay: `${idx * 0.05}s`,
-              whiteSpace: c === ' ' ? 'pre' : 'normal'
-            }}
-          >
-            {c}
+      <span style={{ display: 'inline', flexWrap: 'wrap' }}>
+        {words.map((w, wordIdx) => (
+          <span key={wordIdx} style={{ display: 'inline-block', whiteSpace: 'nowrap', marginRight: '0.22em' }}>
+            {Array.from(w).map((c, charIdx) => {
+              const globalIdx = text.indexOf(w) + charIdx;
+              return (
+                <span
+                  key={charIdx}
+                  style={{
+                    display: 'inline-block',
+                    opacity: start ? 1 : 0,
+                    animation: start ? `sa-wave-sine-anim 2.5s infinite ease-in-out` : 'none',
+                    animationDelay: `${globalIdx * 0.05}s`,
+                  }}
+                >
+                  {c}
+                </span>
+              );
+            })}
           </span>
         ))}
       </span>
