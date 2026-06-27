@@ -990,7 +990,7 @@ export default function SpecialCourseLanding({
     const border = p.border || 'none';
     const boxShadow = p.boxShadow || 'none';
     return (
-      <div key={block.id} style={{ background: p.background || '#fff', padding, borderRadius, border, boxShadow, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: isNested ? 'center' : undefined }}>
+      <div key={block.id} style={{ background: p.background || '#fff', padding, borderRadius, border, boxShadow, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
         <div style={{ maxWidth: p.maxWidth || '800px', margin: '0 auto', textAlign: p.align || 'left', width: '100%' }}>
           {p.eyebrow && (
             <p style={{ fontSize: '12px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
@@ -1021,7 +1021,7 @@ export default function SpecialCourseLanding({
     const border = p.border || 'none';
     const boxShadow = p.boxShadow || 'none';
     return (
-      <div key={block.id} style={{ background: p.background || '#0F0F0F', padding, borderRadius, border, boxShadow, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: isNested ? 'center' : undefined }}>
+      <div key={block.id} style={{ background: p.background || '#0F0F0F', padding, borderRadius, border, boxShadow, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', width: '100%' }}>
           {p.title && (
             <h2 style={{ fontSize: isNested ? '20px' : '28px', fontWeight: '800', color: '#fff', marginBottom: '24px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>
@@ -1064,7 +1064,7 @@ export default function SpecialCourseLanding({
     }
 
     return (
-      <div key={block.id} style={{ background: p.background || '#fff', padding, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: isNested ? 'center' : undefined }}>
+      <div key={block.id} style={{ background: p.background || '#fff', padding, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
         <div style={{ maxWidth: p.maxWidth || '900px', margin: '0 auto', textAlign: 'center', width: '100%' }}>
           <img
             src={formatImageUrl(p.src)}
