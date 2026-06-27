@@ -990,7 +990,7 @@ export default function SpecialCourseLanding({
     const border = p.border || 'none';
     const boxShadow = p.boxShadow || 'none';
     return (
-      <div key={block.id} style={{ background: p.background || '#fff', padding, borderRadius, border, boxShadow, height: isNested ? '100%' : undefined, boxSizing: 'border-box', display: isNested ? 'flex' : undefined, flexDirection: isNested ? 'column' : undefined, justifyContent: isNested ? 'center' : undefined }}>
+      <div key={block.id} style={{ background: p.background || '#fff', padding, borderRadius, border, boxShadow, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: isNested ? 'center' : undefined }}>
         <div style={{ maxWidth: p.maxWidth || '800px', margin: '0 auto', textAlign: p.align || 'left', width: '100%' }}>
           {p.eyebrow && (
             <p style={{ fontSize: '12px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
@@ -1021,7 +1021,7 @@ export default function SpecialCourseLanding({
     const border = p.border || 'none';
     const boxShadow = p.boxShadow || 'none';
     return (
-      <div key={block.id} style={{ background: p.background || '#0F0F0F', padding, borderRadius, border, boxShadow, height: isNested ? '100%' : undefined, boxSizing: 'border-box', display: isNested ? 'flex' : undefined, flexDirection: isNested ? 'column' : undefined, justifyContent: isNested ? 'center' : undefined }}>
+      <div key={block.id} style={{ background: p.background || '#0F0F0F', padding, borderRadius, border, boxShadow, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: isNested ? 'center' : undefined }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', width: '100%' }}>
           {p.title && (
             <h2 style={{ fontSize: isNested ? '20px' : '28px', fontWeight: '800', color: '#fff', marginBottom: '24px', textAlign: 'center', fontFamily: 'Outfit, sans-serif' }}>
@@ -1064,7 +1064,7 @@ export default function SpecialCourseLanding({
     }
 
     return (
-      <div key={block.id} style={{ background: p.background || '#fff', padding, height: isNested ? '100%' : undefined, boxSizing: 'border-box', display: isNested ? 'flex' : undefined, flexDirection: isNested ? 'column' : undefined, justifyContent: isNested ? 'center' : undefined }}>
+      <div key={block.id} style={{ background: p.background || '#fff', padding, flex: isNested ? 1 : undefined, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: isNested ? 'center' : undefined }}>
         <div style={{ maxWidth: p.maxWidth || '900px', margin: '0 auto', textAlign: 'center', width: '100%' }}>
           <img
             src={formatImageUrl(p.src)}
@@ -2324,17 +2324,20 @@ export default function SpecialCourseLanding({
   }
 
   // AnimBlock: wraps any block with scroll-triggered animation if configured
-  const AnimBlock = useCallback(({ block, children }) => {
+  // Always renders a flex wrapper so that height propagates correctly inside row columns
+  const AnimBlock = useCallback(({ block, isNested, children }) => {
     const anim = block?.props?.animation;
-    if (!anim || anim === 'none') return children;
-    const dur = block.props.animationDuration || 0.7;
-    const delay = block.props.animationDelay || 0;
-    const ease = block.props.animationEasing || 'ease';
-    const stagger = block.props.animationStagger || false;
+    const dur = block?.props?.animationDuration || 0.7;
+    const delay = block?.props?.animationDelay || 0;
+    const ease = block?.props?.animationEasing || 'ease';
+    const stagger = block?.props?.animationStagger || false;
+    // When nested in a column, always wrap so height:100% / flex:1 propagates
+    const needsWrapper = (anim && anim !== 'none') || isNested;
+    if (!needsWrapper) return children;
     return (
       <div
         key={block.id + '-anim'}
-        data-sa-animation={anim}
+        data-sa-animation={anim && anim !== 'none' ? anim : undefined}
         data-sa-stagger={stagger ? 'true' : undefined}
         data-sa-id={block.id}
         style={{
@@ -2343,9 +2346,9 @@ export default function SpecialCourseLanding({
           '--sa-ease': ease,
           display: 'flex',
           flexDirection: 'column',
-          flex: 1,
+          flex: isNested ? 1 : undefined,
           width: '100%',
-          height: '100%',
+          height: isNested ? '100%' : undefined,
         }}
       >
         {children}
@@ -2396,9 +2399,13 @@ export default function SpecialCourseLanding({
     })();
     if (!content) return null;
     const anchored = floatingBlocks.filter(f => f.props?.anchorBlockId === block.id);
+    // When nested inside a row column, propagate flex height so all columns stretch equally
+    const outerStyle = isNested
+      ? { position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, width: '100%' }
+      : { position: 'relative' };
     return (
-      <div data-block-id={block.id} style={{ position: 'relative' }}>
-        <AnimBlock block={block}>{content}</AnimBlock>
+      <div data-block-id={block.id} style={outerStyle}>
+        <AnimBlock block={block} isNested={isNested}>{content}</AnimBlock>
         {anchored.map(f => renderFloatingText(f))}
       </div>
     );
@@ -2422,7 +2429,8 @@ export default function SpecialCourseLanding({
         style={{
           display: 'flex',
           gap: `${gap}px`,
-          alignItems: verticalAlign === 'stretch' ? 'stretch' : 'flex-start',
+          // 'stretch' makes every column grow to the tallest sibling's height automatically
+          alignItems: verticalAlign === 'stretch' ? 'stretch' : verticalAlign,
           background: row.rowBackground && row.rowBackground !== 'transparent' ? row.rowBackground : undefined,
           padding: row.rowPadding ? `${row.rowPadding}px` : undefined,
         }}
@@ -2434,14 +2442,13 @@ export default function SpecialCourseLanding({
             <div 
               key={col.block.id} 
               style={{ 
-                flex: `0 0 ${finalWidth}`, 
+                flex: `0 0 ${finalWidth}`,
                 width: finalWidth, 
                 minWidth: 0, 
                 boxSizing: 'border-box',
+                // Make column a flex container so nested blocks can stretch to fill height
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: innerJustify === 'stretch' ? 'stretch' : innerJustify,
-                height: verticalAlign === 'stretch' ? '100%' : 'auto'
               }}
             >
               {renderBlock(col.block, true)}
