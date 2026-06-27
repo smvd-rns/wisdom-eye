@@ -2395,6 +2395,14 @@ export default function SpecialCourseLanding({
   function renderRow(row) {
     const cols = row.columns || [];
     const gap = row.rowGap ?? 16;
+    const verticalAlign = row.rowAlign ?? 'stretch';
+    
+    // Map CSS flex align-items to justify-content for inner column alignment
+    let innerJustify = 'stretch';
+    if (verticalAlign === 'flex-start') innerJustify = 'flex-start';
+    if (verticalAlign === 'center') innerJustify = 'center';
+    if (verticalAlign === 'flex-end') innerJustify = 'flex-end';
+
     return (
       <div
         key={row.id}
@@ -2402,7 +2410,7 @@ export default function SpecialCourseLanding({
         style={{
           display: 'flex',
           gap: `${gap}px`,
-          alignItems: row.rowAlign ?? 'stretch',
+          alignItems: verticalAlign === 'stretch' ? 'stretch' : 'flex-start',
           background: row.rowBackground && row.rowBackground !== 'transparent' ? row.rowBackground : undefined,
           padding: row.rowPadding ? `${row.rowPadding}px` : undefined,
         }}
@@ -2417,7 +2425,11 @@ export default function SpecialCourseLanding({
                 flex: `0 0 ${finalWidth}`, 
                 width: finalWidth, 
                 minWidth: 0, 
-                boxSizing: 'border-box' 
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: innerJustify === 'stretch' ? 'stretch' : innerJustify,
+                height: verticalAlign === 'stretch' ? '100%' : 'auto'
               }}
             >
               {renderBlock(col.block, true)}
