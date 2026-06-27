@@ -13,10 +13,13 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get('search') || '';
   const role = searchParams.get('role') || 'All';
+  const limit = parseInt(searchParams.get('limit') || '10', 10);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const offset = (page - 1) * limit;
 
   let query = supabase
     .from('user_profiles')
-    .select('id, user_id, name, email, phone, role, is_active, created_at')
+    .select('id, user_id, name, email, phone, role, is_active, created_at, organization_id, organizations(name)', { count: 'exact' })
     .order('created_at', { ascending: false });
 
   // If not superadmin, isolate by organization_id
@@ -28,23 +31,25 @@ export async function GET(req) {
     query = query.eq('role', role);
   }
 
-  const { data: users, error } = await query;
+  if (search.trim()) {
+    const term = `%${search.toLowerCase().trim()}%`;
+    query = query.or(`name.ilike.${term},email.ilike.${term}`);
+  }
+
+  // Apply server-side pagination range
+  const { data: users, count, error } = await query.range(offset, offset + limit - 1);
 
   if (error) {
     console.error('Fetch users list error:', error);
     return NextResponse.json({ error: 'Failed to fetch users list.' }, { status: 500 });
   }
 
-  // Filter in memory for search query (name or email match)
-  let filtered = users || [];
-  if (search.trim()) {
-    const term = search.toLowerCase().trim();
-    filtered = filtered.filter(
-      u => u.name?.toLowerCase().includes(term) || u.email?.toLowerCase().includes(term)
-    );
-  }
-
-  return NextResponse.json({ users: filtered });
+  return NextResponse.json({ 
+    users: users || [],
+    total: count || 0,
+    page,
+    limit
+  });
 }
 
 // PUT /api/admin/users
@@ -86,9 +91,9 @@ export async function PUT(req) {
 
   const ROLE_ORDER = ['student', 'evaluator', 'course_builder', 'admin', 'superadmin'];
 
-  // Enforce role hierarchy: Actor cannot alter someone with a higher role than their own
-  if (ROLE_ORDER.indexOf(targetUser.role) > ROLE_ORDER.indexOf(session.role)) {
-    return NextResponse.json({ error: 'Unauthorized: You cannot modify a user with a higher role than your own.' }, { status: 403 });
+  // Enforce role hierarchy: Actor cannot alter someone with an equal or higher role than their own
+  if (ROLE_ORDER.indexOf(targetUser.role) >= ROLE_ORDER.indexOf(session.role)) {
+    return NextResponse.json({ error: 'Unauthorized: You cannot modify a user with an equal or higher role than your own.' }, { status: 403 });
   }
 
   // Enforce role hierarchy: Actor cannot assign a role higher than their own

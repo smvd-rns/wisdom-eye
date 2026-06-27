@@ -25,6 +25,11 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState('All');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
 
   // Load current user once on mount (uses sessionStorage cache from Navbar)
   useEffect(() => {
@@ -55,10 +60,13 @@ export default function AdminUsersPage() {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (roleFilter !== 'All') params.set('role', roleFilter);
+      params.set('page', page.toString());
+      params.set('limit', limit.toString());
       const res = await fetch(`/api/admin/users?${params}`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users || []);
+        setTotal(data.total || 0);
       } else {
         setError('Failed to load users list.');
       }
@@ -70,10 +78,15 @@ export default function AdminUsersPage() {
     }
   };
 
+  // Reset page to 1 on filter/search change
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter]);
+
   useEffect(() => {
     const timer = setTimeout(loadUsers, 300);
     return () => clearTimeout(timer);
-  }, [search, roleFilter]);
+  }, [search, roleFilter, page, limit]);
 
   const handleRoleChange = async (userId, newRole) => {
     setError(''); setSuccess(''); setUpdatingId(userId);
@@ -220,6 +233,7 @@ export default function AdminUsersPage() {
               <thead>
                 <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                   <th style={TH}>NAME</th>
+                  {currentUser?.role === 'superadmin' && <th style={TH}>ORGANIZATION</th>}
                   <th style={TH}>EMAIL</th>
                   <th style={TH}>PHONE</th>
                   <th style={TH}>JOINED</th>
@@ -231,8 +245,8 @@ export default function AdminUsersPage() {
               <tbody>
                 {users.map(u => {
                   const isSelf = u.user_id === currentUser?.user_id;
-                  const isHigherRole = ROLE_ORDER.indexOf(u.role) > ROLE_ORDER.indexOf(currentUser?.role || 'student');
-                  const canEdit = !isSelf && !isHigherRole;
+                  const isEqualOrHigherRole = ROLE_ORDER.indexOf(u.role) >= ROLE_ORDER.indexOf(currentUser?.role || 'student');
+                  const canEdit = !isSelf && !isEqualOrHigherRole;
                   const dateStr = u.created_at
                     ? new Date(u.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                     : '—';
@@ -257,6 +271,13 @@ export default function AdminUsersPage() {
                           </div>
                         </div>
                       </td>
+
+                      {/* Organization (Superadmin Only) */}
+                      {currentUser?.role === 'superadmin' && (
+                        <td style={{ ...TD, fontWeight: '600', color: '#2563EB', whiteSpace: 'nowrap' }}>
+                          {u.organizations?.name || 'Wisdom Eye'}
+                        </td>
+                      )}
 
                       {/* Email */}
                       <td style={{ ...TD, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -298,7 +319,7 @@ export default function AdminUsersPage() {
 
                       {/* Action */}
                       <td style={{ ...TD, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        {isSelf || isHigherRole ? (
+                        {isSelf || isEqualOrHigherRole ? (
                           <span style={{ fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>Locked</span>
                         ) : updatingId === u.user_id ? (
                           <Loader2 size={14} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
@@ -328,11 +349,64 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        {/* Footer */}
-        {!loading && users.length > 0 && (
-          <div style={{ padding: '10px 20px', borderTop: '1px solid #F3F4F6', fontSize: '12px', color: '#9CA3AF', textAlign: 'right' }}>
-            Showing {users.length} user{users.length !== 1 ? 's' : ''}
-            {roleFilter !== 'All' && ` · filtered by ${ROLES.find(r => r.value === roleFilter)?.label || roleFilter}`}
+        {/* Footer with Pagination Controls */}
+        {!loading && (
+          <div style={{ padding: '14px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            {/* Limit Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4B5563' }}>
+              <span>Show</span>
+              <select 
+                value={limit} 
+                onChange={e => {
+                  setLimit(parseInt(e.target.value, 10));
+                  setPage(1);
+                }}
+                style={{ padding: '4px 8px', borderRadius: '6px', border: '1.5px solid #E5E7EB', fontSize: '13px', outline: 'none', background: '#fff', cursor: 'pointer' }}
+              >
+                <option value={10}>10</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>per page</span>
+            </div>
+
+            {/* Pagination Range & Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                Showing {total > 0 ? (page - 1) * limit + 1 : 0}–{Math.min(page * limit, total)} of {total}
+              </span>
+
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => Math.max(p - 1, 1))}
+                  style={{
+                    padding: '6px 12px', borderRadius: '6px', border: '1.5px solid #E5E7EB',
+                    background: page <= 1 ? '#F9FAFB' : '#fff',
+                    color: page <= 1 ? '#9CA3AF' : '#374151',
+                    fontSize: '13px', fontWeight: '600',
+                    cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={page * limit >= total}
+                  onClick={() => setPage(p => p + 1)}
+                  style={{
+                    padding: '6px 12px', borderRadius: '6px', border: '1.5px solid #E5E7EB',
+                    background: page * limit >= total ? '#F9FAFB' : '#fff',
+                    color: page * limit >= total ? '#9CA3AF' : '#374151',
+                    fontSize: '13px', fontWeight: '600',
+                    cursor: page * limit >= total ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
