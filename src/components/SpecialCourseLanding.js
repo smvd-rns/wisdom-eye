@@ -1095,7 +1095,7 @@ export default function SpecialCourseLanding({
               {p.subheading && <p style={{ fontSize: '16px', color: '#6B7280', marginTop: '10px', maxWidth: '560px', margin: '10px auto 0' }}>{animText(p.subheading, block)}</p>}
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '20px' }}>
+          <div className="special-features" style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '20px' }}>
             {features.map((feat, i) => (
               <div key={i} style={{
                 background: '#fff',
