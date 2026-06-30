@@ -186,20 +186,15 @@ export default function StudentPlayerPage() {
   const getFlatItems = () => {
     if (!course?.modules) return [];
     return course.modules.reduce((list, mod) => {
-      let items = [];
-      if (mod.lessons) {
-        const sortedLessons = [...mod.lessons]
-          .sort((a, b) => a.order_index - b.order_index)
-          .map(l => ({ ...l, itemType: 'lesson' }));
-        items = [...items, ...sortedLessons];
-      }
-      if (mod.quizzes) {
-        const sortedQuizzes = [...mod.quizzes]
-          .sort((a, b) => a.order_index - b.order_index)
-          .map(q => ({ ...q, itemType: 'quiz' }));
-        items = [...items, ...sortedQuizzes];
-      }
-      return [...list, ...items];
+      const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
+      const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
+      const combined = [...lessons, ...quizzes].sort((a, b) => {
+        if (a.order_index === b.order_index) {
+          return a.itemType === 'lesson' ? -1 : 1;
+        }
+        return a.order_index - b.order_index;
+      });
+      return [...list, ...combined];
     }, []);
   };
 
@@ -382,59 +377,67 @@ export default function StudentPlayerPage() {
                 
                 {isExpanded && (
                   <div style={styles.sidebarLessons}>
-                    {mod.lessons?.map((les) => {
-                      const isActive = les.id === activeLessonId;
-                      // Check if completed
-                      const isCompleted = progressSummary?.completed_lessons_ids?.includes(les.id) || 
-                                          (les.id === activeLessonId && lessonProgress.completed);
+                    {[
+                      ...(mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' })),
+                      ...(mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }))
+                    ].sort((a, b) => {
+                      if (a.order_index === b.order_index) {
+                        return a.itemType === 'lesson' ? -1 : 1;
+                      }
+                      return a.order_index - b.order_index;
+                    }).map((item) => {
+                      if (item.itemType === 'lesson') {
+                        const isActive = item.id === activeLessonId;
+                        const isCompleted = progressSummary?.completed_lessons_ids?.includes(item.id) || 
+                                            (item.id === activeLessonId && lessonProgress.completed);
 
-                      return (
-                        <Link
-                          key={les.id}
-                          href={`/courses/${slug}/learn/${les.id}`}
-                          onClick={(e) => handleSelectLesson(les.id, e)}
-                          style={{
-                            ...styles.lessonItem,
-                            ...(isActive ? styles.lessonItemActive : {})
-                          }}
-                        >
-                          <span style={{ marginRight: '8px', flexShrink: 0 }}>
-                            {isCompleted ? (
-                              <CheckCircle size={15} color="#10B981" />
-                            ) : (
-                              <Circle size={15} color="#9CA3AF" />
-                            )}
-                          </span>
-                          <span style={styles.lessonTitleText}>{les.title}</span>
-                          <span style={styles.lessonTypeIcon}>
-                            {les.type === 'youtube' ? '▶️' : les.type === 'gdrive' ? '📄' : '📝'}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                    {mod.quizzes?.map((quiz) => {
-                      const isCompleted = progressSummary?.passed_quiz_ids?.includes(quiz.id);
-                      return (
-                        <Link
-                          key={quiz.id}
-                          href={`/courses/${slug}/quiz/${quiz.id}`}
-                          style={{
-                            ...styles.lessonItem,
-                            borderLeftColor: 'transparent',
-                            paddingLeft: '20px'
-                          }}
-                        >
-                          <span style={{ marginRight: '8px', flexShrink: 0 }}>
-                            {isCompleted ? (
-                              <CheckCircle size={15} color="#10B981" />
-                            ) : (
-                              <Circle size={15} color="#FF9F1C" />
-                            )}
-                          </span>
-                          <span style={styles.lessonTitleText}>{quiz.title}</span>
-                          <span style={styles.lessonTypeIcon}>📝</span>
-                        </Link>
-                      );
+                        return (
+                          <Link
+                            key={item.id}
+                            href={`/courses/${slug}/learn/${item.id}`}
+                            onClick={(e) => handleSelectLesson(item.id, e)}
+                            style={{
+                              ...styles.lessonItem,
+                              ...(isActive ? styles.lessonItemActive : {})
+                            }}
+                          >
+                            <span style={{ marginRight: '8px', flexShrink: 0 }}>
+                              {isCompleted ? (
+                                <CheckCircle size={15} color="#10B981" />
+                              ) : (
+                                <Circle size={15} color="#9CA3AF" />
+                              )}
+                            </span>
+                            <span style={styles.lessonTitleText}>{item.title}</span>
+                            <span style={styles.lessonTypeIcon}>
+                              {item.type === 'youtube' ? '▶️' : item.type === 'gdrive' ? '📄' : '📝'}
+                            </span>
+                          </Link>
+                        );
+                      } else {
+                        const isCompleted = progressSummary?.passed_quiz_ids?.includes(item.id);
+                        return (
+                          <Link
+                            key={item.id}
+                            href={`/courses/${slug}/quiz/${item.id}`}
+                            style={{
+                              ...styles.lessonItem,
+                              borderLeftColor: 'transparent',
+                              paddingLeft: '20px'
+                            }}
+                          >
+                            <span style={{ marginRight: '8px', flexShrink: 0 }}>
+                              {isCompleted ? (
+                                <CheckCircle size={15} color="#10B981" />
+                              ) : (
+                                <Circle size={15} color="#FF9F1C" />
+                              )}
+                            </span>
+                            <span style={styles.lessonTitleText}>{item.title}</span>
+                            <span style={styles.lessonTypeIcon}>📝</span>
+                          </Link>
+                        );
+                      }
                     })}
                   </div>
                 )}

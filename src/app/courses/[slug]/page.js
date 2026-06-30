@@ -791,55 +791,89 @@ export default function CourseLandingPage() {
                     </div>
                   </button>
 
-                  {expandedModules[mod.id] && mod.lessons?.length > 0 && (
-                    <div style={styles.lessonList}>
-                      {mod.lessons.map(lesson => {
-                        const isClickable = lesson.is_free_preview;
-                        return (
-                          <div 
-                            key={lesson.id} 
-                            style={{
-                              ...styles.lessonRow,
-                              ...(isClickable ? { cursor: 'pointer' } : {})
-                            }}
-                            onClick={() => {
-                              if (isClickable) {
-                                setPreviewLesson(lesson);
-                              }
-                            }}
-                            className={isClickable ? 'free-lesson-row' : ''}
-                          >
-                            <div style={styles.lessonLeft}>
-                              {lesson.type === 'youtube' ? (
-                                <Play size={14} color="#6B7280" style={{ marginTop: '3px', flexShrink: 0 }} />
-                              ) : (
-                                <FileText size={14} color="#6B7280" style={{ marginTop: '3px', flexShrink: 0 }} />
-                              )}
-                              <span style={styles.lessonTitle}>{lesson.title}</span>
-                              {lesson.is_free_preview && (
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPreviewLesson(lesson);
-                                  }} 
-                                  style={styles.freeBadgeBtn}
-                                  className="preview-badge"
-                                >
-                                  Preview
-                                </button>
-                              )}
-                            </div>
-                            {!lesson.is_free_preview && !isEnrolled && (
-                              <Lock size={12} color="#D1D5DB" style={{ marginTop: '4px', flexShrink: 0 }} />
-                            )}
-                            {lesson.duration_seconds > 0 && (
-                              <span style={styles.lessonDuration}>{formatDuration(lesson.duration_seconds)}</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {expandedModules[mod.id] && ((mod.lessons && mod.lessons.length > 0) || (mod.quizzes && mod.quizzes.length > 0)) && (() => {
+                    const combined = [
+                      ...(mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' })),
+                      ...(mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }))
+                    ].sort((a, b) => {
+                      if (a.order_index === b.order_index) {
+                        return a.itemType === 'lesson' ? -1 : 1;
+                      }
+                      return a.order_index - b.order_index;
+                    });
+                    return (
+                      <div style={styles.lessonList}>
+                        {combined.map(item => {
+                          if (item.itemType === 'lesson') {
+                            const isClickable = item.is_free_preview;
+                            return (
+                              <div 
+                                key={`lesson-${item.id}`} 
+                                style={{
+                                  ...styles.lessonRow,
+                                  ...(isClickable ? { cursor: 'pointer' } : {})
+                                }}
+                                onClick={() => {
+                                  if (isClickable) {
+                                    setPreviewLesson(item);
+                                  }
+                                }}
+                                className={isClickable ? 'free-lesson-row' : ''}
+                              >
+                                <div style={styles.lessonLeft}>
+                                  {item.type === 'youtube' ? (
+                                    <Play size={14} color="#6B7280" style={{ marginTop: '3px', flexShrink: 0 }} />
+                                  ) : (
+                                    <FileText size={14} color="#6B7280" style={{ marginTop: '3px', flexShrink: 0 }} />
+                                  )}
+                                  <span style={styles.lessonTitle}>{item.title}</span>
+                                  {item.is_free_preview && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPreviewLesson(item);
+                                      }} 
+                                      style={styles.freeBadgeBtn}
+                                      className="preview-badge"
+                                    >
+                                      Preview
+                                    </button>
+                                  )}
+                                </div>
+                                {!item.is_free_preview && !isEnrolled && (
+                                  <Lock size={12} color="#D1D5DB" style={{ marginTop: '4px', flexShrink: 0 }} />
+                                )}
+                                {item.duration_seconds > 0 && (
+                                  <span style={styles.lessonDuration}>{formatDuration(item.duration_seconds)}</span>
+                                )}
+                              </div>
+                            );
+                          } else {
+                            // It's a quiz
+                            return (
+                              <div 
+                                key={`quiz-${item.id}`} 
+                                style={{
+                                  ...styles.lessonRow,
+                                  background: '#FAF9FF',
+                                  borderColor: 'rgba(124, 58, 237, 0.15)',
+                                }}
+                              >
+                                <div style={styles.lessonLeft}>
+                                  <BookOpenCheck size={14} color="#7C3AED" style={{ marginTop: '3px', flexShrink: 0 }} />
+                                  <span style={{ ...styles.lessonTitle, color: '#5B21B6', fontWeight: '600' }}>{item.title}</span>
+                                  <span style={{ fontSize: '10px', background: '#F5F3FF', color: '#7C3AED', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', fontWeight: 'bold' }}>Quiz</span>
+                                </div>
+                                {!isEnrolled && (
+                                  <Lock size={12} color="#D1D5DB" style={{ marginTop: '4px', flexShrink: 0 }} />
+                                )}
+                              </div>
+                            );
+                          }
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

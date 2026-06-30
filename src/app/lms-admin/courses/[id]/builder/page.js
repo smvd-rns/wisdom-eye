@@ -177,16 +177,50 @@ export default function CourseBuilderPage() {
     } catch (err) { showNotification('Failed to delete lesson.', 'error'); }
   };
 
-  const moveLesson = async (moduleId, index, dir) => {
+  const moveItem = async (moduleId, index, dir) => {
     const mod = modules.find(m => m.id === moduleId);
-    const lessons = [...(mod?.lessons || [])];
+    const moduleQuizzes = getModuleQuizzes(moduleId);
+    
+    // Combine lessons and quizzes and sort by order_index
+    const items = [
+      ...(mod?.lessons || []).map(l => ({ ...l, itemType: 'lesson' })),
+      ...moduleQuizzes.map(q => ({ ...q, itemType: 'quiz' }))
+    ].sort((a, b) => {
+      if (a.order_index === b.order_index) {
+        return a.itemType === 'lesson' ? -1 : 1;
+      }
+      return a.order_index - b.order_index;
+    });
+
     const target = index + dir;
-    if (target < 0 || target >= lessons.length) return;
-    [lessons[index], lessons[target]] = [lessons[target], lessons[index]];
+    if (target < 0 || target >= items.length) return;
+
+    // Swap items
+    [items[index], items[target]] = [items[target], items[index]];
+
     try {
-      await Promise.all(lessons.map((l, i) => fetch('/api/admin/lessons', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: l.id, order_index: i }) })));
-      setModules(p => p.map(m => m.id === moduleId ? { ...m, lessons } : m));
-    } catch { showNotification('Failed to reorder lessons.', 'error'); }
+      // Send updates to server
+      await Promise.all(items.map((item, i) => {
+        const url = item.itemType === 'lesson' ? '/api/admin/lessons' : '/api/admin/quizzes';
+        return fetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: item.id, order_index: i })
+        });
+      }));
+
+      // Update local state
+      const updatedLessons = items.filter(item => item.itemType === 'lesson').map((l, idx) => ({ ...l, order_index: items.findIndex(it => it.id === l.id && it.itemType === 'lesson') }));
+      const updatedQuizzes = items.filter(item => item.itemType === 'quiz').map((q, idx) => ({ ...q, order_index: items.findIndex(it => it.id === q.id && it.itemType === 'quiz') }));
+
+      setModules(p => p.map(m => m.id === moduleId ? { ...m, lessons: updatedLessons.sort((a, b) => a.order_index - b.order_index) } : m));
+      setAllCourseQuizzes(p => p.map(q => {
+        const found = updatedQuizzes.find(uq => uq.id === q.id);
+        return found ? { ...q, order_index: found.order_index } : q;
+      }));
+    } catch (err) {
+      showNotification('Failed to reorder items.', 'error');
+    }
   };
 
   // ── Quiz operations ─────────────────────────────────────
@@ -208,6 +242,9 @@ export default function CourseBuilderPage() {
     e.preventDefault();
     if (!quizForm.title.trim() || !quizPanel) return;
     setSaving(true);
+    const mod = modules.find(m => m.id === quizPanel.moduleId);
+    const moduleQuizzes = getModuleQuizzes(quizPanel.moduleId);
+    const currentItemsCount = (mod?.lessons?.length || 0) + moduleQuizzes.length;
     const payload = {
       course_id: id,
       module_id: quizPanel.moduleId,
@@ -226,7 +263,7 @@ export default function CourseBuilderPage() {
           setQuizPanel(prev => ({ ...prev, mode: 'list' }));
         }
       } else {
-        const res = await fetch('/api/admin/quizzes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await fetch('/api/admin/quizzes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, order_index: currentItemsCount }) });
         const data = await res.json();
         if (res.ok) {
           setAllCourseQuizzes(p => [...p, data.quiz]);
@@ -400,6 +437,17 @@ export default function CourseBuilderPage() {
             const moduleQuizzes = getModuleQuizzes(mod.id);
             const isQuizPanelOpen = quizPanel?.moduleId === mod.id;
 
+            // Combine lessons and quizzes for unified rendering and sorting
+            const combinedItems = [
+              ...(mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' })),
+              ...moduleQuizzes.map(q => ({ ...q, itemType: 'quiz' }))
+            ].sort((a, b) => {
+              if (a.order_index === b.order_index) {
+                return a.itemType === 'lesson' ? -1 : 1;
+              }
+              return a.order_index - b.order_index;
+            });
+
             return (
               <div key={mod.id} style={S.moduleCard}>
                 {/* Module Header */}
@@ -427,56 +475,56 @@ export default function CourseBuilderPage() {
                   </div>
                 </div>
 
-                {/* Lessons List */}
+                {/* Lessons & Quizzes List */}
                 <div style={S.lessonsList}>
-                  {(mod.lessons || []).map((lesson, li) => (
-                    <div key={lesson.id} style={{ ...S.lessonRow, ...(editingLesson?.id === lesson.id ? S.lessonRowActive : {}) }}>
-                      {editingLesson?.id === lesson.id ? (
-                        <LessonForm form={lessonForm} setForm={setLessonForm} onSave={() => saveLesson(mod.id)} onCancel={() => { setEditingLesson(null); resetLessonForm(); }} saving={saving} />
-                      ) : (
-                        <>
-                          <span style={S.lessonIcon}>{typeIcon(lesson.type)}</span>
-                          <span style={S.lessonTitle}>{lesson.title}</span>
-                          {lesson.is_free_preview && <span style={S.freeBadge}>Free</span>}
-                          <div style={S.lessonActions}>
-                            <button onClick={() => moveLesson(mod.id, li, -1)} disabled={li === 0} style={S.iconBtnSm}><ChevronUp size={12} /></button>
-                            <button onClick={() => moveLesson(mod.id, li, 1)} disabled={li === (mod.lessons?.length || 0) - 1} style={S.iconBtnSm}><ChevronDown size={12} /></button>
-                            <button onClick={() => openEditLesson({ ...lesson, module_id: mod.id })} style={S.iconBtnSm}><Edit3 size={12} /></button>
-                            <button onClick={() => deleteLesson(mod.id, lesson.id)} style={{ ...S.iconBtnSm, color: '#EF4444' }}><Trash2 size={12} /></button>
+                  {combinedItems.map((item, index) => {
+                    const isLesson = item.itemType === 'lesson';
+                    if (isLesson) {
+                      return (
+                        <div key={`lesson-${item.id}`} style={{ ...S.lessonRow, ...(editingLesson?.id === item.id ? S.lessonRowActive : {}) }}>
+                          {editingLesson?.id === item.id ? (
+                            <LessonForm form={lessonForm} setForm={setLessonForm} onSave={() => saveLesson(mod.id)} onCancel={() => { setEditingLesson(null); resetLessonForm(); }} saving={saving} />
+                          ) : (
+                            <>
+                              <span style={S.lessonIcon}>{typeIcon(item.type)}</span>
+                              <span style={S.lessonTitle}>{item.title}</span>
+                              {item.is_free_preview && <span style={S.freeBadge}>Free</span>}
+                              <div style={S.lessonActions}>
+                                <button onClick={() => moveItem(mod.id, index, -1)} disabled={index === 0} style={S.iconBtnSm}><ChevronUp size={12} /></button>
+                                <button onClick={() => moveItem(mod.id, index, 1)} disabled={index === combinedItems.length - 1} style={S.iconBtnSm}><ChevronDown size={12} /></button>
+                                <button onClick={() => openEditLesson({ ...item, module_id: mod.id })} style={S.iconBtnSm}><Edit3 size={12} /></button>
+                                <button onClick={() => deleteLesson(mod.id, item.id)} style={{ ...S.iconBtnSm, color: '#EF4444' }}><Trash2 size={12} /></button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      // It's a quiz
+                      return (
+                        <div key={`quiz-${item.id}`} style={S.quizRowUnified}>
+                          <span style={S.quizIcon}>📋</span>
+                          <div style={S.quizRowInfo}>
+                            <span style={S.quizRowTitle}>{item.title}</span>
+                            <span style={S.quizRowMeta}>
+                              {item.type?.toUpperCase()} · Pass {item.pass_score_percent}% · {item.questions_count || 0} questions
+                            </span>
                           </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
+                          <div style={S.lessonActions}>
+                            <button onClick={() => moveItem(mod.id, index, -1)} disabled={index === 0} style={S.iconBtnSm}><ChevronUp size={12} /></button>
+                            <button onClick={() => moveItem(mod.id, index, 1)} disabled={index === combinedItems.length - 1} style={S.iconBtnSm}><ChevronDown size={12} /></button>
+                            <button onClick={() => { openQuizPanel(mod.id, 'questions'); setActiveQuizForQuestions(item); fetch(`/api/admin/quizzes?id=${item.id}`).then(r => r.json()).then(d => setQuestions(d.quiz?.questions || [])); }} style={{ ...S.iconBtnSm, color: '#4F46E5' }} title="Edit Questions"><Edit3 size={12} /></button>
+                            <button onClick={() => handleDeleteQuiz(item.id)} style={{ ...S.iconBtnSm, color: '#EF4444' }} title="Delete Quiz"><Trash2 size={12} /></button>
+                          </div>
+                        </div>
+                      );
+                    }
+                  })}
 
                   {/* Add lesson form inline */}
                   {addingLesson === mod.id && !editingLesson && (
                     <div style={S.addLessonForm}>
                       <LessonForm form={lessonForm} setForm={setLessonForm} onSave={() => saveLesson(mod.id)} onCancel={() => { setAddingLesson(null); resetLessonForm(); }} saving={saving} isNew />
-                    </div>
-                  )}
-
-                  {/* Module Quizzes */}
-                  {moduleQuizzes.length > 0 && (
-                    <div style={S.quizzesInModule}>
-                      <div style={S.quizzesInModuleHeader}>
-                        <span style={S.quizzesInModuleLabel}>📋 Quizzes ({moduleQuizzes.length})</span>
-                      </div>
-                      {moduleQuizzes.map(quiz => (
-                        <div key={quiz.id} style={S.quizRow}>
-                          <span style={S.quizIcon}>📋</span>
-                          <div style={S.quizRowInfo}>
-                            <span style={S.quizRowTitle}>{quiz.title}</span>
-                            <span style={S.quizRowMeta}>
-                              {quiz.type?.toUpperCase()} · Pass {quiz.pass_score_percent}% · {quiz.questions_count || 0} questions
-                            </span>
-                          </div>
-                          <div style={S.lessonActions}>
-                            <button onClick={() => { openQuizPanel(mod.id, 'questions'); setActiveQuizForQuestions(quiz); fetch(`/api/admin/quizzes?id=${quiz.id}`).then(r => r.json()).then(d => setQuestions(d.quiz?.questions || [])); }} style={{ ...S.iconBtnSm, color: '#4F46E5' }} title="Edit Questions"><Edit3 size={12} /></button>
-                            <button onClick={() => handleDeleteQuiz(quiz.id)} style={{ ...S.iconBtnSm, color: '#EF4444' }} title="Delete Quiz"><Trash2 size={12} /></button>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   )}
 
@@ -966,29 +1014,26 @@ const S = {
   previewBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px', borderRadius: '8px', background: '#FF9F1C', color: '#1A1B4B', fontSize: '13px', fontWeight: '700', textDecoration: 'none' },
   builder: { display: 'grid', gridTemplateColumns: '1fr 260px', gap: '20px', alignItems: 'start' },
   modulesList: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  moduleCard: { background: '#fff', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 1px 8px rgba(0,0,0,0.07)', border: '1px solid #F3F4F6' },
-  moduleHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F9FAFB', borderBottom: '1px solid #F3F4F6' },
+  moduleCard: { background: '#fff', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #E5E7EB' },
+  moduleHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F8F9FA', borderBottom: '1.5px solid #E5E7EB' },
   moduleLeft: { display: 'flex', alignItems: 'center', gap: '10px', flex: 1 },
   moduleNum: { fontSize: '10px', fontWeight: '800', color: '#FF9F1C', textTransform: 'uppercase', letterSpacing: '0.5px', flexShrink: 0 },
-  moduleTitle: { fontSize: '14px', fontWeight: '700', color: '#111827' },
+  moduleTitle: { fontSize: '14px', fontWeight: '700', color: '#1A1B4B' },
   inlineInput: { flex: 1, padding: '4px 10px', border: '1.5px solid #FF9F1C', borderRadius: '6px', fontSize: '14px', fontWeight: '600', background: '#fff', outline: 'none' },
   moduleActions: { display: 'flex', gap: '4px' },
   iconBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280' },
-  lessonsList: { padding: '12px', display: 'flex', flexDirection: 'column', gap: '2px' },
-  lessonRow: { display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px' },
-  lessonRowActive: { background: '#EEF2FF', border: '1.5px solid #C7D2FE' },
+  lessonsList: { padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' },
+  lessonRow: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', background: '#F0F5FF', border: '1px solid #DBEAFE', borderLeft: '4px solid #3B82F6' },
+  lessonRowActive: { background: '#EFF6FF', border: '1.5px solid #3B82F6' },
   lessonIcon: { fontSize: '14px', flexShrink: 0 },
-  lessonTitle: { fontSize: '13px', color: '#374151', flex: 1, fontWeight: '500' },
+  lessonTitle: { fontSize: '13px', color: '#1E3A8A', flex: 1, fontWeight: '600' },
   freeBadge: { fontSize: '10px', fontWeight: '700', color: '#16A34A', background: '#DCFCE7', padding: '2px 8px', borderRadius: '9999px', flexShrink: 0 },
   lessonActions: { display: 'flex', gap: '2px' },
-  iconBtnSm: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '5px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#9CA3AF' },
-  quizzesInModule: { marginTop: '6px', background: '#F5F3FF', borderRadius: '8px', padding: '8px 10px', border: '1px dashed #C4B5FD' },
-  quizzesInModuleHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' },
-  quizzesInModuleLabel: { fontSize: '11px', fontWeight: '700', color: '#4338CA' },
-  quizRow: { display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', background: '#fff', borderRadius: '6px', marginTop: '4px', border: '1px solid #E5E7EB' },
+  iconBtnSm: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '5px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#4B5563' },
+  quizRowUnified: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderLeft: '4px solid #7C3AED' },
   quizIcon: { fontSize: '13px', flexShrink: 0 },
   quizRowInfo: { flex: 1, display: 'flex', flexDirection: 'column', gap: '1px' },
-  quizRowTitle: { fontSize: '12px', fontWeight: '700', color: '#111827' },
+  quizRowTitle: { fontSize: '12px', fontWeight: '700', color: '#4C1D95' },
   quizRowMeta: { fontSize: '10px', color: '#6B7280' },
   moduleFooterActions: { display: 'flex', gap: '8px', marginTop: '10px' },
   addLessonForm: { background: '#F9FAFB', borderRadius: '8px', padding: '12px', marginBottom: '6px', border: '1.5px dashed #E5E7EB' },
