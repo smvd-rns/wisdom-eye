@@ -60,13 +60,14 @@ export default function CourseBuilderPage() {
   const [activeQuizForQuestions, setActiveQuizForQuestions] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [savingQuestions, setSavingQuestions] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm }
 
   // Load course data + quizzes
   const loadData = useCallback(async () => {
     try {
       const [courseRes, quizzesRes] = await Promise.all([
         fetch(`/api/courses/${id}`),
-        fetch(`/api/admin/quizzes?course_id=${id}`)
+        fetch(`/api/admin/quizzes?course_id=all`)
       ]);
       if (!courseRes.ok) { router.push('/lms-admin/courses'); return; }
       const { course: data } = await courseRes.json();
@@ -276,12 +277,22 @@ export default function CourseBuilderPage() {
     } catch (err) { console.error(err); } finally { setSaving(false); }
   };
 
-  const handleDeleteQuiz = async (quizId) => {
-    if (!confirm('Delete this quiz and all its questions?')) return;
-    try {
-      const res = await fetch(`/api/admin/quizzes?id=${quizId}`, { method: 'DELETE' });
-      if (res.ok) setAllCourseQuizzes(p => p.filter(q => q.id !== quizId));
-    } catch (err) { console.error(err); }
+  const handleRemoveQuizFromModule = async (quizId) => {
+    setConfirmModal({
+      title: 'Remove Quiz from Module',
+      message: 'Are you sure you want to remove this quiz from the module? It will remain in the course library.',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/quizzes`, { 
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: quizId, module_id: null, order_index: 0 }) 
+          });
+          const data = await res.json();
+          if (res.ok) setAllCourseQuizzes(p => p.map(q => q.id === quizId ? data.quiz : q));
+        } catch (err) { console.error(err); }
+      }
+    });
   };
 
   const handleOpenQuestionsEditor = async (quiz) => {
@@ -303,11 +314,28 @@ export default function CourseBuilderPage() {
   // Assign existing quiz to module
   const handleAssignQuizToModule = async (quizId, targetModuleId) => {
     try {
-      const res = await fetch('/api/admin/quizzes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: quizId, module_id: targetModuleId }) });
-      const data = await res.json();
-      if (res.ok) {
-        setAllCourseQuizzes(p => p.map(q => q.id === quizId ? data.quiz : q));
-        setQuizPanel(prev => ({ ...prev, mode: 'list' }));
+      const quizToAssign = allCourseQuizzes.find(q => q.id === quizId);
+      if (!quizToAssign) return;
+
+      if (String(quizToAssign.course_id) !== String(id)) {
+        // Cross-course assignment -> duplicate
+        const res = await fetch('/api/admin/quizzes/duplicate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quiz_id: quizId, target_course_id: id, target_module_id: targetModuleId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setAllCourseQuizzes(p => [...p, data.quiz]);
+          setQuizPanel(prev => ({ ...prev, mode: 'list' }));
+        }
+      } else {
+        const res = await fetch('/api/admin/quizzes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: quizId, module_id: targetModuleId }) });
+        const data = await res.json();
+        if (res.ok) {
+          setAllCourseQuizzes(p => p.map(q => q.id === quizId ? data.quiz : q));
+          setQuizPanel(prev => ({ ...prev, mode: 'list' }));
+        }
       }
     } catch (err) { console.error(err); }
   };
@@ -400,8 +428,8 @@ export default function CourseBuilderPage() {
     </div>
   );
 
-  // Quizzes that are in the library but not assigned to any module (available to assign)
-  const unassignedQuizzes = allCourseQuizzes.filter(q => !q.module_id);
+  const courseQuizzes = allCourseQuizzes.filter(q => String(q.course_id) === String(id));
+  const unassignedQuizzes = courseQuizzes.filter(q => !q.module_id);
 
   return (
     <div>
@@ -413,7 +441,7 @@ export default function CourseBuilderPage() {
           <div style={S.headerMeta}>
             <span style={S.badge}>{modules.reduce((s, m) => s + (m.lessons?.length || 0), 0)} lessons</span>
             <span style={S.badge}>{modules.length} modules</span>
-            <span style={{ ...S.badge, background: '#EEF2FF', color: '#4338CA' }}>{allCourseQuizzes.length} quizzes</span>
+            <span style={{ ...S.badge, background: '#EEF2FF', color: '#4338CA' }}>{courseQuizzes.length} quizzes</span>
           </div>
         </div>
         <div style={S.headerActions}>
@@ -514,7 +542,7 @@ export default function CourseBuilderPage() {
                             <button onClick={() => moveItem(mod.id, index, -1)} disabled={index === 0} style={S.iconBtnSm}><ChevronUp size={12} /></button>
                             <button onClick={() => moveItem(mod.id, index, 1)} disabled={index === combinedItems.length - 1} style={S.iconBtnSm}><ChevronDown size={12} /></button>
                             <button onClick={() => { openQuizPanel(mod.id, 'questions'); setActiveQuizForQuestions(item); fetch(`/api/admin/quizzes?id=${item.id}`).then(r => r.json()).then(d => setQuestions(d.quiz?.questions || [])); }} style={{ ...S.iconBtnSm, color: '#4F46E5' }} title="Edit Questions"><Edit3 size={12} /></button>
-                            <button onClick={() => handleDeleteQuiz(item.id)} style={{ ...S.iconBtnSm, color: '#EF4444' }} title="Delete Quiz"><Trash2 size={12} /></button>
+                            <button onClick={() => handleRemoveQuizFromModule(item.id)} style={{ ...S.iconBtnSm, color: '#EF4444' }} title="Remove from module"><X size={12} /></button>
                           </div>
                         </div>
                       );
@@ -546,12 +574,15 @@ export default function CourseBuilderPage() {
                     {quizPanel.mode === 'list' && (
                       <QuizListPanel
                         moduleId={mod.id}
+                        courseId={id}
                         moduleQuizzes={moduleQuizzes}
                         unassignedQuizzes={unassignedQuizzes}
+                        allCourseQuizzes={allCourseQuizzes}
+                        modules={modules}
                         onCreateNew={() => setQuizPanel(prev => ({ ...prev, mode: 'create' }))}
                         onEditSettings={handleEditQuizSettings}
                         onManageQuestions={handleOpenQuestionsEditor}
-                        onDeleteQuiz={handleDeleteQuiz}
+                        onRemoveQuiz={handleRemoveQuizFromModule}
                         onAssignQuiz={handleAssignQuizToModule}
                         onClose={closeQuizPanel}
                       />
@@ -587,6 +618,7 @@ export default function CourseBuilderPage() {
                         onSave={handleSaveQuestions}
                         onBack={() => { setQuizPanel(prev => ({ ...prev, mode: 'list' })); setActiveQuizForQuestions(null); setQuestions([]); }}
                         saving={savingQuestions}
+                        triggerConfirm={setConfirmModal}
                       />
                     )}
                   </div>
@@ -668,8 +700,93 @@ export default function CourseBuilderPage() {
         </div>
       )}
 
+      {/* Beautiful Confirm Modal */}
+      {confirmModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100000,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            width: '420px',
+            maxWidth: '90%',
+            padding: '24px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+            transform: 'scale(1)',
+            animation: 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            fontFamily: 'Outfit, sans-serif'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '50%',
+                backgroundColor: '#FEF3C7', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: '#D97706'
+              }}>
+                <AlertCircle size={22} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1E293B', margin: 0 }}>
+                {confirmModal.title || 'Confirm Action'}
+              </h3>
+            </div>
+            
+            <p style={{ fontSize: '14px', color: '#64748B', lineHeight: '1.6', margin: '0 0 24px 0' }}>
+              {confirmModal.message}
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setConfirmModal(null)}
+                style={{
+                  padding: '10px 18px', borderRadius: '10px',
+                  border: '1px solid #E2E8F0', backgroundColor: '#fff',
+                  color: '#475569', fontSize: '13px', fontWeight: '700',
+                  cursor: 'pointer', transition: 'all 0.15s ease'
+                }}
+                onMouseOver={e => e.target.style.backgroundColor = '#F8FAFC'}
+                onMouseOut={e => e.target.style.backgroundColor = '#fff'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(null);
+                }}
+                style={{
+                  padding: '10px 20px', borderRadius: '10px',
+                  border: 'none', backgroundColor: '#EF4444',
+                  color: '#fff', fontSize: '13px', fontWeight: '700',
+                  cursor: 'pointer', transition: 'all 0.15s ease',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                }}
+                onMouseOver={e => e.target.style.backgroundColor = '#DC2626'}
+                onMouseOut={e => e.target.style.backgroundColor = '#EF4444'}
+              >
+                Yes, Replace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleUp {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
         @keyframes slideIn {
           from { transform: translateY(20px) scale(0.95); opacity: 0; }
           to { transform: translateY(0) scale(1); opacity: 1; }
@@ -681,19 +798,23 @@ export default function CourseBuilderPage() {
 
 // ── Sub-components ─────────────────────────────────────────────
 
-function QuizListPanel({ moduleId, moduleQuizzes, unassignedQuizzes, onCreateNew, onEditSettings, onManageQuestions, onDeleteQuiz, onAssignQuiz, onClose }) {
+function QuizListPanel({ moduleId, courseId, moduleQuizzes, unassignedQuizzes, allCourseQuizzes, modules, onCreateNew, onEditSettings, onManageQuestions, onRemoveQuiz, onAssignQuiz, onClose }) {
   const [showAssign, setShowAssign] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter quizzes that aren't in this module AND match search query
+  const availableQuizzes = allCourseQuizzes
+    .filter(q => q.module_id !== moduleId)
+    .filter(q => q.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div style={{ padding: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
         <span style={{ fontSize: '13px', fontWeight: '700', color: '#4338CA' }}>📋 Module Quizzes</span>
         <div style={{ display: 'flex', gap: '8px' }}>
-          {unassignedQuizzes.length > 0 && (
-            <button onClick={() => setShowAssign(p => !p)} style={{ ...qS.btnOutline, fontSize: '11px' }}>
-              <Link2 size={11} /> {showAssign ? 'Hide' : 'Assign Existing'}
-            </button>
-          )}
+          <button onClick={() => setShowAssign(p => !p)} style={{ ...qS.btnOutline, fontSize: '11px' }}>
+            <Link2 size={11} /> {showAssign ? 'Hide' : 'Assign / Move Existing'}
+          </button>
           <button onClick={onCreateNew} style={qS.btnPrimary}>
             <Plus size={12} /> New Quiz
           </button>
@@ -702,17 +823,62 @@ function QuizListPanel({ moduleId, moduleQuizzes, unassignedQuizzes, onCreateNew
 
       {/* Assign existing quiz section */}
       {showAssign && (
-        <div style={{ marginBottom: '14px', background: '#F5F3FF', borderRadius: '8px', padding: '12px', border: '1px solid #C4B5FD' }}>
-          <p style={{ fontSize: '11px', color: '#4338CA', fontWeight: '600', marginBottom: '8px' }}>
-            📚 Assign quiz from course library to this module:
-          </p>
-          {unassignedQuizzes.map(quiz => (
-            <div key={quiz.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#fff', borderRadius: '6px', marginBottom: '6px', border: '1px solid #E5E7EB' }}>
-              <span style={{ fontSize: '12px', color: '#374151' }}>{quiz.title}</span>
-              <button onClick={() => onAssignQuiz(quiz.id, moduleId)} style={{ ...qS.btnPrimary, padding: '3px 10px', fontSize: '11px' }}>Assign Here</button>
+          <div style={{ marginBottom: '14px', background: '#F5F3FF', borderRadius: '8px', padding: '12px', border: '1px solid #C4B5FD' }}>
+            <p style={{ fontSize: '11px', color: '#4338CA', fontWeight: '600', marginBottom: '8px' }}>
+              📚 Assign or Move a quiz from course library / another module:
+            </p>
+            
+            {/* Search Input Box */}
+            <div style={{ marginBottom: '10px' }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="🔍 Search quizzes by title..."
+                style={{
+                  width: '100%',
+                  padding: '6px 12px',
+                  border: '1px solid #C4B5FD',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
             </div>
-          ))}
-        </div>
+
+            {availableQuizzes.length === 0 ? (
+              <p style={{ fontSize: '11px', color: '#6B7280', fontStyle: 'italic', padding: '6px 0' }}>
+                {searchQuery ? 'No matching quizzes found.' : 'No other quizzes exist in this course.'}
+              </p>
+            ) : (
+              <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', paddingRight: '2px' }}>
+                {availableQuizzes.map(quiz => (
+                  <div key={quiz.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#fff', borderRadius: '6px', border: '1px solid #E5E7EB' }}>
+                    <div>
+                      <span style={{ fontSize: '12px', color: '#374151', fontWeight: '600', display: 'block' }}>{quiz.title}</span>
+                      {String(quiz.course_id) !== String(courseId) ? (
+                        <span style={{ fontSize: '9px', color: '#F59E0B', fontWeight: '700' }}>
+                          From another course (Will be cloned)
+                        </span>
+                      ) : quiz.module_id ? (
+                        <span style={{ fontSize: '9px', color: '#6B7280' }}>
+                          Currently in: {modules.find(m => m.id === quiz.module_id)?.title || `Module`}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '9px', color: '#10B981', fontWeight: '700' }}>
+                          In Course Library (Unassigned)
+                        </span>
+                      )}
+                    </div>
+                    <button onClick={() => onAssignQuiz(quiz.id, moduleId)} style={{ ...qS.btnPrimary, padding: '3px 10px', fontSize: '11px', flexShrink: 0 }}>
+                      {quiz.module_id ? 'Move here' : 'Assign here'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
       )}
 
       {/* Module quiz list */}
@@ -738,7 +904,7 @@ function QuizListPanel({ moduleId, moduleQuizzes, unassignedQuizzes, onCreateNew
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <button onClick={() => onManageQuestions(quiz)} style={{ ...qS.btnOutline, fontSize: '11px', padding: '4px 10px' }}>Edit Questions</button>
                 <button onClick={() => onEditSettings(quiz)} style={qS.iconBtn}><Edit3 size={13} /></button>
-                <button onClick={() => onDeleteQuiz(quiz.id)} style={{ ...qS.iconBtn, color: '#EF4444' }}><Trash2 size={13} /></button>
+                <button onClick={() => onRemoveQuiz(quiz.id)} style={{ ...qS.iconBtn, color: '#EF4444' }} title="Remove from module"><X size={13} /></button>
               </div>
             </div>
           ))}
@@ -776,11 +942,42 @@ function QuizCreateForm({ form, setForm, onSubmit, onCancel, saving, isEditing }
           <label style={qS.label}>Max Attempts</label>
           <input type="number" min="1" value={form.max_attempts} onChange={e => setForm(p => ({ ...p, max_attempts: e.target.value }))} style={qS.input} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: '#374151' }}>
-            <input type="checkbox" checked={form.show_correct_answers} onChange={e => setForm(p => ({ ...p, show_correct_answers: e.target.checked }))} />
-            Show correct answers on submit
+        <div style={{ gridColumn: 'span 2' }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#374151', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Correct Answer Visibility
           </label>
+          <div
+            onClick={() => setForm(p => ({ ...p, show_correct_answers: !p.show_correct_answers }))}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer',
+              background: form.show_correct_answers ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.04)',
+              border: `1.5px solid ${form.show_correct_answers ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.2)'}`,
+              borderRadius: '10px', padding: '10px 14px', transition: 'all 0.2s ease', userSelect: 'none'
+            }}
+          >
+            {/* Toggle pill */}
+            <div style={{
+              position: 'relative', width: '40px', height: '22px', borderRadius: '11px',
+              background: form.show_correct_answers ? '#10B981' : '#D1D5DB',
+              transition: 'background 0.2s ease', flexShrink: 0
+            }}>
+              <div style={{
+                position: 'absolute', top: '3px',
+                left: form.show_correct_answers ? '21px' : '3px',
+                width: '16px', height: '16px', borderRadius: '50%',
+                background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                transition: 'left 0.2s ease'
+              }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: form.show_correct_answers ? '#065F46' : '#991B1B' }}>
+                {form.show_correct_answers ? '✅ Show correct answers after submission' : '🚫 Hide correct answers after submission'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '1px' }}>
+                {form.show_correct_answers ? 'Students will see which answers were right/wrong.' : 'Students will only see their score, not which were correct.'}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
@@ -794,8 +991,251 @@ function QuizCreateForm({ form, setForm, onSubmit, onCancel, saving, isEditing }
   );
 }
 
-function QuestionEditor({ quiz, questions, setQuestions, onAddQuestion, onUpdateQ, onUpdateType, onToggleMultiCorrect, onUpdateOption, onAddOption, onRemoveOption, onMoveQuestion, onDeleteQuestion, onSave, onBack, saving }) {
+function QuestionEditor({ quiz, questions, setQuestions, onAddQuestion, onUpdateQ, onUpdateType, onToggleMultiCorrect, onUpdateOption, onAddOption, onRemoveOption, onMoveQuestion, onDeleteQuestion, onSave, onBack, saving, triggerConfirm }) {
   const totalMarks = questions.reduce((s, q) => s + (q.marks || 1), 0);
+
+  // Export questions to CSV
+  const handleExportCSV = () => {
+    const headers = ['question_text', 'type', 'marks', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer_indices_or_index', 'explanation'];
+    const rows = questions.map(q => {
+      let optA = '', optB = '', optC = '', optD = '';
+      if (q.options && q.options.length > 0) {
+        optA = q.options[0] || '';
+        optB = q.options[1] || '';
+        optC = q.options[2] || '';
+        optD = q.options[3] || '';
+      }
+      
+      // For multi-select correct answers, keep the raw array string, e.g. [0,1]. Otherwise, single choice index string e.g. 0.
+      return [
+        `"${(q.question_text || '').replace(/"/g, '""')}"`,
+        q.type || 'mcq',
+        q.marks || 1,
+        `"${optA.replace(/"/g, '""')}"`,
+        `"${optB.replace(/"/g, '""')}"`,
+        `"${optC.replace(/"/g, '""')}"`,
+        `"${optD.replace(/"/g, '""')}"`,
+        `"${(q.correct_answer || '').replace(/"/g, '""')}"`,
+        `"${(q.explanation || '').replace(/"/g, '""')}"`
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${quiz.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_questions.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Download Sample Template CSV
+  const handleDownloadTemplate = () => {
+    const headers = ['question_text', 'type', 'marks', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer_indices_or_index', 'explanation'];
+    const sampleRows = [
+      [
+        '"What is the capital of France?"',
+        'mcq',
+        1,
+        '"London"',
+        '"Paris"',
+        '"Berlin"',
+        '"Madrid"',
+        '"1"',
+        '"Paris is the capital of France."'
+      ],
+      [
+        '"Which of the following are prime numbers?"',
+        'mcq_multi',
+        2,
+        '"2"',
+        '"4"',
+        '"5"',
+        '"9"',
+        '"[0,2]"',
+        '"2 and 5 are prime numbers, while 4 and 9 are composite numbers."'
+      ],
+      [
+        '"Write a brief essay describing the water cycle."',
+        'subjective',
+        5,
+        '""',
+        '""',
+        '""',
+        '""',
+        '""',
+        '"Should describe evaporation, condensation, precipitation, and runoff."'
+      ]
+    ];
+
+    const csvContent = [headers.join(','), ...sampleRows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'quiz_questions_sample_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Import questions from CSV
+  const handleImportCSV = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target.result;
+        // Simple CSV parser that handles quotes
+        const lines = [];
+        let row = [""];
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const nextChar = text[i+1];
+          if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+              row[row.length - 1] += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            row.push("");
+          } else if ((char === '\r' || char === '\n') && !inQuotes) {
+            if (char === '\r' && nextChar === '\n') { i++; }
+            lines.push(row);
+            row = [""];
+          } else {
+            row[row.length - 1] += char;
+          }
+        }
+        if (row.length > 1 || row[0] !== "") {
+          lines.push(row);
+        }
+
+        if (lines.length < 2) {
+          alert('CSV file is empty or invalid.');
+          return;
+        }
+
+        // Header index check
+        const headers = lines[0].map(h => h.trim().toLowerCase());
+        const qIdx = headers.indexOf('question_text');
+        const tIdx = headers.indexOf('type');
+        const mIdx = headers.indexOf('marks');
+        const aIdx = headers.indexOf('option_a');
+        const bIdx = headers.indexOf('option_b');
+        const cIdx = headers.indexOf('option_c');
+        const dIdx = headers.indexOf('option_d');
+        const ansIdx = headers.indexOf('correct_answer_indices_or_index');
+        const expIdx = headers.indexOf('explanation');
+
+        if (qIdx === -1 || tIdx === -1 || ansIdx === -1) {
+          alert('Invalid CSV headers. Required: question_text, type, correct_answer_indices_or_index');
+          return;
+        }
+
+        const importedQuestions = [];
+        for (let idx = 1; idx < lines.length; idx++) {
+          const r = lines[idx];
+          if (r.length < 3 || !r[qIdx]?.trim()) continue;
+
+          const questionText = r[qIdx]?.trim() || '';
+          const type = r[tIdx]?.trim() || 'mcq';
+          const marks = parseInt(r[mIdx]) || 1;
+          const explanation = expIdx !== -1 ? r[expIdx]?.trim() : '';
+
+          let options = null;
+          if (type === 'mcq' || type === 'mcq_multi') {
+            options = [
+              r[aIdx]?.trim() || 'Option A',
+              r[bIdx]?.trim() || 'Option B',
+              r[cIdx]?.trim() || 'Option C',
+              r[dIdx]?.trim() || 'Option D'
+            ];
+          }
+
+          let correctAnswer = r[ansIdx]?.trim() || '0';
+
+          // If it is single choice MCQ, handle letter indices (e.g., "A", "B", "C", "D") or matching text
+          if (type === 'mcq' && options) {
+            const rawAns = correctAnswer.toUpperCase();
+            if (rawAns === 'A' || rawAns === '0') correctAnswer = '0';
+            else if (rawAns === 'B' || rawAns === '1') correctAnswer = '1';
+            else if (rawAns === 'C' || rawAns === '2') correctAnswer = '2';
+            else if (rawAns === 'D' || rawAns === '3') correctAnswer = '3';
+            else {
+              // Try to find if correct answer value matches the text of one of the options
+              const optMatchIdx = options.findIndex(opt => opt.toLowerCase() === correctAnswer.toLowerCase());
+              if (optMatchIdx !== -1) {
+                correctAnswer = String(optMatchIdx);
+              }
+            }
+          } else if (type === 'mcq_multi' && options) {
+            // Handle parsing comma separated array string or JSON array, e.g. "A, C" or "[0, 2]"
+            let parsedArr = [];
+            try {
+              if (correctAnswer.startsWith('[') && correctAnswer.endsWith(']')) {
+                parsedArr = JSON.parse(correctAnswer);
+              } else {
+                parsedArr = correctAnswer.split(',').map(item => item.trim());
+              }
+            } catch {
+              parsedArr = correctAnswer.split(',').map(item => item.trim());
+            }
+
+            const mappedIndices = parsedArr.map(item => {
+              const rawItem = item.toUpperCase();
+              if (rawItem === 'A' || rawItem === '0') return '0';
+              if (rawItem === 'B' || rawItem === '1') return '1';
+              if (rawItem === 'C' || rawItem === '2') return '2';
+              if (rawItem === 'D' || rawItem === '3') return '3';
+              
+              // Text match fallback
+              const matchIdx = options.findIndex(opt => opt.toLowerCase() === item.toLowerCase());
+              return matchIdx !== -1 ? String(matchIdx) : null;
+            }).filter(item => item !== null);
+
+            correctAnswer = JSON.stringify(mappedIndices);
+          }
+
+          importedQuestions.push({
+            question_text: questionText,
+            type,
+            options,
+            correct_answer: correctAnswer,
+            explanation,
+            marks
+          });
+        }
+
+        if (importedQuestions.length === 0) {
+          alert('No valid questions found to import.');
+          return;
+        }
+
+        // Use custom confirmation modal
+        triggerConfirm({
+          title: 'Import Questions',
+          message: `Are you sure you want to replace all existing questions with these ${importedQuestions.length} imported questions? This action cannot be undone.`,
+          onConfirm: () => {
+            setQuestions(importedQuestions);
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        alert('Failed to parse CSV. Please verify formatting.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
+  };
 
   return (
     <div style={{ padding: '16px' }}>
@@ -810,7 +1250,19 @@ function QuestionEditor({ quiz, questions, setQuestions, onAddQuestion, onUpdate
             Total: {totalMarks} marks
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Import / Export Controls */}
+          <button onClick={handleDownloadTemplate} style={{ ...qS.btnOutline, background: '#F9FAFB', borderColor: '#E5E7EB', color: '#4B5563' }} title="Download template sample CSV">
+            📄 Sample CSV
+          </button>
+          <button onClick={handleExportCSV} style={{ ...qS.btnOutline, background: '#F9FAFB', borderColor: '#E5E7EB', color: '#4B5563' }} title="Export questions to CSV">
+            📤 Export CSV
+          </button>
+          <label style={{ ...qS.btnOutline, background: '#F9FAFB', borderColor: '#E5E7EB', color: '#4B5563', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }} title="Import questions from CSV">
+            📥 Import CSV
+            <input type="file" accept=".csv" onChange={handleImportCSV} style={{ display: 'none' }} />
+          </label>
+
           <button onClick={onAddQuestion} style={qS.btnOutline}>
             <Plus size={12} /> Add Question
           </button>
@@ -862,14 +1314,22 @@ function QuestionEditor({ quiz, questions, setQuestions, onAddQuestion, onUpdate
               {q.type === 'mcq' && (
                 <div style={{ marginTop: '10px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px' }}>
                   <label style={{ ...qS.label, marginBottom: '8px' }}>Answer Options — select the ONE correct answer (●)</label>
-                  {q.options?.map((opt, optIdx) => (
-                    <div key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <input type="radio" name={`correct-${qIdx}`} checked={String(optIdx) === q.correct_answer} onChange={() => onUpdateQ(qIdx, 'correct_answer', String(optIdx))} style={{ cursor: 'pointer', accentColor: '#4338CA' }} />
-                      <input value={opt} onChange={e => onUpdateOption(qIdx, optIdx, e.target.value)} style={{ flex: 1, padding: '6px 10px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '12px' }} />
-                      <button onClick={() => onRemoveOption(qIdx, optIdx)} disabled={q.options.length <= 2} style={{ border: 'none', background: 'none', color: '#9CA3AF', cursor: 'pointer' }}><X size={12} /></button>
-                    </div>
-                  ))}
+                  {q.options?.map((opt, optIdx) => {
+                    const isCorrect = String(optIdx) === q.correct_answer;
+                    return (
+                      <div key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <input type="radio" name={`correct-${qIdx}`} checked={isCorrect} onChange={() => onUpdateQ(qIdx, 'correct_answer', String(optIdx))} style={{ cursor: 'pointer', accentColor: '#10B981' }} />
+                        <input value={opt} onChange={e => onUpdateOption(qIdx, optIdx, e.target.value)} style={{ flex: 1, padding: '6px 10px', border: `1px solid ${isCorrect ? '#10B981' : '#D1D5DB'}`, borderRadius: '6px', fontSize: '12px', background: isCorrect ? '#ECFDF5' : '#fff', color: isCorrect ? '#065F46' : '#374151', fontWeight: isCorrect ? '700' : 'normal' }} />
+                        <button onClick={() => onRemoveOption(qIdx, optIdx)} disabled={q.options.length <= 2} style={{ border: 'none', background: 'none', color: '#9CA3AF', cursor: 'pointer' }}><X size={12} /></button>
+                      </div>
+                    );
+                  })}
                   <button type="button" onClick={() => onAddOption(qIdx)} style={{ background: 'none', border: 'none', color: '#FF9F1C', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0 }}>+ Add Option</button>
+
+                  <div style={{ marginTop: '12px', borderTop: '1px dashed #E5E7EB', paddingTop: '10px' }}>
+                    <label style={{ ...qS.label, color: '#374151', display: 'block', marginBottom: '4px' }}>💡 Answer Explanation (optional)</label>
+                    <textarea value={q.explanation || ''} onChange={e => onUpdateQ(qIdx, 'explanation', e.target.value)} placeholder="Explain why this answer is correct..." style={{ ...qS.input, minHeight: '44px', fontSize: '12px', resize: 'vertical' }} />
+                  </div>
                 </div>
               )}
 
@@ -891,12 +1351,12 @@ function QuestionEditor({ quiz, questions, setQuestions, onAddQuestion, onUpdate
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => onToggleMultiCorrect(qIdx, optIdx)}
-                            style={{ cursor: 'pointer', accentColor: '#4338CA', width: '15px', height: '15px' }}
+                            style={{ cursor: 'pointer', accentColor: '#10B981', width: '15px', height: '15px' }}
                           />
                           <input
                             value={opt}
                             onChange={e => onUpdateOption(qIdx, optIdx, e.target.value)}
-                            style={{ flex: 1, padding: '6px 10px', border: `1px solid ${isChecked ? '#818CF8' : '#D1D5DB'}`, borderRadius: '6px', fontSize: '12px', background: isChecked ? '#F5F3FF' : '#fff' }}
+                            style={{ flex: 1, padding: '6px 10px', border: `1px solid ${isChecked ? '#10B981' : '#D1D5DB'}`, borderRadius: '6px', fontSize: '12px', background: isChecked ? '#ECFDF5' : '#fff', color: isChecked ? '#065F46' : '#374151', fontWeight: isChecked ? '700' : 'normal' }}
                           />
                           <button onClick={() => onRemoveOption(qIdx, optIdx)} disabled={q.options.length <= 2} style={{ border: 'none', background: 'none', color: '#9CA3AF', cursor: 'pointer' }}><X size={12} /></button>
                         </div>
@@ -906,15 +1366,26 @@ function QuestionEditor({ quiz, questions, setQuestions, onAddQuestion, onUpdate
                       <p style={{ fontSize: '10px', color: '#F59E0B', marginTop: '4px' }}>⚠ No correct answer selected yet. Tick at least one.</p>
                     )}
                     <button type="button" onClick={() => onAddOption(qIdx)} style={{ background: 'none', border: 'none', color: '#FF9F1C', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: 0, marginTop: '4px' }}>+ Add Option</button>
+
+                    <div style={{ marginTop: '12px', borderTop: '1px dashed #E5E7EB', paddingTop: '10px' }}>
+                      <label style={{ ...qS.label, color: '#374151', display: 'block', marginBottom: '4px' }}>💡 Answer Explanation (optional)</label>
+                      <textarea value={q.explanation || ''} onChange={e => onUpdateQ(qIdx, 'explanation', e.target.value)} placeholder="Explain why this answer is correct..." style={{ ...qS.input, minHeight: '44px', fontSize: '12px', resize: 'vertical' }} />
+                    </div>
                   </div>
                 );
               })()}
 
               {/* Subjective Info */}
               {q.type === 'subjective' && (
-                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#4F46E5', background: '#EEF2FF', padding: '8px 10px', borderRadius: '6px' }}>
-                  <AlertCircle size={13} />
-                  <span>Subjective — will be graded manually by an evaluator or admin after student submission.</span>
+                <div style={{ marginTop: '8px', background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: '8px', padding: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#4F46E5', marginBottom: '8px' }}>
+                    <AlertCircle size={13} />
+                    <span>Subjective — will be graded manually by an evaluator or admin after student submission.</span>
+                  </div>
+                  <div style={{ borderTop: '1px dashed #C7D2FE', paddingTop: '8px' }}>
+                    <label style={{ ...qS.label, color: '#374151', display: 'block', marginBottom: '4px' }}>💡 Reference Answer / Explanation (optional)</label>
+                    <textarea value={q.explanation || ''} onChange={e => onUpdateQ(qIdx, 'explanation', e.target.value)} placeholder="Provide reference answer/rubric to guide grading..." style={{ ...qS.input, minHeight: '44px', fontSize: '12px', resize: 'vertical' }} />
+                  </div>
                 </div>
               )}
             </div>

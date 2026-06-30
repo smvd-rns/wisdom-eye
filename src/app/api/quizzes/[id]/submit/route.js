@@ -64,9 +64,25 @@ export async function POST(req, { params }) {
     totalMarks += q.marks || 1;
     if (q.type === 'mcq') {
       const studentAnswer = answers[q.id];
-      if (studentAnswer !== undefined && String(studentAnswer) === String(q.correct_answer)) {
+      const correctAnswer = q.correct_answer;
+      // Both must be non-null, non-empty, and matching
+      if (studentAnswer !== undefined && studentAnswer !== null && studentAnswer !== '' &&
+          correctAnswer !== undefined && correctAnswer !== null && correctAnswer !== '' &&
+          String(studentAnswer) === String(correctAnswer)) {
         studentScore += q.marks || 1;
       }
+    } else if (q.type === 'mcq_multi') {
+      const studentAnswer = answers[q.id];
+      try {
+        if (studentAnswer && q.correct_answer) {
+          const sArr = JSON.parse(studentAnswer).sort();
+          const cArr = JSON.parse(q.correct_answer).sort();
+          if (sArr.length > 0 && cArr.length > 0 &&
+              JSON.stringify(sArr) === JSON.stringify(cArr)) {
+            studentScore += q.marks || 1;
+          }
+        }
+      } catch { /* malformed answer = no points */ }
     } else if (q.type === 'subjective') {
       hasSubjective = true;
     }
@@ -106,7 +122,9 @@ export async function POST(req, { params }) {
       type: quiz.type,
       show_correct_answers: quiz.show_correct_answers,
       pass_score_percent: quiz.pass_score_percent,
-      questions: quiz.show_correct_answers ? quiz.questions : null
+      questions: quiz.show_correct_answers
+        ? quiz.questions.sort((a, b) => a.order_index - b.order_index)
+        : null
     }
   });
 }

@@ -112,6 +112,8 @@ export default function EditCoursePage() {
         status: c.status || 'draft',
         has_certificate: c.has_certificate || false,
         certificate_image_url: c.certificate_image_url || '',
+        is_sequential: c.is_sequential || false,
+        quiz_show_correct_answers: c.quiz_show_correct_answers ?? true,
         custom_layout: c.custom_layout || {},
         has_material: c.has_material || false,
         materials: c.materials || [],
@@ -208,6 +210,17 @@ export default function EditCoursePage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Save failed.'); return; }
+
+      // Bulk-update all quizzes in this course with the new show_correct_answers value
+      await fetch(`/api/admin/quizzes/bulk-settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          course_id: id,
+          show_correct_answers: form.quiz_show_correct_answers,
+        }),
+      });
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch { setError('An error occurred.'); }
@@ -532,6 +545,42 @@ export default function EditCoursePage() {
                   )}
                 </Field>
               )}
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>⚙️ Syllabus Progression settings</h2>
+              <label style={styles.toggleRow}>
+                <input type="checkbox" checked={form.is_sequential} onChange={e => set('is_sequential', e.target.checked)} style={{ display: 'none' }} />
+                <div style={{ ...styles.toggle, background: form.is_sequential ? '#22C55E' : '#D1D5DB' }}>
+                  <div style={{ ...styles.toggleDot, transform: form.is_sequential ? 'translateX(20px)' : 'translateX(2px)' }} />
+                </div>
+                <span style={styles.toggleLabel}>
+                  {form.is_sequential ? 'Sequential (Students must complete previous items to unlock)' : 'Free Flow (Students can jump to any lesson / quiz)'}
+                </span>
+              </label>
+              <p style={{ fontSize: '11px', color: '#6B7280', marginTop: '8px', lineHeight: '1.4' }}>
+                If enabled, a student cannot view a lesson or take a quiz unless they have completed/passed all previous items in the course sequence.
+              </p>
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>📝 Quiz Answer Visibility</h2>
+              <label style={styles.toggleRow}>
+                <input type="checkbox" checked={form.quiz_show_correct_answers} onChange={e => set('quiz_show_correct_answers', e.target.checked)} style={{ display: 'none' }} />
+                <div style={{ ...styles.toggle, background: form.quiz_show_correct_answers ? '#22C55E' : '#EF4444' }}>
+                  <div style={{ ...styles.toggleDot, transform: form.quiz_show_correct_answers ? 'translateX(20px)' : 'translateX(2px)' }} />
+                </div>
+                <span style={styles.toggleLabel}>
+                  {form.quiz_show_correct_answers
+                    ? '✅ Show correct answers after submission'
+                    : '🚫 Hide correct answers after submission'}
+                </span>
+              </label>
+              <p style={{ fontSize: '11px', color: '#6B7280', marginTop: '8px', lineHeight: '1.4' }}>
+                {form.quiz_show_correct_answers
+                  ? 'Students will see a full review of which answers were right/wrong with explanations after submitting any quiz in this course.'
+                  : 'Students will only see their final score. Correct answers and explanations will remain hidden. Saving will apply this to ALL quizzes in this course.'}
+              </p>
             </div>
 
             <div style={styles.card}>

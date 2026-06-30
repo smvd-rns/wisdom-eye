@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ClipboardCheck, Loader2, AlertCircle, Search,
-  ChevronRight, Clock, CheckCircle2, User,
-  BookOpen, Filter, RefreshCw, Eye, Pen,
-  CheckCheck, XCircle, Star
+  ChevronRight, ChevronLeft, Clock, CheckCircle2, User,
+  BookOpen, RefreshCw, Eye, Pen, Trash2,
+  CheckCheck, XCircle, Star, AlertTriangle
 } from 'lucide-react';
 
 const STATUS_TABS = [
@@ -15,30 +15,45 @@ const STATUS_TABS = [
   { key: 'all',           label: 'All Attempts',    color: '#6B7280', bg: '#F3F4F6', icon: ClipboardCheck },
 ];
 
+const PAGE_SIZE_OPTIONS = [10, 50, 100];
+
 export default function GradingQueuePage() {
-  const [attempts, setAttempts] = useState([]);
+  // Always fetch ALL attempts — filter on client for correct stats
+  const [allAttempts, setAllAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending_grade');
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
 
+  // Pagination
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+
+  // Delete
+  const [deleting, setDeleting] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
   // Grading modal
-  const [gradingAttempt, setGradingAttempt] = useState(null); // { attempt, quiz, student }
-  const [scores, setScores] = useState({});      // { questionId: marksAwarded }
+  const [gradingAttempt, setGradingAttempt] = useState(null);
+  const [scores, setScores] = useState({});
   const [feedback, setFeedback] = useState('');
   const [saving, setSaving] = useState(false);
   const [gradeSuccess, setGradeSuccess] = useState('');
 
+  // Always load ALL attempts (no status filter) so counts are accurate
   const loadAttempts = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const params = new URLSearchParams();
-      if (activeTab !== 'all') params.set('status', activeTab);
-      const res = await fetch(`/api/admin/attempts?${params}`);
+      const res = await fetch('/api/admin/attempts');
       if (res.ok) {
         const data = await res.json();
-        setAttempts(data.attempts || []);
+        setAllAttempts(data.attempts || []);
       } else {
         setError('Failed to load grading queue.');
       }
@@ -47,9 +62,15 @@ export default function GradingQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, []);
+
+  // Clear selection when tab/search/page changes
+  useEffect(() => { setSelectedIds(new Set()); }, [activeTab, search, page, pageSize]);
 
   useEffect(() => { loadAttempts(); }, [loadAttempts]);
+
+  // Reset to page 1 when tab/search/pageSize changes
+  useEffect(() => { setPage(1); }, [activeTab, search, pageSize]);
 
   const openGradingModal = async (attempt) => {
     try {
@@ -57,7 +78,6 @@ export default function GradingQueuePage() {
       if (res.ok) {
         const data = await res.json();
         setGradingAttempt(data);
-        // Pre-fill scores for subjective questions that have already been graded
         const prefill = {};
         data.quiz?.questions?.forEach(q => {
           if (q.type === 'subjective' && data.attempt?.subjective_scores?.[q.id] !== undefined) {
@@ -80,16 +100,11 @@ export default function GradingQueuePage() {
       const res = await fetch(`/api/quizzes/${gradingAttempt.attempt.quiz_id}/grade`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          attempt_id: gradingAttempt.attempt.id,
-          scores,
-          feedback
-        })
+        body: JSON.stringify({ attempt_id: gradingAttempt.attempt.id, scores, feedback })
       });
       if (res.ok) {
         setGradeSuccess('✅ Graded and saved! Student has been notified.');
-        // Update local state
-        setAttempts(prev => prev.map(a =>
+        setAllAttempts(prev => prev.map(a =>
           a.id === gradingAttempt.attempt.id ? { ...a, status: 'graded' } : a
         ));
         setTimeout(() => {
@@ -110,7 +125,58 @@ export default function GradingQueuePage() {
     }
   };
 
-  const filtered = attempts.filter(a => {
+  const handleDeleteAttempt = async (attemptId) => {
+    setDeleting(attemptId);
+    setDeleteConfirm(null);
+    try {
+      const res = await fetch(`/api/admin/attempts?id=${attemptId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setAllAttempts(prev => prev.filter(a => a.id !== attemptId));
+        setSelectedIds(prev => { const n = new Set(prev); n.delete(attemptId); return n; });
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to delete attempt.');
+      }
+    } catch {
+      setError('Connection error. Please try again.');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    setBulkDeleteConfirm(false);
+    const ids = Array.from(selectedIds);
+    try {
+      await Promise.all(ids.map(id =>
+        fetch(`/api/admin/attempts?id=${id}`, { method: 'DELETE' })
+      ));
+      setAllAttempts(prev => prev.filter(a => !selectedIds.has(a.id)));
+      setSelectedIds(new Set());
+    } catch {
+      setError('Some deletions failed. Please try again.');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  // Counts computed from ALL attempts (not filtered by tab)
+  const counts = {
+    pending_grade: allAttempts.filter(a => a.status === 'pending_grade').length,
+    graded: allAttempts.filter(a => a.status === 'graded' || a.status === 'auto_graded').length,
+    all: allAttempts.length,
+  };
+
+  // Tab filter
+  const tabFiltered = allAttempts.filter(a => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'graded') return a.status === 'graded' || a.status === 'auto_graded';
+    return a.status === activeTab;
+  });
+
+  // Search filter
+  const searched = tabFiltered.filter(a => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -121,11 +187,9 @@ export default function GradingQueuePage() {
     );
   });
 
-  const counts = {
-    pending_grade: attempts.filter(a => a.status === 'pending_grade').length,
-    graded: attempts.filter(a => a.status === 'graded').length,
-    all: attempts.length,
-  };
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(searched.length / pageSize));
+  const paginated = searched.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -164,15 +228,15 @@ export default function GradingQueuePage() {
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', fontSize: '13px', marginBottom: '14px' }}>
           <AlertCircle size={15} /> {error}
+          <button onClick={() => setError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontWeight: '700', fontSize: '14px' }}>✕</button>
         </div>
       )}
 
       {/* Table Card */}
       <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E5E7EB', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
 
-        {/* Tabs + Search */}
+        {/* Tabs + Search + Page Size */}
         <div style={{ borderBottom: '1px solid #E5E7EB' }}>
-          {/* Tabs */}
           <div style={{ display: 'flex', gap: '0', padding: '0 20px', overflowX: 'auto' }}>
             {STATUS_TABS.map(tab => (
               <button
@@ -189,15 +253,19 @@ export default function GradingQueuePage() {
               >
                 {tab.label}
                 <span style={{ marginLeft: '6px', padding: '1px 7px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', background: activeTab === tab.key ? tab.bg : '#F3F4F6', color: activeTab === tab.key ? tab.color : '#9CA3AF' }}>
-                  {counts[tab.key]}
+                  {activeTab === tab.key
+                    ? searched.length
+                    : tab.key === 'all' ? counts.all
+                    : tab.key === 'graded' ? counts.graded
+                    : counts.pending_grade}
                 </span>
               </button>
             ))}
           </div>
 
-          {/* Search */}
-          <div style={{ padding: '12px 20px', borderTop: '1px solid #F3F4F6' }}>
-            <div style={{ position: 'relative', maxWidth: '360px' }}>
+          {/* Search + Page size row */}
+          <div style={{ padding: '12px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '200px', maxWidth: '360px' }}>
               <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
               <input
                 type="text"
@@ -207,8 +275,55 @@ export default function GradingQueuePage() {
                 style={{ width: '100%', padding: '8px 12px 8px 32px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
               />
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+              <span style={{ fontSize: '12px', color: '#6B7280', whiteSpace: 'nowrap' }}>Show:</span>
+              <select
+                value={pageSize}
+                onChange={e => setPageSize(Number(e.target.value))}
+                style={{
+                  padding: '6px 28px 6px 10px', borderRadius: '7px',
+                  border: '1.5px solid #E5E7EB', background: '#fff',
+                  fontSize: '12px', fontWeight: '600', color: '#374151',
+                  cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
+                  appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 8px center',
+                }}
+              >
+                {PAGE_SIZE_OPTIONS.map(n => (
+                  <option key={n} value={n}>{n} per page</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
+
+        {/* Bulk action bar — floats above table when rows selected */}
+        {selectedIds.size > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 20px', background: '#1A1B4B', borderTop: '1px solid #E5E7EB' }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>
+              {selectedIds.size} selected
+            </span>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              style={{ fontSize: '12px', color: '#93C5FD', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: '2px 0' }}
+            >
+              Clear selection
+            </button>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setBulkDeleteConfirm(true)}
+                disabled={bulkDeleting}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 16px', borderRadius: '7px', border: 'none', background: '#EF4444', color: '#fff', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {bulkDeleting
+                  ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Deleting...</>
+                  : <><Trash2 size={12} /> Delete {selectedIds.size} attempt{selectedIds.size > 1 ? 's' : ''}</>}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         {loading ? (
@@ -216,7 +331,7 @@ export default function GradingQueuePage() {
             <Loader2 size={32} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
             <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>Loading submissions...</p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : searched.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#6B7280' }}>
             <ClipboardCheck size={44} style={{ color: '#D1D5DB', marginBottom: '12px' }} />
             <h3 style={{ margin: '0 0 4px', color: '#374151' }}>
@@ -228,9 +343,25 @@ export default function GradingQueuePage() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
               <thead>
                 <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                  {/* Select-all checkbox */}
+                  <th style={{ padding: '10px 8px 10px 16px', width: '36px' }}>
+                    <input
+                      type="checkbox"
+                      checked={paginated.length > 0 && paginated.every(a => selectedIds.has(a.id))}
+                      ref={el => { if (el) el.indeterminate = paginated.some(a => selectedIds.has(a.id)) && !paginated.every(a => selectedIds.has(a.id)); }}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedIds(prev => { const n = new Set(prev); paginated.forEach(a => n.add(a.id)); return n; });
+                        } else {
+                          setSelectedIds(prev => { const n = new Set(prev); paginated.forEach(a => n.delete(a.id)); return n; });
+                        }
+                      }}
+                      style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#FF9F1C' }}
+                    />
+                  </th>
                   {['STUDENT', 'QUIZ / COURSE', 'SUBMITTED', 'STATUS', 'SCORE', 'ACTION'].map((h, i) => (
                     <th key={h} style={{ padding: '10px 14px', fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 5 ? 'center' : 'left', whiteSpace: 'nowrap' }}>
                       {h}
@@ -239,14 +370,31 @@ export default function GradingQueuePage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(a => {
+                {paginated.map(a => {
                   const isPending = a.status === 'pending_grade';
                   const submittedAt = a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+                  const isBeingDeleted = deleting === a.id;
 
                   return (
-                    <tr key={a.id} style={{ borderBottom: '1px solid #F3F4F6' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#FAFAFA'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <tr key={a.id} style={{ borderBottom: '1px solid #F3F4F6', opacity: isBeingDeleted ? 0.5 : 1, background: selectedIds.has(a.id) ? '#FFF7ED' : undefined }}
+                      onMouseEnter={e => { if (!selectedIds.has(a.id)) e.currentTarget.style.background = '#FAFAFA'; }}
+                      onMouseLeave={e => { if (!selectedIds.has(a.id)) e.currentTarget.style.background = 'transparent'; }}>
+
+                      {/* Row checkbox */}
+                      <td style={{ padding: '12px 8px 12px 16px', verticalAlign: 'middle', width: '36px' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(a.id)}
+                          onChange={e => {
+                            setSelectedIds(prev => {
+                              const n = new Set(prev);
+                              if (e.target.checked) n.add(a.id); else n.delete(a.id);
+                              return n;
+                            });
+                          }}
+                          style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#FF9F1C' }}
+                        />
+                      </td>
 
                       {/* Student */}
                       <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
@@ -303,21 +451,34 @@ export default function GradingQueuePage() {
 
                       {/* Action */}
                       <td style={{ padding: '12px 14px', textAlign: 'center', verticalAlign: 'middle' }}>
-                        <button
-                          onClick={() => openGradingModal(a)}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '5px',
-                            padding: '6px 13px', borderRadius: '7px', fontSize: '12px', fontWeight: '700',
-                            cursor: 'pointer', fontFamily: 'inherit', border: 'none',
-                            background: isPending ? '#FF9F1C' : '#F3F4F6',
-                            color: isPending ? '#fff' : '#374151',
-                            transition: 'opacity 0.15s'
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                        >
-                          {isPending ? <><Pen size={11} /> Grade</> : <><Eye size={11} /> Review</>}
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
+                          <button
+                            onClick={() => openGradingModal(a)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '5px',
+                              padding: '6px 13px', borderRadius: '7px', fontSize: '12px', fontWeight: '700',
+                              cursor: 'pointer', fontFamily: 'inherit', border: 'none',
+                              background: isPending ? '#FF9F1C' : '#F3F4F6',
+                              color: isPending ? '#fff' : '#374151',
+                            }}
+                          >
+                            {isPending ? <><Pen size={11} /> Grade</> : <><Eye size={11} /> Review</>}
+                          </button>
+                          {/* Delete button — lets student re-attempt */}
+                          <button
+                            onClick={() => setDeleteConfirm(a)}
+                            disabled={isBeingDeleted}
+                            title="Delete attempt (student can re-take)"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              width: '30px', height: '30px', borderRadius: '7px', fontSize: '12px',
+                              cursor: isBeingDeleted ? 'not-allowed' : 'pointer',
+                              border: '1.5px solid #FCA5A5', background: '#FFF1F2', color: '#EF4444',
+                            }}
+                          >
+                            {isBeingDeleted ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={11} />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -327,12 +488,103 @@ export default function GradingQueuePage() {
           </div>
         )}
 
-        {!loading && filtered.length > 0 && (
-          <div style={{ padding: '10px 20px', borderTop: '1px solid #F3F4F6', fontSize: '12px', color: '#9CA3AF', textAlign: 'right' }}>
-            Showing {filtered.length} submission{filtered.length !== 1 ? 's' : ''}
+        {/* Pagination footer */}
+        {!loading && searched.length > 0 && (
+          <div style={{ padding: '12px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+              Showing <strong style={{ color: '#374151' }}>{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, searched.length)}</strong> of <strong style={{ color: '#374151' }}>{searched.length}</strong> submissions
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px', borderRadius: '6px', border: '1.5px solid #E5E7EB', background: '#fff', fontSize: '12px', fontWeight: '600', color: page === 1 ? '#D1D5DB' : '#374151', cursor: page === 1 ? 'default' : 'pointer', fontFamily: 'inherit' }}
+              >
+                <ChevronLeft size={13} /> Prev
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                // Show pages around current
+                let p = i + 1;
+                if (totalPages > 5) {
+                  const start = Math.max(1, Math.min(page - 2, totalPages - 4));
+                  p = start + i;
+                }
+                return (
+                  <button key={p} onClick={() => setPage(p)} style={{ width: '30px', height: '30px', borderRadius: '6px', border: '1.5px solid', borderColor: page === p ? '#FF9F1C' : '#E5E7EB', background: page === p ? '#FFF7ED' : '#fff', color: page === p ? '#FF9F1C' : '#374151', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {p}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px', borderRadius: '6px', border: '1.5px solid #E5E7EB', background: '#fff', fontSize: '12px', fontWeight: '600', color: page === totalPages ? '#D1D5DB' : '#374151', cursor: page === totalPages ? 'default' : 'pointer', fontFamily: 'inherit' }}
+              >
+                Next <ChevronRight size={13} />
+              </button>
+            </div>
           </div>
         )}
       </div>
+
+      {/* ── Delete Confirm Modal ── */}
+      {deleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={e => { if (e.target === e.currentTarget) setDeleteConfirm(null); }}>
+          <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '420px', padding: '28px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', textAlign: 'center' }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <AlertTriangle size={26} style={{ color: '#EF4444' }} />
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: '17px', fontWeight: '800', color: '#111827', fontFamily: 'Outfit, sans-serif' }}>Delete This Attempt?</h3>
+            <p style={{ margin: '0 0 6px', fontSize: '13px', color: '#6B7280' }}>
+              Student: <strong>{deleteConfirm.student?.name || 'Unknown'}</strong>
+            </p>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#6B7280' }}>
+              Quiz: <strong>{deleteConfirm.quizzes?.title || '—'}</strong>
+            </p>
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#FEF3C7', border: '1px solid #FDE68A', fontSize: '12px', color: '#92400E', marginBottom: '20px', textAlign: 'left' }}>
+              ⚠️ This will permanently remove this submission. The student will be able to re-take the quiz from scratch.
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button onClick={() => setDeleteConfirm(null)} style={{ padding: '9px 20px', borderRadius: '8px', border: '1.5px solid #E5E7EB', background: '#fff', fontSize: '13px', fontWeight: '600', color: '#374151', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Cancel
+              </button>
+              <button onClick={() => handleDeleteAttempt(deleteConfirm.id)} style={{ padding: '9px 20px', borderRadius: '8px', border: 'none', background: '#EF4444', fontSize: '13px', fontWeight: '700', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Trash2 size={13} /> Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Delete Confirm Modal ── */}
+      {bulkDeleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={e => { if (e.target === e.currentTarget) setBulkDeleteConfirm(false); }}>
+          <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '420px', padding: '28px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', textAlign: 'center' }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <AlertTriangle size={26} style={{ color: '#EF4444' }} />
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: '17px', fontWeight: '800', color: '#111827', fontFamily: 'Outfit, sans-serif' }}>
+              Delete {selectedIds.size} Attempt{selectedIds.size > 1 ? 's' : ''}?
+            </h3>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#6B7280' }}>
+              You are about to permanently delete <strong>{selectedIds.size} selected submission{selectedIds.size > 1 ? 's' : ''}</strong>.
+            </p>
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#FEF3C7', border: '1px solid #FDE68A', fontSize: '12px', color: '#92400E', marginBottom: '20px', textAlign: 'left' }}>
+              ⚠️ This action cannot be undone. All selected students will be able to re-take their respective quizzes from scratch.
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button onClick={() => setBulkDeleteConfirm(false)} style={{ padding: '9px 20px', borderRadius: '8px', border: '1.5px solid #E5E7EB', background: '#fff', fontSize: '13px', fontWeight: '600', color: '#374151', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Cancel
+              </button>
+              <button onClick={handleBulkDelete} style={{ padding: '9px 20px', borderRadius: '8px', border: 'none', background: '#EF4444', fontSize: '13px', fontWeight: '700', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Trash2 size={13} /> Yes, Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Grading Modal ── */}
       {gradingAttempt && (
@@ -377,7 +629,6 @@ export default function GradingQueuePage() {
 
                 return (
                   <div key={q.id} style={{ marginBottom: '20px', padding: '16px', border: '1px solid #E5E7EB', borderRadius: '10px', background: '#FAFAFA' }}>
-                    {/* Question Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827', flex: 1 }}>
                         <span style={{ color: '#6B7280', fontWeight: '600', marginRight: '6px' }}>Q{idx + 1}.</span>
@@ -388,7 +639,6 @@ export default function GradingQueuePage() {
                       </span>
                     </div>
 
-                    {/* MCQ single answer */}
                     {q.type === 'mcq' && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {q.options?.map((opt, optIdx) => {
@@ -411,7 +661,6 @@ export default function GradingQueuePage() {
                       </div>
                     )}
 
-                    {/* MCQ multi answer */}
                     {isMultiMcq && (() => {
                       let studentSelected = [];
                       try { studentSelected = JSON.parse(studentAnswer || '[]'); } catch { studentSelected = []; }
@@ -437,24 +686,16 @@ export default function GradingQueuePage() {
                       );
                     })()}
 
-                    {/* Subjective answer */}
                     {isSubjective && (
                       <div>
-                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', marginBottom: '6px' }}>STUDENT'S ANSWER:</div>
+                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', marginBottom: '6px' }}>STUDENT&apos;S ANSWER:</div>
                         <div style={{ padding: '12px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: '#374151', minHeight: '60px', whiteSpace: 'pre-wrap' }}>
                           {studentAnswer || <em style={{ color: '#9CA3AF' }}>No answer provided</em>}
                         </div>
-
-                        {/* Marks input */}
                         <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <label style={{ fontSize: '12px', fontWeight: '700', color: '#374151' }}>
-                            Marks Awarded:
-                          </label>
+                          <label style={{ fontSize: '12px', fontWeight: '700', color: '#374151' }}>Marks Awarded:</label>
                           <input
-                            type="number"
-                            min="0"
-                            max={q.marks || 1}
-                            step="0.5"
+                            type="number" min="0" max={q.marks || 1} step="0.5"
                             value={scores[q.id] ?? ''}
                             onChange={e => setScores(p => ({ ...p, [q.id]: e.target.value }))}
                             placeholder={`0 – ${q.marks || 1}`}

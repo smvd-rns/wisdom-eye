@@ -25,6 +25,7 @@ export default function StudentQuizPage() {
   const [answers, setAnswers] = useState({}); // { [questionId]: answerTextOrIndex }
   const [timeLeft, setTimeLeft] = useState(null);
   const [activeAttempt, setActiveAttempt] = useState(null);
+  const [lockModal, setLockModal] = useState(null); // { title: '', message: '' }
   const timerRef = useRef(null);
 
   const [radialOffset, setRadialOffset] = useState(390);
@@ -65,19 +66,55 @@ export default function StudentQuizPage() {
         const { quiz: fetchedQuiz } = await quizRes.json();
         setQuiz(fetchedQuiz);
 
-        // Fetch student's past attempts for this quiz
-        const attemptsRes = await fetch(`/api/student/enrollments`); // Helper or simple query
-        // Let's query attempts directly if we can, or write a quick endpoint.
-        // Instead of writing another endpoint, we can query Supabase via a small public-ish lookup,
-        // or just fetch from an attempts list. Let's make a call to check if we can select attempts.
-        // Wait, does `/api/courses/[id]/enrollment-check` return attempts? No, just enrollment status.
-        // Let's do a direct fetch on `/api/quizzes/${quizId}/attempts` or similar, or check if we need one.
-        // Let's check attempts:
-        const attRes = await fetch(`/api/lessons/${quizId}/progress`); // we can repurpose or make a quick endpoint,
-        // Actually, let's fetch attempts using supabase client on the client-side,
-        // or let's create a small route `/api/quizzes/[id]/attempts`! Yes, let's fetch.
-        // Wait, we can fetch all attempts of the current user for this quiz.
-        // Let's create `/api/quizzes/[id]/attempts` route to fetch student's past attempts!
+        // Fetch student's enrollment and progress
+        const enrollRes = await fetch(`/api/courses/${fetchedCourse.id}/enrollment-check`);
+        if (!enrollRes.ok) {
+          router.push(`/courses/${slug}`);
+          return;
+        }
+        const { enrolled, progress: progressSummary } = await enrollRes.json();
+        if (!enrolled) {
+          router.push(`/courses/${slug}`);
+          return;
+        }
+
+        // Verify sequential progress locking
+        if (fetchedCourse.is_sequential) {
+          // Get all course outline items sorted sequentially
+          const allFlat = [];
+          if (fetchedCourse.modules) {
+            fetchedCourse.modules.forEach(mod => {
+              const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
+              const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
+              const combined = [...lessons, ...quizzes].sort((a, b) => {
+                if (a.order_index === b.order_index) return a.itemType === 'lesson' ? -1 : 1;
+                return a.order_index - b.order_index;
+              });
+              allFlat.push(...combined);
+            });
+          }
+
+          const targetIdx = allFlat.findIndex(it => it.id === quizId);
+          if (targetIdx > 0) {
+            for (let i = 0; i < targetIdx; i++) {
+              const prevItem = allFlat[i];
+              const isPrevCompleted = prevItem.itemType === 'lesson'
+                ? progressSummary?.completed_lessons_ids?.includes(prevItem.id)
+                : progressSummary?.passed_quiz_ids?.includes(prevItem.id);
+
+              if (!isPrevCompleted) {
+                setLockModal({
+                  title: 'Quiz Locked',
+                  message: 'This quiz is locked sequentially. Redirecting you back to your syllabus outline.',
+                  onClose: () => {
+                    router.push(`/courses/${slug}/learn`);
+                  }
+                });
+                return;
+              }
+            }
+          }
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -158,6 +195,19 @@ export default function StudentQuizPage() {
         setActiveAttempt(data.attempt);
         // Add to history
         setAttempts(p => [data.attempt, ...p]);
+        // Update quiz state with the server's response which includes
+        // correct_answer per question (only present when show_correct_answers=true)
+        if (data.quiz) {
+          setQuiz(prev => ({
+            ...prev,
+            show_correct_answers: data.quiz.show_correct_answers,
+            // If server returned questions with correct_answer, use those
+            // otherwise keep existing questions (no correct_answer available)
+            questions: data.quiz.questions
+              ? data.quiz.questions
+              : prev.questions,
+          }));
+        }
         setQuizState('result');
       } else {
         alert(data.error || 'Failed to submit quiz.');
@@ -209,14 +259,53 @@ export default function StudentQuizPage() {
       {/* Intro Screen */}
       {quizState === 'intro' && (
         <div className="glass-card" style={styles.introCard}>
-          <Link href={`/courses/${slug}/learn`} className="btn-secondary" style={{ marginBottom: '24px', alignSelf: 'flex-start' }}>
-            <ArrowLeft size={16} /> Back to Course Player
-          </Link>
+          {(() => {
+            // Find next and prev items in syllabus sequence
+            const allFlat = [];
+            if (course?.modules) {
+              course.modules.forEach(mod => {
+                const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
+                const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
+                const combined = [...lessons, ...quizzes].sort((a, b) => {
+                  if (a.order_index === b.order_index) return a.itemType === 'lesson' ? -1 : 1;
+                  return a.order_index - b.order_index;
+                });
+                allFlat.push(...combined);
+              });
+            }
+
+            const curIdx = allFlat.findIndex(it => it.id === quizId);
+            const prevItem = curIdx > 0 ? allFlat[curIdx - 1] : null;
+            const nextItem = curIdx < allFlat.length - 1 ? allFlat[curIdx + 1] : null;
+
+            return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {prevItem ? (
+                    <Link href={prevItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${prevItem.id}` : `/courses/${slug}/learn/${prevItem.id}`} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <ChevronLeft size={14} /> Prev
+                    </Link>
+                  ) : (
+                    <Link href={`/courses/${slug}/learn`} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <ArrowLeft size={14} /> Back to Player
+                    </Link>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {nextItem && (
+                    <Link href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      Next <ChevronRight size={14} />
+                    </Link>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <h1 style={styles.title}>{quiz.title}</h1>
           <p style={styles.description}>{quiz.description || 'Test your knowledge on this module.'}</p>
 
-          <div style={styles.infoGrid}>
+          <div className="info-grid-responsive" style={styles.infoGrid}>
             <div style={styles.infoItem}>
               <div className="info-icon-wrapper">
                 <Clock size={20} color="#FF9F1C" />
@@ -468,7 +557,7 @@ export default function StudentQuizPage() {
           )}
 
           {/* Scores details */}
-          <div style={styles.resultsGrid}>
+          <div className="info-grid-responsive" style={styles.resultsGrid}>
             <div style={styles.resultStatCard} className="stat-card">
               <div style={styles.statHeading}>Your Score</div>
               <div style={styles.statVal}>{activeAttempt.score} / {activeAttempt.total_marks}</div>
@@ -487,10 +576,173 @@ export default function StudentQuizPage() {
             </div>
           )}
 
-          <div style={styles.resultActions}>
-            <Link href={`/courses/${slug}/learn`} className="btn-primary" style={{ textDecoration: 'none' }}>
+          {/* Student Review of Answers with Explanations */}
+          {quiz.show_correct_answers && activeAttempt.status !== 'pending_grade' && quiz.questions && (
+            <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px', textAlign: 'left' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#FF9F1C', marginBottom: '16px' }}>Review Questions & Explanations</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {quiz.questions.map((q, idx) => {
+                  const studentAns = activeAttempt.answers?.[q.id];
+                  let isCorrect = false;
+                  if (q.type === 'mcq') {
+                    // Only correct if student actually answered AND it matches
+                    isCorrect = studentAns !== undefined && studentAns !== null &&
+                      String(studentAns) === String(q.correct_answer);
+                  } else if (q.type === 'mcq_multi') {
+                    // Only correct if student actually answered AND arrays match
+                    try {
+                      if (!studentAns) {
+                        isCorrect = false; // Not answered = not correct
+                      } else {
+                        const sArr = JSON.parse(studentAns).sort();
+                        const cArr = JSON.parse(q.correct_answer || '[]').sort();
+                        // Both must be non-empty and equal
+                        isCorrect = sArr.length > 0 && cArr.length > 0 &&
+                          JSON.stringify(sArr) === JSON.stringify(cArr);
+                      }
+                    } catch {
+                      isCorrect = false;
+                    }
+                  }
+
+                  return (
+                    <div key={q.id} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`, borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'rgba(255,255,255,0.4)' }}>Question {idx + 1}</span>
+                        <span style={{ fontSize: '11px', color: isCorrect ? '#10B981' : '#EF4444', fontWeight: '800', background: isCorrect ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', padding: '2px 8px', borderRadius: '4px' }}>
+                          {isCorrect ? 'CORRECT' : 'INCORRECT'}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '12px', lineHeight: 1.45 }}>{q.question_text}</p>
+                      
+                      {q.type === 'mcq' && q.options && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                          {q.options.map((opt, oIdx) => {
+                            const isSelected = String(oIdx) === String(studentAns);
+                            const isCorrectOpt = String(oIdx) === String(q.correct_answer);
+                            let borderCol = 'rgba(255,255,255,0.05)';
+                            let bgCol = 'transparent';
+                            let textCol = 'rgba(255,255,255,0.6)';
+                            
+                            if (isCorrectOpt) {
+                              borderCol = '#10B981';
+                              bgCol = 'rgba(16,185,129,0.05)';
+                              textCol = '#10B981';
+                            } else if (isSelected) {
+                              borderCol = '#EF4444';
+                              bgCol = 'rgba(239,68,68,0.05)';
+                              textCol = '#EF4444';
+                            }
+
+                            return (
+                              <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', border: `1.5px solid ${borderCol}`, background: bgCol, borderRadius: '8px', fontSize: '13px', color: textCol, fontWeight: isCorrectOpt || isSelected ? '700' : '500' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isCorrectOpt ? '#10B981' : isSelected ? '#EF4444' : 'rgba(255,255,255,0.2)' }} />
+                                <span>{opt}</span>
+                                {isCorrectOpt && <span style={{ marginLeft: 'auto', fontSize: '10px', background: 'rgba(16,185,129,0.1)', padding: '1px 6px', borderRadius: '4px' }}>Correct Option</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {q.explanation && (
+                        <div style={{ background: 'rgba(255, 159, 28, 0.05)', borderLeft: '3px solid #FF9F1C', padding: '10px 14px', borderRadius: '0 8px 8px 0', fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                          <strong style={{ color: '#FF9F1C', display: 'block', marginBottom: '4px', fontSize: '12px' }}>💡 Explanation:</strong>
+                          {q.explanation}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{ ...styles.resultActions, display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href={`/courses/${slug}/learn`} className="btn-secondary" style={{ textDecoration: 'none' }}>
               Return to Syllabus player
             </Link>
+            {(() => {
+              const allFlat = [];
+              if (course?.modules) {
+                course.modules.forEach(mod => {
+                  const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
+                  const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
+                  const combined = [...lessons, ...quizzes].sort((a, b) => {
+                    if (a.order_index === b.order_index) return a.itemType === 'lesson' ? -1 : 1;
+                    return a.order_index - b.order_index;
+                  });
+                  allFlat.push(...combined);
+                });
+              }
+
+              const curIdx = allFlat.findIndex(it => it.id === quizId);
+              const nextItem = curIdx < allFlat.length - 1 ? allFlat[curIdx + 1] : null;
+
+              if (nextItem) {
+                return (
+                  <Link
+                    href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`}
+                    className="btn-primary"
+                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    Go to Next Lesson <ChevronRight size={16} />
+                  </Link>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Sleek Alert Modal for locked quiz */}
+      {lockModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: '#ffffff', borderRadius: '16px', padding: '24px',
+            maxWidth: '380px', width: '90%', textAlign: 'center',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            animation: 'scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '50%',
+              backgroundColor: '#FEE2E2', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', color: '#EF4444',
+              margin: '0 auto 16px'
+            }}>
+              🔒
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', fontFamily: 'Outfit, sans-serif' }}>
+              {lockModal.title}
+            </h3>
+            <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+              {lockModal.message}
+            </p>
+            <button
+              onClick={() => {
+                if (lockModal.onClose) {
+                  lockModal.onClose();
+                }
+                setLockModal(null);
+              }}
+              style={{
+                width: '100%', padding: '10px 16px', borderRadius: '10px',
+                border: 'none', backgroundColor: '#1A1B4B',
+                color: '#ffffff', fontSize: '13px', fontWeight: '700',
+                cursor: 'pointer', transition: 'all 0.15s ease',
+                fontFamily: 'Outfit, sans-serif'
+              }}
+              onMouseOver={e => e.target.style.backgroundColor = '#2E3072'}
+              onMouseOut={e => e.target.style.backgroundColor = '#1A1B4B'}
+            >
+              Okay, I understand
+            </button>
           </div>
         </div>
       )}
@@ -502,13 +754,19 @@ export default function StudentQuizPage() {
 
         @media (max-width: 900px) {
           .quiz-page-root {
-            padding-bottom: 100px !important;
+            padding: 12px !important;
+            padding-bottom: 120px !important;
           }
           .glass-card {
-            padding: 24px 16px !important;
+            padding: 20px 14px !important;
             margin: 0 !important;
             width: 100% !important;
             box-sizing: border-box !important;
+          }
+          /* Adjust grid columns for info cards on mobile */
+          .info-grid-responsive {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
           }
         }
         

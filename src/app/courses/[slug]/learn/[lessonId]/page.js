@@ -14,6 +14,7 @@ export default function StudentPlayerPage() {
   const router = useRouter();
 
   const [activeLessonId, setActiveLessonId] = useState(lessonId);
+  const [lockModal, setLockModal] = useState(null); // { title: '', message: '' }
 
   const [course, setCourse] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -159,6 +160,68 @@ export default function StudentPlayerPage() {
           return;
         }
         const { lesson, progress } = await res.json();
+
+        // If the course is sequential, check if this lesson should be locked.
+        // We look at all items in allFlat before this one. If any is not completed, we redirect.
+        if (course && course.is_sequential) {
+          // Re-assemble flat list
+          const allFlat = [];
+          if (course.modules) {
+            course.modules.forEach(mod => {
+              const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
+              const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
+              const combined = [...lessons, ...quizzes].sort((a, b) => {
+                if (a.order_index === b.order_index) return a.itemType === 'lesson' ? -1 : 1;
+                return a.order_index - b.order_index;
+              });
+              allFlat.push(...combined);
+            });
+          }
+
+          const targetIdx = allFlat.findIndex(it => it.id === activeLessonId);
+          if (targetIdx > 0) {
+            for (let i = 0; i < targetIdx; i++) {
+              const prevItem = allFlat[i];
+              // Load progress summary from state or sessionStorage
+              let summary = progressSummary;
+              if (!summary) {
+                try { summary = JSON.parse(sessionStorage.getItem(`player_progress_summary_${slug}`) || 'null'); } catch { summary = null; }
+              }
+              const isPrevCompleted = prevItem.itemType === 'lesson'
+                ? summary?.completed_lessons_ids?.includes(prevItem.id)
+                : summary?.passed_quiz_ids?.includes(prevItem.id);
+
+              if (!isPrevCompleted) {
+                setLockModal({
+                  title: 'Section Locked',
+                  message: 'This section is locked sequentially. Redirecting you to your first uncompleted step.'
+                });
+                // Find first uncompleted item to redirect to
+                let firstUncompleted = allFlat[0];
+                for (let k = 0; k < allFlat.length; k++) {
+                  const item = allFlat[k];
+                  const itemCompleted = item.itemType === 'lesson'
+                    ? summary?.completed_lessons_ids?.includes(item.id)
+                    : summary?.passed_quiz_ids?.includes(item.id);
+                  if (!itemCompleted) {
+                    firstUncompleted = item;
+                    break;
+                  }
+                }
+                
+                if (firstUncompleted.itemType === 'quiz') {
+                  router.push(`/courses/${slug}/quiz/${firstUncompleted.id}`);
+                } else {
+                  setActiveLessonId(firstUncompleted.id);
+                  window.history.replaceState(null, '', `/courses/${slug}/learn/${firstUncompleted.id}`);
+                }
+                setLessonLoading(false);
+                return;
+              }
+            }
+          }
+        }
+
         setActiveLesson(lesson);
         const lProg = progress || { completed: false, watch_seconds: 0 };
         setLessonProgress(lProg);
@@ -324,7 +387,6 @@ export default function StudentPlayerPage() {
     <div style={styles.loadingWrap}>
       <Loader2 size={36} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
       <span>Loading course...</span>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
@@ -377,68 +439,121 @@ export default function StudentPlayerPage() {
                 
                 {isExpanded && (
                   <div style={styles.sidebarLessons}>
-                    {[
-                      ...(mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' })),
-                      ...(mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }))
-                    ].sort((a, b) => {
-                      if (a.order_index === b.order_index) {
-                        return a.itemType === 'lesson' ? -1 : 1;
-                      }
-                      return a.order_index - b.order_index;
-                    }).map((item) => {
-                      if (item.itemType === 'lesson') {
-                        const isActive = item.id === activeLessonId;
-                        const isCompleted = progressSummary?.completed_lessons_ids?.includes(item.id) || 
-                                            (item.id === activeLessonId && lessonProgress.completed);
+                    {(() => {
+                      const moduleItems = [
+                        ...(mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' })),
+                        ...(mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }))
+                      ].sort((a, b) => {
+                        if (a.order_index === b.order_index) {
+                          return a.itemType === 'lesson' ? -1 : 1;
+                        }
+                        return a.order_index - b.order_index;
+                      });
 
-                        return (
-                          <Link
-                            key={item.id}
-                            href={`/courses/${slug}/learn/${item.id}`}
-                            onClick={(e) => handleSelectLesson(item.id, e)}
-                            style={{
-                              ...styles.lessonItem,
-                              ...(isActive ? styles.lessonItemActive : {})
-                            }}
-                          >
-                            <span style={{ marginRight: '8px', flexShrink: 0 }}>
-                              {isCompleted ? (
-                                <CheckCircle size={15} color="#10B981" />
-                              ) : (
-                                <Circle size={15} color="#9CA3AF" />
-                              )}
-                            </span>
-                            <span style={styles.lessonTitleText}>{item.title}</span>
-                            <span style={styles.lessonTypeIcon}>
-                              {item.type === 'youtube' ? '▶️' : item.type === 'gdrive' ? '📄' : '📝'}
-                            </span>
-                          </Link>
-                        );
-                      } else {
-                        const isCompleted = progressSummary?.passed_quiz_ids?.includes(item.id);
-                        return (
-                          <Link
-                            key={item.id}
-                            href={`/courses/${slug}/quiz/${item.id}`}
-                            style={{
-                              ...styles.lessonItem,
-                              borderLeftColor: 'transparent',
-                              paddingLeft: '20px'
-                            }}
-                          >
-                            <span style={{ marginRight: '8px', flexShrink: 0 }}>
-                              {isCompleted ? (
-                                <CheckCircle size={15} color="#10B981" />
-                              ) : (
-                                <Circle size={15} color="#FF9F1C" />
-                              )}
-                            </span>
-                            <span style={styles.lessonTitleText}>{item.title}</span>
-                            <span style={styles.lessonTypeIcon}>📝</span>
-                          </Link>
-                        );
-                      }
-                    })}
+                      // Get flat list of all course items to determine sequential locking
+                      const allFlat = getFlatItems();
+
+                      return moduleItems.map((item) => {
+                        // Check sequential locking: lock if course.is_sequential is true
+                        // AND there exists any item before this one in allFlat that is not completed
+                        let isLocked = false;
+                        if (course?.is_sequential) {
+                          const itemIdx = allFlat.findIndex(it => it.id === item.id);
+                          if (itemIdx > 0) {
+                            // Look at all items before itemIdx
+                            for (let i = 0; i < itemIdx; i++) {
+                              const prevItem = allFlat[i];
+                              const isPrevCompleted = prevItem.itemType === 'lesson'
+                                ? (progressSummary?.completed_lessons_ids?.includes(prevItem.id) || (prevItem.id === activeLessonId && lessonProgress.completed))
+                                : progressSummary?.passed_quiz_ids?.includes(prevItem.id);
+                              
+                              if (!isPrevCompleted) {
+                                isLocked = true;
+                                break;
+                              }
+                            }
+                          }
+                        }
+
+                        if (item.itemType === 'lesson') {
+                          const isActive = item.id === activeLessonId;
+                          const isCompleted = progressSummary?.completed_lessons_ids?.includes(item.id) || 
+                                              (item.id === activeLessonId && lessonProgress.completed);
+
+                          return (
+                            <Link
+                              key={item.id}
+                              href={isLocked ? '#' : `/courses/${slug}/learn/${item.id}`}
+                              onClick={(e) => {
+                                if (isLocked) {
+                                  e.preventDefault();
+                                  setLockModal({
+                                    title: 'Syllabus Locked',
+                                    message: 'Please complete all previous lessons and pass quizzes to unlock this section.'
+                                  });
+                                  return;
+                                }
+                                handleSelectLesson(item.id, e);
+                              }}
+                              style={{
+                                ...styles.lessonItem,
+                                ...(isActive ? styles.lessonItemActive : {}),
+                                ...(isLocked ? { opacity: 0.4, cursor: 'not-allowed' } : {})
+                              }}
+                            >
+                              <span style={{ marginRight: '8px', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center' }}>
+                                {isLocked ? (
+                                  <span style={{ fontSize: '12px' }}>🔒</span>
+                                ) : isCompleted ? (
+                                  <CheckCircle size={15} color="#10B981" />
+                                ) : (
+                                  <Circle size={15} color="#9CA3AF" />
+                                )}
+                              </span>
+                              <span style={styles.lessonTitleText}>{item.title}</span>
+                              <span style={{ ...styles.lessonTypeIcon, flexShrink: 0, marginTop: '2.5px' }}>
+                                {item.type === 'youtube' ? '▶️' : item.type === 'gdrive' ? '📄' : '📝'}
+                              </span>
+                            </Link>
+                          );
+                        } else {
+                          const isCompleted = progressSummary?.passed_quiz_ids?.includes(item.id);
+                          return (
+                            <Link
+                              key={item.id}
+                              href={isLocked ? '#' : `/courses/${slug}/quiz/${item.id}`}
+                              onClick={(e) => {
+                                if (isLocked) {
+                                  e.preventDefault();
+                                  setLockModal({
+                                    title: 'Syllabus Locked',
+                                    message: 'Please complete all previous lessons and pass quizzes to unlock this section.'
+                                  });
+                                }
+                              }}
+                              style={{
+                                ...styles.lessonItem,
+                                borderLeftColor: 'transparent',
+                                paddingLeft: '20px',
+                                ...(isLocked ? { opacity: 0.4, cursor: 'not-allowed' } : {})
+                              }}
+                            >
+                              <span style={{ marginRight: '8px', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center' }}>
+                                {isLocked ? (
+                                  <span style={{ fontSize: '12px' }}>🔒</span>
+                                ) : isCompleted ? (
+                                  <CheckCircle size={15} color="#10B981" />
+                                ) : (
+                                  <Circle size={15} color="#FF9F1C" />
+                                )}
+                              </span>
+                              <span style={styles.lessonTitleText}>{item.title}</span>
+                              <span style={{ ...styles.lessonTypeIcon, flexShrink: 0, marginTop: '2.5px' }}>📝</span>
+                            </Link>
+                          );
+                        }
+                      });
+                    })()}
                   </div>
                 )}
               </div>
@@ -688,7 +803,54 @@ export default function StudentPlayerPage() {
           )}
         </div>
       </div>
-      <style>{`
+
+      {/* Sleek Alert Modal for locked syllabus */}
+      {lockModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: '#ffffff', borderRadius: '16px', padding: '24px',
+            maxWidth: '380px', width: '90%', textAlign: 'center',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            animation: 'scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '50%',
+              backgroundColor: '#FEE2E2', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', color: '#EF4444',
+              margin: '0 auto 16px'
+            }}>
+              🔒
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', fontFamily: 'Outfit, sans-serif' }}>
+              {lockModal.title}
+            </h3>
+            <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+              {lockModal.message}
+            </p>
+            <button
+              onClick={() => setLockModal(null)}
+              style={{
+                width: '100%', padding: '10px 16px', borderRadius: '10px',
+                border: 'none', backgroundColor: '#1A1B4B',
+                color: '#ffffff', fontSize: '13px', fontWeight: '700',
+                cursor: 'pointer', transition: 'all 0.15s ease',
+                fontFamily: 'Outfit, sans-serif'
+              }}
+              onMouseOver={e => e.target.style.backgroundColor = '#2E3072'}
+              onMouseOut={e => e.target.style.backgroundColor = '#1A1B4B'}
+            >
+              Okay, I understand
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .player-page-root {
@@ -717,14 +879,16 @@ export default function StudentPlayerPage() {
 
         @media (max-width: 900px) {
           .outline-layout {
-            flex-direction: column !important;
+            display: flex !important;
+            flex-direction: column-reverse !important;
             padding-bottom: 100px !important;
           }
           .outline-sidebar {
             width: 100% !important;
             height: auto !important;
             border-right: none !important;
-            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+            border-top: 1px solid rgba(255,255,255,0.08) !important;
+            border-bottom: none !important;
           }
           .outline-workspace {
             width: 100% !important;
@@ -758,7 +922,7 @@ export default function StudentPlayerPage() {
             margin-bottom: 16px !important;
           }
         }
-      `}</style>
+      `}} />
     </div>
   </div>
   );
@@ -871,10 +1035,9 @@ const styles = {
   },
   moduleTitleText: {
     flex: 1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    paddingRight: '8px'
+    paddingRight: '8px',
+    lineHeight: '1.45',
+    textAlign: 'left'
   },
   moduleToggleIcon: {
     fontSize: '9px',
@@ -887,7 +1050,7 @@ const styles = {
   },
   lessonItem: {
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: '10px 20px',
     fontSize: '13px',
     color: 'rgba(255,255,255,0.7)',
@@ -902,9 +1065,8 @@ const styles = {
   },
   lessonTitleText: {
     flex: 1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
+    lineHeight: '1.4',
+    textAlign: 'left'
   },
   lessonTypeIcon: {
     fontSize: '12px',

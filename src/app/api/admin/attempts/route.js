@@ -121,3 +121,110 @@ export async function GET(req) {
 
   return NextResponse.json({ attempts: finalAttempts });
 }
+
+// DELETE /api/admin/attempts?id=<attemptId>
+// Delete a quiz attempt so the student can re-take the quiz
+export async function DELETE(req) {
+  const session = await getSession();
+  if (!session || !canGrade(session.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const attemptId = searchParams.get('id');
+
+  if (!attemptId) {
+    return NextResponse.json({ error: 'Attempt id is required' }, { status: 400 });
+  }
+
+  // Fetch attempt with user_id so we can reset progress afterwards
+  const { data: attempt, error: fetchError } = await supabase
+    .from('quiz_attempts')
+    .select('id, quiz_id, user_id')
+    .eq('id', attemptId)
+    .single();
+
+  if (fetchError || !attempt) {
+    return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+  }
+
+  // Org check for non-superadmins
+  if (session.role !== 'superadmin') {
+    const { data: quizCheck } = await supabase
+      .from('quizzes')
+      .select('courses(organization_id)')
+      .eq('id', attempt.quiz_id)
+      .single();
+    if (!quizCheck || quizCheck.courses?.organization_id !== session.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized: Attempt belongs to another organization.' }, { status: 403 });
+    }
+  }
+
+  // Get the quiz's linked lesson_id (if any) so we can reset only that lesson's progress
+  const { data: quiz } = await supabase
+    .from('quizzes')
+    .select('lesson_id, course_id')
+    .eq('id', attempt.quiz_id)
+    .single();
+
+  // Delete ONLY this attempt row
+  const { error: deleteError } = await supabase
+    .from('quiz_attempts')
+    .delete()
+    .eq('id', attemptId);
+
+  if (deleteError) {
+    console.error('Delete attempt error:', deleteError);
+    return NextResponse.json({ error: 'Failed to delete attempt' }, { status: 500 });
+  }
+
+  // After deletion: check if student has any remaining passing attempt for this quiz
+  const { data: passingAttempts } = await supabase
+    .from('quiz_attempts')
+    .select('id')
+    .eq('quiz_id', attempt.quiz_id)
+    .eq('user_id', attempt.user_id)
+    .eq('passed', true)
+    .limit(1);
+
+  const stillPassed = passingAttempts && passingAttempts.length > 0;
+
+  // If no passing attempt remains AND quiz has a linked lesson, mark that lesson as incomplete
+  // This resets ONLY the quiz's own lesson_progress row — all other lessons remain untouched
+  if (!stillPassed && quiz?.lesson_id) {
+    await supabase
+      .from('lesson_progress')
+      .update({ completed: false, completed_at: null })
+      .eq('user_id', attempt.user_id)
+      .eq('lesson_id', quiz.lesson_id);
+
+    // Also recalculate course_progress for this student (re-count completed lessons)
+    if (quiz?.course_id) {
+      const { count: completedLessons } = await supabase
+        .from('lesson_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', attempt.user_id)
+        .eq('course_id', quiz.course_id)
+        .eq('completed', true);
+
+      const { count: totalLessons } = await supabase
+        .from('lessons')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', quiz.course_id);
+
+      const percentComplete = totalLessons > 0 ? ((completedLessons || 0) / totalLessons) * 100 : 0;
+
+      await supabase
+        .from('course_progress')
+        .update({
+          lessons_completed: completedLessons || 0,
+          percent_complete: percentComplete,
+          completed_at: percentComplete >= 100 ? new Date().toISOString() : null,
+        })
+        .eq('user_id', attempt.user_id)
+        .eq('course_id', quiz.course_id);
+    }
+  }
+
+  return NextResponse.json({ success: true });
+}

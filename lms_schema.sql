@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS courses (
     CHECK (status IN ('draft', 'published', 'archived')),
   has_certificate BOOLEAN DEFAULT FALSE,
   certificate_image_url TEXT,
+  is_sequential BOOLEAN DEFAULT FALSE, -- whether students must watch modules/lessons sequentially
   total_lessons INTEGER DEFAULT 0,
   total_duration_seconds INTEGER DEFAULT 0,
   is_special BOOLEAN DEFAULT FALSE,
@@ -129,6 +130,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
     CHECK (type IN ('mcq', 'subjective')),
   options JSONB,                 -- array of strings for MCQ
   correct_answer TEXT,           -- index or text for MCQ
+  explanation TEXT DEFAULT '',   -- explanation for correct answer
   marks INTEGER DEFAULT 1,
   order_index INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()

@@ -16,7 +16,7 @@ export async function GET(req) {
 
   if (quizId) {
     // Get single quiz with questions
-    const { data: quiz, error } = await supabase
+    const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
       .select(`
         *,
@@ -25,7 +25,7 @@ export async function GET(req) {
       .eq('id', quizId)
       .single();
 
-    if (error || !quiz) {
+    if (quizError || !quiz) {
       return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
     }
 
@@ -36,23 +36,39 @@ export async function GET(req) {
     return NextResponse.json({ quiz });
   }
 
+  // Resolve active tenant
+  const { getActiveTenant } = await import('@/lib/tenant');
+  const tenant = await getActiveTenant(req);
+  const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organization_id;
+
   if (courseId) {
-    // List quizzes for course, including question count
-    const { data: quizzes, error } = await supabase
+    let query = supabase
       .from('quizzes')
-      .select('*, questions_count:quiz_questions(count)')
-      .eq('course_id', courseId)
-      .order('order_index', { ascending: true });
+      .select('*, questions_count:quiz_questions(count), course:courses!inner(id, title, organization_id)');
+      
+    if (courseId !== 'all') {
+      query = query.eq('course_id', courseId).order('order_index', { ascending: true });
+    } else {
+      query = query.order('id', { ascending: false });
+    }
+
+    // Enforce organization isolation
+    query = query.eq('course.organization_id', targetOrgId);
+
+    const { data: quizzes, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: 'Failed to fetch quizzes' }, { status: 500 });
     }
 
     // Flatten the questions_count from [{count:N}] to a simple integer
-    const normalized = (quizzes || []).map(q => ({
-      ...q,
-      questions_count: q.questions_count?.[0]?.count ?? 0
-    }));
+    const normalized = (quizzes || []).map(q => {
+      const { course, ...rest } = q;
+      return {
+        ...rest,
+        questions_count: rest.questions_count?.[0]?.count ?? 0
+      };
+    });
 
     return NextResponse.json({ quizzes: normalized });
   }
@@ -70,7 +86,7 @@ export async function POST(req) {
 
   const {
     course_id, module_id, lesson_id, title, description,
-    type, pass_score_percent, time_limit_mins, max_attempts, show_correct_answers
+    type, pass_score_percent, time_limit_mins, max_attempts, show_correct_answers, order_index
   } = await req.json();
 
   if (!course_id || !title) {
@@ -89,7 +105,8 @@ export async function POST(req) {
       pass_score_percent: parseInt(pass_score_percent) || 60,
       time_limit_mins: time_limit_mins ? parseInt(time_limit_mins) : null,
       max_attempts: max_attempts ? parseInt(max_attempts) : 3,
-      show_correct_answers: show_correct_answers !== false
+      show_correct_answers: show_correct_answers !== false,
+      order_index: order_index !== undefined ? parseInt(order_index) : 0
     })
     .select()
     .single();

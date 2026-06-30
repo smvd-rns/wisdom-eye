@@ -35,12 +35,11 @@ export async function GET(req, { params }) {
     .eq('course_id', params.id)
     .eq('completed', true);
 
-  // Fetch passed quizzes
+  // Fetch completed quizzes (any submitted attempt)
   const { data: passedAttempts } = await supabase
     .from('quiz_attempts')
     .select('quiz_id')
-    .eq('user_id', session.userId)
-    .eq('passed', true);
+    .eq('user_id', session.userId);
 
   const progress = {
     percent_complete: progressData?.percent_complete || 0,

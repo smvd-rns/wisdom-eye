@@ -49,6 +49,7 @@ export async function POST(req) {
     type: q.type || 'mcq',
     options: q.options || null, // Array of strings e.g. ['A', 'B']
     correct_answer: q.correct_answer || null,
+    explanation: q.explanation || '',
     marks: parseInt(q.marks) || 1,
     order_index: i
   }));

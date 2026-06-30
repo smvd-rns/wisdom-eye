@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Plus, Trash2, Edit3, Save, X, ChevronUp, ChevronDown,
@@ -10,10 +10,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminQuizzesPage() {
-  const { id: courseId } = useParams();
   const router = useRouter();
-
-  const [course, setCourse] = useState(null);
   const [quizzes, setQuizzes] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,20 +38,19 @@ export default function AdminQuizzesPage() {
   const [savingEvaluators, setSavingEvaluators] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm }
 
-  const [modules, setModules] = useState([]);
   const [viewMode, setViewMode] = useState('list');
-  const [sortBy, setSortBy] = useState('course');
-  const [filterCourseId, setFilterCourseId] = useState(courseId);
+  const [sortBy, setSortBy] = useState('title');
+  const [filterCourseId, setFilterCourseId] = useState('all');
 
-  const displayedQuizzes = quizzes.filter(q => filterCourseId === 'all' || String(q.course_id) === String(filterCourseId));
+  const displayedQuizzes = quizzes.filter(q => filterCourseId === 'all' || String(q.course_id) === filterCourseId);
 
   const sortedQuizzes = [...displayedQuizzes].sort((a, b) => {
     if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '');
     if (sortBy === 'course') {
-      const modA = modules.find(m => m.id === a.module_id)?.title || 'ZZZ';
-      const modB = modules.find(m => m.id === b.module_id)?.title || 'ZZZ';
-      const modCmp = modA.localeCompare(modB);
-      return modCmp !== 0 ? modCmp : (a.title || '').localeCompare(b.title || '');
+      const courseA = a.course?.title || 'ZZZ';
+      const courseB = b.course?.title || 'ZZZ';
+      const cmp = courseA.localeCompare(courseB);
+      return cmp !== 0 ? cmp : (a.title || '').localeCompare(b.title || '');
     }
     if (sortBy === 'type') {
       const typeCmp = (a.type || '').localeCompare(b.type || '');
@@ -66,16 +62,10 @@ export default function AdminQuizzesPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [courseRes, quizzesRes, coursesRes] = await Promise.all([
-          fetch(`/api/courses/${courseId}`),
+        const [quizzesRes, coursesRes] = await Promise.all([
           fetch(`/api/admin/quizzes?course_id=all`),
           fetch('/api/admin/courses')
         ]);
-        if (!courseRes.ok) { router.push('/lms-admin/courses'); return; }
-        const { course: data } = await courseRes.json();
-        setCourse(data);
-        setModules(data.modules || []);
-
         if (quizzesRes.ok) {
           const { quizzes: list } = await quizzesRes.json();
           setQuizzes(list || []);
@@ -91,7 +81,7 @@ export default function AdminQuizzesPage() {
       }
     };
     load();
-  }, [courseId, router]);
+  }, []);
 
   const handleCreateOrUpdateQuiz = async (e) => {
     e.preventDefault();
@@ -99,7 +89,6 @@ export default function AdminQuizzesPage() {
     setSaving(true);
 
     const payload = {
-      course_id: courseId,
       ...quizForm,
       pass_score_percent: parseInt(quizForm.pass_score_percent) || 60,
       time_limit_mins: quizForm.time_limit_mins ? parseInt(quizForm.time_limit_mins) : null,
@@ -116,20 +105,8 @@ export default function AdminQuizzesPage() {
         });
         const data = await res.json();
         if (res.ok) {
-          setQuizzes(p => p.map(q => q.id === editingQuizId ? data.quiz : q));
+          setQuizzes(p => p.map(q => q.id === editingQuizId ? { ...data.quiz, course: q.course } : q));
           setEditingQuizId(null);
-          setShowQuizForm(false);
-        }
-      } else {
-        // Create
-        const res = await fetch('/api/admin/quizzes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setQuizzes(p => [...p, data.quiz]);
           setShowQuizForm(false);
         }
       }
@@ -300,12 +277,6 @@ export default function AdminQuizzesPage() {
       });
       if (res.ok) {
         alert('Quiz questions saved successfully!');
-        // Reload quizzes list to update mixed/mcq/subjective type badge
-        const quizzesRes = await fetch(`/api/admin/quizzes?course_id=${courseId}`);
-        if (quizzesRes.ok) {
-          const { quizzes: list } = await quizzesRes.json();
-          setQuizzes(list || []);
-        }
       } else {
         alert('Failed to save questions.');
       }
@@ -383,17 +354,14 @@ export default function AdminQuizzesPage() {
       {/* Header */}
       <div style={styles.header}>
         <div>
-          <Link href={`/lms-admin/courses/${courseId}/builder`} style={styles.back}>
-            <ArrowLeft size={14} /> Course Builder
+          <Link href="/lms-admin" style={styles.back}>
+            <ArrowLeft size={14} /> Back to Dashboard
           </Link>
-          <h1 style={styles.title}>Quiz Library</h1>
-          <p style={styles.subtitle}>{course?.title} · {quizzes.length} quiz{quizzes.length !== 1 ? 'zes' : ''} total</p>
+          <h1 style={styles.title}>Global Quiz Library</h1>
+          <div style={styles.headerMeta}>
+            <span style={styles.badge}>{quizzes.length} quizzes</span>
+          </div>
         </div>
-        {!activeQuiz && (
-          <button onClick={() => setShowQuizForm(!showQuizForm)} style={styles.addBtn}>
-            {showQuizForm ? 'Cancel' : '+ Create New Quiz'}
-          </button>
-        )}
       </div>
 
       {/* Quiz Form */}
@@ -476,7 +444,6 @@ export default function AdminQuizzesPage() {
             <div style={styles.emptyState}>
               <HelpCircle size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
               <h3>No Quizzes Created Yet</h3>
-              <p>Add module tests, final exams, or subjective homework assignments.</p>
             </div>
           ) : (
             <>
@@ -492,7 +459,7 @@ export default function AdminQuizzesPage() {
 
                   <span style={{ ...styles.sortLabel, marginLeft: '16px' }}>Sort by:</span>
                   <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={styles.sortSelect}>
-                    <option value="course">Course Module</option>
+                    <option value="course">Course</option>
                     <option value="title">Quiz Title (A-Z)</option>
                     <option value="type">Quiz Type</option>
                   </select>
@@ -505,6 +472,11 @@ export default function AdminQuizzesPage() {
               <div style={viewMode === 'grid' ? styles.grid : styles.list}>
                 {sortedQuizzes.map((quiz, idx) => (
                   <div key={quiz.id} style={viewMode === 'grid' ? styles.quizCard : styles.quizListCard}>
+                    {viewMode === 'list' && (
+                      <div style={styles.listIndex}>
+                        {String.fromCharCode(65 + (idx % 26))}{idx >= 26 ? Math.floor(idx / 26) : ''}
+                      </div>
+                    )}
                     {viewMode === 'list' ? (
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
@@ -514,11 +486,7 @@ export default function AdminQuizzesPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12px', color: '#6B7280', whiteSpace: 'nowrap' }}>
                           <span>{quiz.questions_count || 0} questions</span>
                           <span>Pass: {quiz.pass_score_percent}%</span>
-                          {quiz.module_id && String(quiz.course_id) === String(courseId) ? (
-                            <span style={{ fontSize: '11px', color: '#4338CA', background: '#EEF2FF', padding: '2px 8px', borderRadius: '9999px', fontWeight: '600' }}>
-                              Module {modules.findIndex(m => m.id === quiz.module_id) + 1}
-                            </span>
-                          ) : quiz.course?.title ? (
+                          {quiz.course?.title ? (
                             <span style={{ fontSize: '11px', color: '#4338CA', background: '#EEF2FF', padding: '2px 8px', borderRadius: '9999px', fontWeight: '600' }}>
                               Course: {quiz.course.title}
                             </span>
@@ -538,14 +506,8 @@ export default function AdminQuizzesPage() {
                         </div>
                         <h3 style={styles.quizCardTitle}>{quiz.title}</h3>
                         <div>
-                          {quiz.module_id && String(quiz.course_id) === String(courseId) ? (
-                            <div style={{ fontSize: '11px', color: '#4338CA', background: '#EEF2FF', display: 'inline-block', padding: '2px 8px', borderRadius: '9999px', marginBottom: '4px', fontWeight: '600' }}>
-                              Module {modules.findIndex(m => m.id === quiz.module_id) + 1}
-                            </div>
-                          ) : quiz.course?.title ? (
-                            <div style={{ fontSize: '11px', color: '#4338CA', background: '#EEF2FF', display: 'inline-block', padding: '2px 8px', borderRadius: '9999px', marginBottom: '4px', fontWeight: '600' }}>
-                              Course: {quiz.course.title}
-                            </div>
+                          {quiz.course?.title ? (
+                            <div style={{ fontSize: '11px', color: '#4338CA', background: '#EEF2FF', display: 'inline-block', padding: '2px 8px', borderRadius: '9999px', marginBottom: '4px', fontWeight: '600' }}>Course: {quiz.course.title}</div>
                           ) : (
                             <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>Unassigned</div>
                           )}
@@ -557,7 +519,7 @@ export default function AdminQuizzesPage() {
                     <div style={viewMode === 'grid' ? styles.quizCardFooter : styles.quizListCardFooter}>
                       <div style={{ display: 'flex', flexDirection: viewMode === 'grid' ? 'column' : 'row', gap: '6px', alignItems: viewMode === 'grid' ? 'flex-start' : 'center' }}>
                         <button onClick={() => handleOpenQuestionsEditor(quiz)} style={styles.manageBtn}>
-                          Manage Questions ({quiz.questions_count || 0})
+                          Manage Questions
                         </button>
                         <button onClick={() => handleOpenEvaluatorModal(quiz)} style={styles.evaluatorBtn}>
                           <Users size={12} style={{ marginRight: '4px' }} /> Assign Evaluators
@@ -602,7 +564,6 @@ export default function AdminQuizzesPage() {
               <div style={styles.emptyQuestionsState}>
                 <HelpCircle size={40} style={{ color: '#D1D5DB', marginBottom: '12px' }} />
                 <h3>No questions in this quiz yet</h3>
-                <p>Click "Add Question" above to begin adding Multiple Choice or Subjective questions.</p>
               </div>
             ) : (
               questions.map((q, qIdx) => (
@@ -611,7 +572,6 @@ export default function AdminQuizzesPage() {
                   <div style={styles.questionCardHead}>
                     <div style={styles.questionIndex}>Question {qIdx + 1}</div>
                     <div style={styles.questionConfig}>
-                      {/* Type switcher */}
                       <select
                         value={q.type}
                         onChange={e => updateQuestionType(qIdx, e.target.value)}
@@ -622,7 +582,6 @@ export default function AdminQuizzesPage() {
                         <option value="subjective">Subjective (Evaluator Graded)</option>
                       </select>
 
-                      {/* Marks */}
                       <div style={styles.marksInputBlock}>
                         <label style={styles.marksLabel}>Marks:</label>
                         <input
@@ -633,7 +592,6 @@ export default function AdminQuizzesPage() {
                         />
                       </div>
 
-                      {/* Reorder and Delete */}
                       <button onClick={() => moveQuestion(qIdx, -1)} disabled={qIdx === 0} style={styles.iconBtnSm}><ChevronUp size={14} /></button>
                       <button onClick={() => moveQuestion(qIdx, 1)} disabled={qIdx === questions.length - 1} style={styles.iconBtnSm}><ChevronDown size={14} /></button>
                       <button onClick={() => deleteQuestion(qIdx)} style={{ ...styles.iconBtnSm, color: '#EF4444' }}><Trash2 size={14} /></button>
@@ -653,7 +611,7 @@ export default function AdminQuizzesPage() {
                     {/* MCQ Single-Answer Options */}
                     {q.type === 'mcq' && (
                       <div style={styles.optionsSection}>
-                        <label style={styles.label}>Answer Options — select the ONE correct answer (●)</label>
+                        <label style={styles.label}>Answer Options</label>
                         <div style={styles.optionsList}>
                           {q.options?.map((opt, optIdx) => (
                             <div key={optIdx} style={styles.optionRow}>
@@ -692,10 +650,7 @@ export default function AdminQuizzesPage() {
                       try { selected = JSON.parse(q.correct_answer || '[]'); } catch { selected = []; }
                       return (
                         <div style={{ ...styles.optionsSection, borderColor: '#818CF8', borderWidth: '1.5px' }}>
-                          <label style={{ ...styles.label, color: '#4338CA' }}>☑ Multi-Answer — tick ALL correct options</label>
-                          <p style={{ fontSize: '11px', color: '#6B7280', marginBottom: '8px', marginTop: '2px' }}>
-                            Students must select all correct answers to score full marks.
-                          </p>
+                          <label style={{ ...styles.label, color: '#4338CA' }}>Multi-Answer — tick ALL correct options</label>
                           <div style={styles.optionsList}>
                             {q.options?.map((opt, optIdx) => {
                               const isChecked = selected.includes(String(optIdx));
@@ -724,9 +679,6 @@ export default function AdminQuizzesPage() {
                               );
                             })}
                           </div>
-                          {selected.length === 0 && (
-                            <p style={{ fontSize: '11px', color: '#F59E0B', marginTop: '4px' }}>⚠ Tick at least one correct answer.</p>
-                          )}
                           <button type="button" onClick={() => addMcqOption(qIdx)} style={styles.addOptBtn}>
                             + Add Option
                           </button>
@@ -737,7 +689,7 @@ export default function AdminQuizzesPage() {
                     {q.type === 'subjective' && (
                       <div style={styles.subjectiveInfo}>
                         <AlertCircle size={14} style={{ color: '#4F46E5', flexShrink: 0 }} />
-                        <span>Subjective questions require grading by an Evaluator or Admin once submitted by a student.</span>
+                        <span>Subjective questions require grading by an Evaluator.</span>
                       </div>
                     )}
                   </div>
@@ -766,12 +718,11 @@ export default function AdminQuizzesPage() {
             </div>
 
             <div style={styles.modalBody}>
-              {/* Search Bar */}
               <div style={styles.searchContainer}>
                 <Search size={14} style={styles.searchIcon} />
                 <input
                   type="text"
-                  placeholder="Search staff by name or email..."
+                  placeholder="Search staff by name..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   style={styles.searchInput}

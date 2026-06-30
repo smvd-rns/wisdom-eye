@@ -51,8 +51,8 @@ export async function PUT(req, { params }) {
   const allowedFields = [
     'title', 'short_description', 'description', 'thumbnail_url',
     'price', 'original_price', 'category', 'level', 'status',
-    'has_certificate', 'certificate_image_url', 'custom_layout',
-    'has_material', 'materials', 'shipping_charges'
+    'has_certificate', 'certificate_image_url', 'is_sequential', 'custom_layout',
+    'has_material', 'materials', 'shipping_charges', 'quiz_show_correct_answers'
   ];
 
   const updates = {};

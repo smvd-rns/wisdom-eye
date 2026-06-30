@@ -6,12 +6,13 @@ import Link from 'next/link';
 import {
   LayoutDashboard, BookOpen, Users, Tag, CreditCard,
   BarChart2, LogOut, ChevronRight, Menu, X, BookMarked,
-  GraduationCap, ClipboardCheck, Settings, Loader2, Home, Globe, Layers, Database, ShieldCheck, User
+  GraduationCap, ClipboardCheck, Settings, Loader2, Home, Globe, Layers, Database, ShieldCheck, User, HelpCircle
 } from 'lucide-react';
 
 const NAV = [
   { href: '/lms-admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/lms-admin/courses', label: 'Courses', icon: BookOpen },
+  { href: '/lms-admin/quizzes', label: 'Quiz Library', icon: HelpCircle },
   { href: '/lms-admin/packages', label: 'Packages', icon: Layers },
   { href: '/lms-admin/users', label: 'Users', icon: Users },
   { href: '/lms-admin/coupons', label: 'Coupons', icon: Tag },
