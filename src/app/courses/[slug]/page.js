@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Clock, Award, ChevronDown, ChevronUp, Play, FileText, Lock, CheckCircle, Loader2, Star, Users } from 'lucide-react';
+import { BookOpen, Clock, Award, ChevronDown, ChevronUp, Play, FileText, Lock, CheckCircle, Loader2, Star, Users, BookOpenCheck } from 'lucide-react';
 import { formatImageUrl } from '@/lib/utils';
 import SpecialCourseLanding from '@/components/SpecialCourseLanding';
 import Navbar from '@/components/Navbar';
