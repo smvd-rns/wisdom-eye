@@ -10,23 +10,17 @@ export async function GET(req) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
+  // Resolve active tenant
+  const { getActiveTenant } = await import('@/lib/tenant');
+  const tenant = await getActiveTenant(req);
+  const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organizationId;
+
   // Fetch coupons
-  let query = supabase
+  const { data: coupons, error } = await supabase
     .from('coupons')
     .select('*')
+    .eq('organization_id', targetOrgId)
     .order('created_at', { ascending: false });
-
-  // If not superadmin, filter by creators belonging to the same organization
-  if (session.role !== 'superadmin') {
-    const { data: orgUsers } = await supabase
-      .from('user_profiles')
-      .select('user_id')
-      .eq('organization_id', session.organizationId);
-    const orgUserIds = orgUsers?.map(u => u.user_id) || [];
-    query = query.in('created_by', orgUserIds);
-  }
-
-  const { data: coupons, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: 'Failed to fetch coupons' }, { status: 500 });
@@ -62,6 +56,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
+  // Resolve active tenant
+  const { getActiveTenant } = await import('@/lib/tenant');
+  const tenant = await getActiveTenant(req);
+  const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organizationId;
+
   const {
     code, description, type, discount_value,
     applies_to, course_ids, max_uses, valid_from, valid_until, is_active
@@ -87,7 +86,8 @@ export async function POST(req) {
       valid_from: valid_from || new Date().toISOString(),
       valid_until: valid_until || null,
       is_active: is_active !== false,
-      created_by: session.userId
+      created_by: session.userId,
+      organization_id: targetOrgId
     })
     .select()
     .single();
@@ -131,20 +131,12 @@ export async function DELETE(req) {
   if (session.role !== 'superadmin') {
     const { data: coupon } = await supabase
       .from('coupons')
-      .select('created_by')
+      .select('organization_id')
       .eq('id', id)
       .single();
 
-    if (coupon) {
-      const { data: creator } = await supabase
-        .from('user_profiles')
-        .select('organization_id')
-        .eq('user_id', coupon.created_by)
-        .single();
-
-      if (!creator || creator.organization_id !== session.organizationId) {
-        return NextResponse.json({ error: 'Unauthorized: Coupon is outside your organization.' }, { status: 403 });
-      }
+    if (coupon && coupon.organization_id !== session.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized: Coupon is outside your organization.' }, { status: 403 });
     }
   }
 

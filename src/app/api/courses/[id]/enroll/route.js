@@ -59,6 +59,7 @@ export async function POST(req, { params }) {
       .from('coupons')
       .select('*')
       .eq('code', cleanCode)
+      .eq('organization_id', course.organization_id)
       .eq('is_active', true)
       .single();
 

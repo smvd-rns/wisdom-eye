@@ -33,6 +33,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Discount type is required' }, { status: 400 });
   }
 
+  // Resolve active tenant
+  const { getActiveTenant } = await import('@/lib/tenant');
+  const tenant = await getActiveTenant(req);
+  const targetOrgId = session.role === 'superadmin' ? (req.headers.get('x-target-org-id') || tenant.id) : session.organizationId;
+
   const cleanPrefix = (prefix || 'COUPON').toUpperCase().trim();
   const generatedCoupons = [];
   const couponCoursesInsertions = [];
@@ -54,7 +59,8 @@ export async function POST(req) {
       valid_from: valid_from || new Date().toISOString(),
       valid_until: valid_until || null,
       is_active: true,
-      created_by: session.userId
+      created_by: session.userId,
+      organization_id: targetOrgId
     });
   }
 

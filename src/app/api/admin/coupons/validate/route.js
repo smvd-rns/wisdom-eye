@@ -18,11 +18,16 @@ export async function POST(req) {
 
   const cleanCode = code.toUpperCase().trim();
 
+  // Resolve active tenant
+  const { getActiveTenant } = await import('@/lib/tenant');
+  const tenant = await getActiveTenant(req);
+
   // 1. Fetch coupon
   const { data: coupon, error } = await supabase
     .from('coupons')
     .select('*')
     .eq('code', cleanCode)
+    .eq('organization_id', tenant.id)
     .single();
 
   if (error || !coupon) {

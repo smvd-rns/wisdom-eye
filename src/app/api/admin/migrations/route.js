@@ -28,13 +28,25 @@ export async function GET() {
 
     // Read site_pages_migration.sql
     const sitePagesMigrationPath = path.join(rootDir, 'site_pages_migration.sql');
-    const sitePagesMigrationSql = fs.existsSync(sitePagesMigrationPath)
-      ? fs.readFileSync(sitePagesMigrationPath, 'utf8')
+    const sitePagesMigrationSql = fs.existsSync(sitePagesMigrationPath) 
+      ? fs.readFileSync(sitePagesMigrationPath, 'utf8') 
       : '-- Site pages migration file not found';
+
+    // Read migration_coupons_multitenancy.sql
+    const couponMigrationPath = path.join(rootDir, 'migration_coupons_multitenancy.sql');
+    const couponMigrationSql = fs.existsSync(couponMigrationPath)
+      ? fs.readFileSync(couponMigrationPath, 'utf8')
+      : '-- Coupons multi-tenancy migration file not found';
 
     return NextResponse.json({
       success: true,
       migrations: [
+        {
+          name: 'migration_coupons_multitenancy.sql',
+          title: 'Coupons Multi-tenancy Isolation Migration',
+          description: 'Adds organization_id field, populates it for existing coupons, and adds unique constraint scoped to organization.',
+          sql: couponMigrationSql,
+        },
         {
           name: 'site_pages_migration.sql',
           title: 'Site Pages Multi-tenancy Migration',

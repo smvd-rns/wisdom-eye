@@ -9,6 +9,10 @@ const SESSION_DURATION = '7d';
 
 // Sign a JWT and set it as a cookie
 export async function createSession(user) {
+  const { getActiveTenant } = await import('./tenant');
+  const tenant = await getActiveTenant();
+  const cookieName = `lms_session_${tenant.slug || 'wisdom-eye'}`;
+
   const token = await new SignJWT({
     id: user.id,
     userId: user.user_id,
@@ -23,7 +27,7 @@ export async function createSession(user) {
     .setExpirationTime(SESSION_DURATION)
     .sign(SECRET);
 
-  cookies().set(COOKIE_NAME, token, {
+  cookies().set(cookieName, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -36,8 +40,12 @@ export async function createSession(user) {
 
 // Read and verify the session cookie
 export async function getSession() {
+  const { getActiveTenant } = await import('./tenant');
+  const tenant = await getActiveTenant();
+  const cookieName = `lms_session_${tenant.slug || 'wisdom-eye'}`;
+
   const cookieStore = cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const token = cookieStore.get(cookieName)?.value;
   if (!token) return null;
 
   try {
@@ -50,6 +58,11 @@ export async function getSession() {
       if (payload.organization_id && !payload.organizationId) {
         payload.organizationId = payload.organization_id;
       }
+
+      // Enforce strict tenant boundary: user must belong to this tenant or be a superadmin
+      if (payload.role !== 'superadmin' && payload.organization_id !== tenant.id) {
+        return null;
+      }
     }
     return payload;
   } catch {
@@ -58,8 +71,12 @@ export async function getSession() {
 }
 
 // Delete the session cookie (logout)
-export function clearSession() {
-  cookies().set(COOKIE_NAME, '', {
+export async function clearSession() {
+  const { getActiveTenant } = await import('./tenant');
+  const tenant = await getActiveTenant();
+  const cookieName = `lms_session_${tenant.slug || 'wisdom-eye'}`;
+
+  cookies().set(cookieName, '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
