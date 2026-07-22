@@ -8,10 +8,35 @@ const COOKIE_NAME = 'lms_session';
 const SESSION_DURATION = '7d';
 
 // Sign a JWT and set it as a cookie
-export async function createSession(user) {
+// Helper to get tenant info and dynamic cookie name from Next.js request headers
+async function resolveTenantCookieConfig() {
+  const { headers } = await import('next/headers');
+  const reqHeaders = headers();
+  
+  const host = reqHeaders.get('host') || '';
+  const tenantSlug = reqHeaders.get('x-tenant-slug') || '';
+  const cleanHost = host.split(':')[0].toLowerCase();
+  
+  let cookieSuffix = 'wisdom-eye';
+  if (tenantSlug) {
+    cookieSuffix = tenantSlug;
+  } else if (cleanHost && cleanHost !== 'localhost' && cleanHost !== '127.0.0.1') {
+    cookieSuffix = cleanHost.split('.')[0];
+  }
+
   const { getActiveTenant } = await import('./tenant');
-  const tenant = await getActiveTenant();
-  const cookieName = `lms_session_${tenant.slug || 'wisdom-eye'}`;
+  const tenant = await getActiveTenant({ headers: reqHeaders });
+
+  return {
+    cookieName: `lms_session_${cookieSuffix}`,
+    tenant,
+    reqHeaders
+  };
+}
+
+// Sign a JWT and set it as a cookie
+export async function createSession(user) {
+  const { cookieName } = await resolveTenantCookieConfig();
 
   const token = await new SignJWT({
     id: user.id,
@@ -40,9 +65,7 @@ export async function createSession(user) {
 
 // Read and verify the session cookie
 export async function getSession() {
-  const { getActiveTenant } = await import('./tenant');
-  const tenant = await getActiveTenant();
-  const cookieName = `lms_session_${tenant.slug || 'wisdom-eye'}`;
+  const { cookieName, tenant } = await resolveTenantCookieConfig();
 
   const cookieStore = cookies();
   const token = cookieStore.get(cookieName)?.value;
@@ -72,9 +95,7 @@ export async function getSession() {
 
 // Delete the session cookie (logout)
 export async function clearSession() {
-  const { getActiveTenant } = await import('./tenant');
-  const tenant = await getActiveTenant();
-  const cookieName = `lms_session_${tenant.slug || 'wisdom-eye'}`;
+  const { cookieName } = await resolveTenantCookieConfig();
 
   cookies().set(cookieName, '', {
     httpOnly: true,

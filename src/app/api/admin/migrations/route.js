@@ -38,9 +38,21 @@ export async function GET() {
       ? fs.readFileSync(couponMigrationPath, 'utf8')
       : '-- Coupons multi-tenancy migration file not found';
 
+    // Read migration_user_email_multitenancy.sql
+    const userEmailMigrationPath = path.join(rootDir, 'migration_user_email_multitenancy.sql');
+    const userEmailMigrationSql = fs.existsSync(userEmailMigrationPath)
+      ? fs.readFileSync(userEmailMigrationPath, 'utf8')
+      : '-- User email multi-tenancy migration file not found';
+
     return NextResponse.json({
       success: true,
       migrations: [
+        {
+          name: 'migration_user_email_multitenancy.sql',
+          title: 'User Email Multi-tenancy Isolation Migration',
+          description: 'Drops the global unique constraint on email in user_profiles and scopes uniqueness per organization.',
+          sql: userEmailMigrationSql,
+        },
         {
           name: 'migration_coupons_multitenancy.sql',
           title: 'Coupons Multi-tenancy Isolation Migration',

@@ -5,10 +5,7 @@ import { supabase } from '@/lib/supabase';
 // POST /api/admin/coupons/validate
 // Validate coupon eligibility and calculate discounted price
 export async function POST(req) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await getSession(); // Session is optional to allow guest users to preview discounts
 
   const { code, course_id } = await req.json();
 
@@ -70,15 +67,17 @@ export async function POST(req) {
   }
 
   // 6. Check if user already used this coupon (one use per user)
-  const { data: usage, error: usageError } = await supabase
-    .from('coupon_uses')
-    .select('id')
-    .eq('coupon_id', coupon.id)
-    .eq('user_id', session.userId)
-    .single();
+  if (session) {
+    const { data: usage, error: usageError } = await supabase
+      .from('coupon_uses')
+      .select('id')
+      .eq('coupon_id', coupon.id)
+      .eq('user_id', session.userId)
+      .single();
 
-  if (!usageError && usage) {
-    return NextResponse.json({ success: false, valid: false, error: 'You have already used this coupon code' }, { status: 400 });
+    if (!usageError && usage) {
+      return NextResponse.json({ success: false, valid: false, error: 'You have already used this coupon code' }, { status: 400 });
+    }
   }
 
   // 7. Fetch course price to calculate discount
