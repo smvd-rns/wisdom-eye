@@ -135,20 +135,33 @@ export default function StudentPlayerPage() {
         }
         setCourse(fetchedCourse);
 
-        // Check enrollment
-        const enrollRes = await fetch(`/api/courses/${fetchedCourse.id}/enrollment-check`);
-        if (!enrollRes.ok) {
-          router.push(`/courses/${slug}`);
-          return;
+        // Check enrollment & progress (reuse cached summary if student is already in session)
+        let progress = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const cachedProg = sessionStorage.getItem(`player_progress_summary_${slug}`);
+            if (cachedProg) progress = JSON.parse(cachedProg);
+          } catch (e) {}
         }
-        const { enrolled, progress } = await enrollRes.json();
-        if (!enrolled) {
-          router.push(`/courses/${slug}`);
-          return;
+
+        if (!progress) {
+          const enrollRes = await fetch(`/api/courses/${fetchedCourse.id}/enrollment-check`);
+          if (!enrollRes.ok) {
+            router.push(`/courses/${slug}`);
+            return;
+          }
+          const { enrolled, progress: p } = await enrollRes.json();
+          if (!enrolled) {
+            router.push(`/courses/${slug}`);
+            return;
+          }
+          progress = p;
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(progress));
+          }
         }
 
         setProgressSummary(progress);
-        sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(progress));
         setLoading(false);
       } catch (err) {
         console.error(err);
@@ -157,15 +170,84 @@ export default function StudentPlayerPage() {
     checkAccess();
   }, [slug, router]);
 
-  // Load Lesson Details & Discussions when activeLessonId changes
+  // Load Lesson Details when activeLessonId changes
   useEffect(() => {
     if (!activeLessonId) return;
 
     const loadLesson = async () => {
-      const hasCached = sessionStorage.getItem(`player_lesson_${activeLessonId}`);
-      if (!hasCached) {
-        setLessonLoading(true);
+      // 1. If the course is sequential, verify whether this lesson should be locked.
+      if (course && course.is_sequential) {
+        const allFlat = [];
+        if (course.modules) {
+          course.modules.forEach(mod => {
+            const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
+            const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
+            const combined = [...lessons, ...quizzes].sort((a, b) => {
+              if (a.order_index === b.order_index) return a.itemType === 'lesson' ? -1 : 1;
+              return a.order_index - b.order_index;
+            });
+            allFlat.push(...combined);
+          });
+        }
+
+        const targetIdx = allFlat.findIndex(it => it.id === activeLessonId);
+        if (targetIdx > 0) {
+          for (let i = 0; i < targetIdx; i++) {
+            const prevItem = allFlat[i];
+            let summary = progressSummary;
+            if (!summary && typeof window !== 'undefined') {
+              try { summary = JSON.parse(sessionStorage.getItem(`player_progress_summary_${slug}`) || 'null'); } catch { summary = null; }
+            }
+            const isPrevCompleted = prevItem.itemType === 'lesson'
+              ? summary?.completed_lessons_ids?.includes(prevItem.id)
+              : summary?.passed_quiz_ids?.includes(prevItem.id);
+
+            if (!isPrevCompleted) {
+              setLockModal({
+                title: 'Section Locked',
+                message: 'This section is locked sequentially. Redirecting you to your first uncompleted step.'
+              });
+              let firstUncompleted = allFlat[0];
+              for (let k = 0; k < allFlat.length; k++) {
+                const item = allFlat[k];
+                const itemCompleted = item.itemType === 'lesson'
+                  ? summary?.completed_lessons_ids?.includes(item.id)
+                  : summary?.passed_quiz_ids?.includes(item.id);
+                if (!itemCompleted) {
+                  firstUncompleted = item;
+                  break;
+                }
+              }
+
+              if (firstUncompleted.itemType === 'quiz') {
+                router.push(`/courses/${slug}/quiz/${firstUncompleted.id}`);
+              } else {
+                setActiveLessonId(firstUncompleted.id);
+                window.history.replaceState(null, '', `/courses/${slug}/learn/${firstUncompleted.id}`);
+              }
+              setLessonLoading(false);
+              return;
+            }
+          }
+        }
       }
+
+      // 2. Check session cache first for lesson content
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = sessionStorage.getItem(`player_lesson_${activeLessonId}`);
+          const cachedProg = sessionStorage.getItem(`player_lesson_progress_${activeLessonId}`);
+          if (cached) {
+            const parsedLesson = JSON.parse(cached);
+            setActiveLesson(parsedLesson);
+            if (cachedProg) setLessonProgress(JSON.parse(cachedProg));
+            setLessonLoading(false);
+            return;
+          }
+        } catch (e) {}
+      }
+
+      setLessonLoading(true);
       try {
         const res = await fetch(`/api/lessons/${activeLessonId}`);
         if (!res.ok) {
@@ -173,68 +255,6 @@ export default function StudentPlayerPage() {
           return;
         }
         const { lesson, progress } = await res.json();
-
-        // If the course is sequential, check if this lesson should be locked.
-        // We look at all items in allFlat before this one. If any is not completed, we redirect.
-        if (course && course.is_sequential) {
-          // Re-assemble flat list
-          const allFlat = [];
-          if (course.modules) {
-            course.modules.forEach(mod => {
-              const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
-              const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
-              const combined = [...lessons, ...quizzes].sort((a, b) => {
-                if (a.order_index === b.order_index) return a.itemType === 'lesson' ? -1 : 1;
-                return a.order_index - b.order_index;
-              });
-              allFlat.push(...combined);
-            });
-          }
-
-          const targetIdx = allFlat.findIndex(it => it.id === activeLessonId);
-          if (targetIdx > 0) {
-            for (let i = 0; i < targetIdx; i++) {
-              const prevItem = allFlat[i];
-              // Load progress summary from state or sessionStorage
-              let summary = progressSummary;
-              if (!summary) {
-                try { summary = JSON.parse(sessionStorage.getItem(`player_progress_summary_${slug}`) || 'null'); } catch { summary = null; }
-              }
-              const isPrevCompleted = prevItem.itemType === 'lesson'
-                ? summary?.completed_lessons_ids?.includes(prevItem.id)
-                : summary?.passed_quiz_ids?.includes(prevItem.id);
-
-              if (!isPrevCompleted) {
-                setLockModal({
-                  title: 'Section Locked',
-                  message: 'This section is locked sequentially. Redirecting you to your first uncompleted step.'
-                });
-                // Find first uncompleted item to redirect to
-                let firstUncompleted = allFlat[0];
-                for (let k = 0; k < allFlat.length; k++) {
-                  const item = allFlat[k];
-                  const itemCompleted = item.itemType === 'lesson'
-                    ? summary?.completed_lessons_ids?.includes(item.id)
-                    : summary?.passed_quiz_ids?.includes(item.id);
-                  if (!itemCompleted) {
-                    firstUncompleted = item;
-                    break;
-                  }
-                }
-
-                if (firstUncompleted.itemType === 'quiz') {
-                  router.push(`/courses/${slug}/quiz/${firstUncompleted.id}`);
-                } else {
-                  setActiveLessonId(firstUncompleted.id);
-                  window.history.replaceState(null, '', `/courses/${slug}/learn/${firstUncompleted.id}`);
-                }
-                setLessonLoading(false);
-                return;
-              }
-            }
-          }
-        }
-
         setActiveLesson(lesson);
         const lProg = progress || { completed: false, watch_seconds: 0 };
         setLessonProgress(lProg);

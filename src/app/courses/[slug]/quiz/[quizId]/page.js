@@ -79,13 +79,27 @@ export default function StudentQuizPage() {
         }
         setCourse(fetchedCourse);
 
-        // Fetch quiz info
-        const quizRes = await fetch(`/api/quizzes/${quizId}`);
-        if (!quizRes.ok) {
-          router.push(`/courses/${slug}`);
-          return;
+        // Fetch quiz info (check session storage first)
+        let fetchedQuiz = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const cachedQuiz = sessionStorage.getItem(`player_quiz_${quizId}`);
+            if (cachedQuiz) fetchedQuiz = JSON.parse(cachedQuiz);
+          } catch (e) {}
         }
-        const { quiz: fetchedQuiz } = await quizRes.json();
+
+        if (!fetchedQuiz) {
+          const quizRes = await fetch(`/api/quizzes/${quizId}`);
+          if (!quizRes.ok) {
+            router.push(`/courses/${slug}`);
+            return;
+          }
+          const { quiz: q } = await quizRes.json();
+          fetchedQuiz = q;
+          if (fetchedQuiz && typeof window !== 'undefined') {
+            sessionStorage.setItem(`player_quiz_${quizId}`, JSON.stringify(fetchedQuiz));
+          }
+        }
         setQuiz(fetchedQuiz);
 
         // Check if progress summary already in session
