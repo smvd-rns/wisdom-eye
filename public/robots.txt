@@ -5,8 +5,12 @@ Disallow: /admin/
 Disallow: /lms-admin/
 Disallow: /dashboard/
 Disallow: /profile/
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /track
 Disallow: /_next/
 
 # Prevent bots from aggressive crawling
 Crawl-delay: 10
-

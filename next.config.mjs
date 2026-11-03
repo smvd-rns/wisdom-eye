@@ -2,10 +2,30 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    unoptimized: true, // Useful for Vercel deployment of simple static/hybrid pages or when local assets are preferred
+    unoptimized: true, // Prevents Vercel Image Optimization quota consumption
   },
   async headers() {
     return [
+      {
+        // 1-year immutable browser & CDN caching for static public images
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // 1-year immutable caching for static favicon
+        source: '/favicon.ico',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
       {
         // Cache public HTML pages at the Vercel CDN Edge to eliminate Serverless Function invocations
         source: '/((?!api|_next|admin|lms-admin|dashboard|profile).*)',
