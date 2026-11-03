@@ -142,7 +142,7 @@ export default function DashboardPage() {
       <Navbar onlyBottom={true} />
       {/* Sidebar */}
       <aside style={styles.sidebar}>
-        <Link href="/" style={styles.sidebarLogo}>
+        <Link href="/" prefetch={false} style={styles.sidebarLogo}>
           <div style={styles.logoIcon}><BookOpen size={18} color="var(--secondary)" /></div>
           <span style={styles.logoText}>{tenantName}</span>
         </Link>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
             </h1>
             <p style={styles.subGreeting}>Unlock your mind. Knowledge is the ultimate eye.</p>
           </div>
-          <Link href="/courses" style={styles.browseCta}>
+          <Link href="/courses" prefetch={false} style={styles.browseCta}>
             Explore All Courses <ChevronRight size={16} />
           </Link>
         </div>
@@ -277,7 +277,7 @@ export default function DashboardPage() {
             <BookOpen size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
             <h3 style={styles.emptyTitle}>No enrolled courses yet</h3>
             <p style={styles.emptyText}>Find your next breakthrough among our classes.</p>
-            <Link href="/courses" style={styles.emptyBtn}>Browse Courses</Link>
+            <Link href="/courses" prefetch={false} style={styles.emptyBtn}>Browse Courses</Link>
           </div>
         ) : (
           <div style={styles.courseGrid}>
@@ -344,6 +344,7 @@ export default function DashboardPage() {
 
                     <Link
                       href={`/courses/${enr.courses?.slug}/learn${lastLesson ? `/${lastLesson}` : ''}`}
+                      prefetch={false}
                       style={styles.continueBtn}
                     >
                       {pct === 0 ? 'Start Learning' : pct === 100 ? 'Review Course' : 'Continue Learning'}
@@ -423,7 +424,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       
-                      <Link href={`/courses/${course.slug}`} style={styles.recommendationLink}>
+                      <Link href={`/courses/${course.slug}`} prefetch={false} style={styles.recommendationLink}>
                         View Details <ChevronRight size={14} />
                       </Link>
                     </div>

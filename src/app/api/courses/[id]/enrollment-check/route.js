@@ -5,41 +5,49 @@ import { supabase } from '@/lib/supabase';
 // GET /api/courses/[id]/enrollment-check
 export async function GET(req, { params }) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ enrolled: false });
-
-  const { data } = await supabase
-    .from('enrollments')
-    .select('id')
-    .eq('user_id', session.userId)
-    .eq('course_id', params.id)
-    .eq('status', 'active')
-    .single();
-
-  if (!data) {
-    return NextResponse.json({ enrolled: false });
+  if (!session) {
+    return NextResponse.json({ enrolled: false }, {
+      headers: { 'Cache-Control': 'private, no-cache' }
+    });
   }
 
-  // Fetch course progress
-  const { data: progressData } = await supabase
-    .from('course_progress')
-    .select('percent_complete, lessons_completed, last_lesson_id')
-    .eq('user_id', session.userId)
-    .eq('course_id', params.id)
-    .single();
+  // Run queries in parallel to minimize Serverless execution duration
+  const [
+    { data: enrollData },
+    { data: progressData },
+    { data: completedLessons },
+    { data: passedAttempts }
+  ] = await Promise.all([
+    supabase
+      .from('enrollments')
+      .select('id')
+      .eq('user_id', session.userId)
+      .eq('course_id', params.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+    supabase
+      .from('course_progress')
+      .select('percent_complete, lessons_completed, last_lesson_id')
+      .eq('user_id', session.userId)
+      .eq('course_id', params.id)
+      .maybeSingle(),
+    supabase
+      .from('lesson_progress')
+      .select('lesson_id')
+      .eq('user_id', session.userId)
+      .eq('course_id', params.id)
+      .eq('completed', true),
+    supabase
+      .from('quiz_attempts')
+      .select('quiz_id')
+      .eq('user_id', session.userId)
+  ]);
 
-  // Fetch completed lesson IDs
-  const { data: completedLessons } = await supabase
-    .from('lesson_progress')
-    .select('lesson_id')
-    .eq('user_id', session.userId)
-    .eq('course_id', params.id)
-    .eq('completed', true);
-
-  // Fetch completed quizzes (any submitted attempt)
-  const { data: passedAttempts } = await supabase
-    .from('quiz_attempts')
-    .select('quiz_id')
-    .eq('user_id', session.userId);
+  if (!enrollData) {
+    return NextResponse.json({ enrolled: false }, {
+      headers: { 'Cache-Control': 'private, max-age=10' }
+    });
+  }
 
   const progress = {
     percent_complete: progressData?.percent_complete || 0,
@@ -51,5 +59,9 @@ export async function GET(req, { params }) {
   return NextResponse.json({
     enrolled: true,
     progress
+  }, {
+    headers: {
+      'Cache-Control': 'private, max-age=30, stale-while-revalidate=60'
+    }
   });
 }

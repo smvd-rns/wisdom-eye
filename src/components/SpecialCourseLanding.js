@@ -1370,7 +1370,7 @@ export default function SpecialCourseLanding({
             {couponResult?.success && <p style={{ color: '#16A34A', fontSize: '12px', marginBottom: '8px' }}>✓ Coupon applied! {couponResult.description}</p>}
 
             {isEnrolled ? (
-              <Link href={`/courses/${slug}/learn`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, #FF9F1C, #E07A5F)', color: '#fff', border: 'none', borderRadius: '14px', padding: '16px', fontSize: '16px', fontWeight: '800', cursor: 'pointer', width: '100%', marginBottom: '16px', textDecoration: 'none', fontFamily: 'Outfit, sans-serif' }}>
+              <Link href={`/courses/${slug}/learn`} prefetch={false} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, #FF9F1C, #E07A5F)', color: '#fff', border: 'none', borderRadius: '14px', padding: '16px', fontSize: '16px', fontWeight: '800', cursor: 'pointer', width: '100%', marginBottom: '16px', textDecoration: 'none', fontFamily: 'Outfit, sans-serif' }}>
                 Continue Learning →
               </Link>
             ) : (
@@ -1831,7 +1831,7 @@ export default function SpecialCourseLanding({
         }}
       >
         {isLink ? (
-          <Link href={p.linkUrl} style={{ color: 'inherit', textDecoration: 'none' }}>
+          <Link href={p.linkUrl} prefetch={false} style={{ color: 'inherit', textDecoration: 'none' }}>
             {content}
           </Link>
         ) : content}
@@ -2095,7 +2095,7 @@ export default function SpecialCourseLanding({
                 )}
                 <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1A1B4B', marginBottom: '8px' }}>{animText(card.title, block)}</h3>
                 <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.5', marginBottom: '16px', flexGrow: 1 }}>{animText(card.desc, block)}</p>
-                <Link href={card.link || '#'} style={{ fontSize: '13px', fontWeight: '700', color: '#FF9F1C', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <Link href={card.link || '#'} prefetch={false} style={{ fontSize: '13px', fontWeight: '700', color: '#FF9F1C', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                   {animText(card.linkText || 'Learn More', block)} <ChevronRight size={14} />
                 </Link>
               </div>
@@ -2488,7 +2488,7 @@ export default function SpecialCourseLanding({
         {/* Back link — outside layout canvas so floating coords match the editor */}
         {slug !== '/' && (
           <div style={{ background: '#1A1B4B', padding: '12px 24px' }}>
-            <Link href="/courses" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none' }}>← All Courses</Link>
+            <Link href="/courses" prefetch={false} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none' }}>← All Courses</Link>
           </div>
         )}
 

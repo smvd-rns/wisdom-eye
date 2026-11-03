@@ -576,7 +576,7 @@ export default function CourseLandingPage() {
       <div style={styles.hero}>
         <div className="hero-inner" style={styles.heroInner}>
           <div style={styles.heroLeft}>
-            <Link href="/courses" style={styles.backLink}>← All Courses</Link>
+            <Link href="/courses" prefetch={false} style={styles.backLink}>← All Courses</Link>
             <span style={styles.category}>{course.category}</span>
             <h1 style={styles.title}>{course.title}</h1>
             <p style={styles.subtitle}>
@@ -663,7 +663,7 @@ export default function CourseLandingPage() {
               {couponResult?.success && <p style={{ color: '#16A34A', fontSize: '12px', marginBottom: '8px' }}>✓ Coupon applied! {couponResult.description}</p>}
 
               {isEnrolled ? (
-                <Link href={`/courses/${slug}/learn`} style={styles.enrollBtn}>
+                <Link href={`/courses/${slug}/learn`} prefetch={false} style={styles.enrollBtn}>
                   Continue Learning →
                 </Link>
               ) : (

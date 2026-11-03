@@ -103,19 +103,19 @@ export default function CertificatesPage() {
       <Navbar onlyBottom={true} />
       {/* Sidebar */}
       <aside style={styles.sidebar}>
-        <Link href="/" style={styles.sidebarLogo}>
+        <Link href="/" prefetch={false} style={styles.sidebarLogo}>
           <div style={styles.logoIcon}><BookOpen size={18} color="var(--secondary)" /></div>
           <span style={styles.logoText}>{tenantName}</span>
         </Link>
 
         <nav style={styles.nav}>
-          <Link href="/dashboard" style={styles.navItem}>
+          <Link href="/dashboard" prefetch={false} style={styles.navItem}>
             <BarChart2 size={18} /> My Courses
           </Link>
-          <Link href="/certificates" style={{ ...styles.navItem, ...styles.navItemActive }}>
+          <Link href="/certificates" prefetch={false} style={{ ...styles.navItem, ...styles.navItemActive }}>
             <Award size={18} /> Certificates
           </Link>
-          <Link href="/profile" style={styles.navItem}>
+          <Link href="/profile" prefetch={false} style={styles.navItem}>
             <User size={18} /> Profile
           </Link>
         </nav>
@@ -139,7 +139,7 @@ export default function CertificatesPage() {
       <main style={styles.main}>
         <div style={styles.container}>
           {/* Back link */}
-          <Link href="/dashboard" style={styles.back}>
+          <Link href="/dashboard" prefetch={false} style={styles.back}>
             <ArrowLeft size={14} /> Back to Dashboard
           </Link>
     
@@ -167,7 +167,7 @@ export default function CertificatesPage() {
                       <p style={styles.cardDate}>Completed: {new Date(c.completedAt).toLocaleDateString()}</p>
                     </div>
                     <div style={styles.actions}>
-                      <Link href={`/certificates/${c.id}`} target="_blank" style={styles.downloadBtn}>
+                      <Link href={`/certificates/${c.id}`} prefetch={false} target="_blank" style={styles.downloadBtn}>
                         View Certificate <ExternalLink size={14} style={{ marginLeft: '4px' }} />
                       </Link>
                     </div>

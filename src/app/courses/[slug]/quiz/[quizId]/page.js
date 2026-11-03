@@ -14,7 +14,15 @@ export default function StudentQuizPage() {
   const router = useRouter();
 
   const [quiz, setQuiz] = useState(null);
-  const [course, setCourse] = useState(null);
+  const [course, setCourse] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const val = sessionStorage.getItem(`player_course_${slug}`);
+        return val ? JSON.parse(val) : null;
+      } catch (e) { return null; }
+    }
+    return null;
+  });
   const [attempts, setAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -51,10 +59,24 @@ export default function StudentQuizPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        // Fetch course info
-        const courseRes = await fetch(`/api/courses/by-slug/${slug}`);
-        if (!courseRes.ok) { router.push('/courses'); return; }
-        const { course: fetchedCourse } = await courseRes.json();
+        let fetchedCourse = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const cached = sessionStorage.getItem(`player_course_${slug}`);
+            if (cached) fetchedCourse = JSON.parse(cached);
+          } catch (e) {}
+        }
+
+        if (!fetchedCourse) {
+          // Fetch course info only if not already in session storage
+          const courseRes = await fetch(`/api/courses/by-slug/${slug}`);
+          if (!courseRes.ok) { router.push('/courses'); return; }
+          const { course: c } = await courseRes.json();
+          fetchedCourse = c;
+          if (fetchedCourse) {
+            sessionStorage.setItem(`player_course_${slug}`, JSON.stringify(fetchedCourse));
+          }
+        }
         setCourse(fetchedCourse);
 
         // Fetch quiz info
@@ -66,16 +88,31 @@ export default function StudentQuizPage() {
         const { quiz: fetchedQuiz } = await quizRes.json();
         setQuiz(fetchedQuiz);
 
-        // Fetch student's enrollment and progress
-        const enrollRes = await fetch(`/api/courses/${fetchedCourse.id}/enrollment-check`);
-        if (!enrollRes.ok) {
-          router.push(`/courses/${slug}`);
-          return;
+        // Check if progress summary already in session
+        let progressSummary = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const cachedProg = sessionStorage.getItem(`player_progress_summary_${slug}`);
+            if (cachedProg) progressSummary = JSON.parse(cachedProg);
+          } catch (e) {}
         }
-        const { enrolled, progress: progressSummary } = await enrollRes.json();
-        if (!enrolled) {
-          router.push(`/courses/${slug}`);
-          return;
+
+        // Fetch student's enrollment and progress if not cached
+        if (!progressSummary) {
+          const enrollRes = await fetch(`/api/courses/${fetchedCourse.id}/enrollment-check`);
+          if (!enrollRes.ok) {
+            router.push(`/courses/${slug}`);
+            return;
+          }
+          const { enrolled, progress } = await enrollRes.json();
+          if (!enrolled) {
+            router.push(`/courses/${slug}`);
+            return;
+          }
+          progressSummary = progress;
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(progress));
+          }
         }
 
         // Verify sequential progress locking
@@ -282,18 +319,18 @@ export default function StudentQuizPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {prevItem ? (
-                    <Link href={prevItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${prevItem.id}` : `/courses/${slug}/learn/${prevItem.id}`} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Link href={prevItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${prevItem.id}` : `/courses/${slug}/learn/${prevItem.id}`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       <ChevronLeft size={14} /> Prev
                     </Link>
                   ) : (
-                    <Link href={`/courses/${slug}/learn`} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Link href={`/courses/${slug}/learn`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       <ArrowLeft size={14} /> Back to Player
                     </Link>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {nextItem && (
-                    <Link href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Link href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       Next <ChevronRight size={14} />
                     </Link>
                   )}
@@ -659,7 +696,7 @@ export default function StudentQuizPage() {
           )}
 
           <div style={{ ...styles.resultActions, display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href={`/courses/${slug}/learn`} className="btn-secondary" style={{ textDecoration: 'none' }}>
+            <Link href={`/courses/${slug}/learn`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none' }}>
               Return to Syllabus player
             </Link>
             {(() => {
@@ -683,6 +720,7 @@ export default function StudentQuizPage() {
                 return (
                   <Link
                     href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`}
+                    prefetch={false}
                     className="btn-primary"
                     style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >

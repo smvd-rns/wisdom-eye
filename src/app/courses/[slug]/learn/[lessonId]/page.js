@@ -113,12 +113,27 @@ export default function StudentPlayerPage() {
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        const courseRes = await fetch(`/api/courses/by-slug/${slug}`);
-        if (!courseRes.ok) {
-          router.push('/courses');
-          return;
+        let fetchedCourse = course;
+        if (!fetchedCourse && typeof window !== 'undefined') {
+          try {
+            const cached = sessionStorage.getItem(`player_course_${slug}`);
+            if (cached) fetchedCourse = JSON.parse(cached);
+          } catch (e) {}
         }
-        const { course: fetchedCourse } = await courseRes.json();
+
+        if (!fetchedCourse) {
+          const courseRes = await fetch(`/api/courses/by-slug/${slug}`);
+          if (!courseRes.ok) {
+            router.push('/courses');
+            return;
+          }
+          const { course: c } = await courseRes.json();
+          fetchedCourse = c;
+          if (fetchedCourse) {
+            sessionStorage.setItem(`player_course_${slug}`, JSON.stringify(fetchedCourse));
+          }
+        }
+        setCourse(fetchedCourse);
 
         // Check enrollment
         const enrollRes = await fetch(`/api/courses/${fetchedCourse.id}/enrollment-check`);
@@ -132,9 +147,7 @@ export default function StudentPlayerPage() {
           return;
         }
 
-        setCourse(fetchedCourse);
         setProgressSummary(progress);
-        sessionStorage.setItem(`player_course_${slug}`, JSON.stringify(fetchedCourse));
         sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(progress));
         setLoading(false);
       } catch (err) {
@@ -308,13 +321,22 @@ export default function StudentPlayerPage() {
       if (res.ok) {
         setLessonProgress(p => ({ ...p, completed: true }));
         sessionStorage.setItem(`player_lesson_progress_${activeLesson.id}`, JSON.stringify({ completed: true, watch_seconds: lessonProgress.watch_seconds }));
-        // Update enrollment check status
-        const enrollRes = await fetch(`/api/courses/${course.id}/enrollment-check`);
-        if (enrollRes.ok) {
-          const { progress } = await enrollRes.json();
-          setProgressSummary(progress);
-          sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(progress));
-        }
+        
+        // Optimistically update progressSummary in local state and session storage without extra API call
+        setProgressSummary(prev => {
+          const currentCompleted = prev?.completed_lessons_ids || [];
+          const updatedCompleted = currentCompleted.includes(activeLesson.id)
+            ? currentCompleted
+            : [...currentCompleted, activeLesson.id];
+          const newSummary = {
+            ...(prev || {}),
+            completed_lessons_ids: updatedCompleted,
+            lessons_completed: data.progress?.lessons_completed ?? ((prev?.lessons_completed || 0) + 1),
+            percent_complete: data.progress?.percent_complete ?? prev?.percent_complete ?? 0
+          };
+          sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(newSummary));
+          return newSummary;
+        });
 
         // Auto-navigate to next item
         const { next } = getNavigation();
@@ -399,7 +421,7 @@ export default function StudentPlayerPage() {
         {/* Sidebar */}
         <div className="outline-sidebar" style={{ ...styles.sidebar, display: sidebarOpen ? 'flex' : 'none' }}>
         <div style={styles.sidebarHeader}>
-          <Link href="/dashboard" style={styles.backLink}>
+          <Link href="/dashboard" prefetch={false} style={styles.backLink}>
             <ArrowLeft size={14} /> Student Dashboard
           </Link>
           <h2 style={styles.sidebarCourseTitle}>{course?.title}</h2>
@@ -484,6 +506,7 @@ export default function StudentPlayerPage() {
                             <Link
                               key={item.id}
                               href={isLocked ? '#' : `/courses/${slug}/learn/${item.id}`}
+                              prefetch={false}
                               onClick={(e) => {
                                 if (isLocked) {
                                   e.preventDefault();
@@ -522,6 +545,7 @@ export default function StudentPlayerPage() {
                             <Link
                               key={item.id}
                               href={isLocked ? '#' : `/courses/${slug}/quiz/${item.id}`}
+                              prefetch={false}
                               onClick={(e) => {
                                 if (isLocked) {
                                   e.preventDefault();
@@ -567,7 +591,7 @@ export default function StudentPlayerPage() {
             <Award size={24} color="#FF9F1C" />
             <div>
               <div style={styles.certHeading}>Certificate Earned!</div>
-              <Link href="/certificates" style={styles.certLink}>
+              <Link href="/certificates" prefetch={false} style={styles.certLink}>
                 View Certificate <ChevronRight size={14} />
               </Link>
             </div>

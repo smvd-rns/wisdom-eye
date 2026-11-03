@@ -10,15 +10,44 @@ export default function LearnIndexPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Check if we can fast-redirect from session cache
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedProg = sessionStorage.getItem(`player_progress_summary_${slug}`);
+        if (cachedProg) {
+          const parsed = JSON.parse(cachedProg);
+          if (parsed?.last_lesson_id) {
+            router.replace(`/courses/${slug}/learn/${parsed.last_lesson_id}`);
+            return;
+          }
+        }
+      } catch (e) {}
+    }
+
     const checkEnrollmentAndRedirect = async () => {
       try {
-        // 1. Fetch course details by slug
-        const courseRes = await fetch(`/api/courses/by-slug/${slug}`);
-        if (!courseRes.ok) {
-          setError('Course not found');
-          return;
+        let course = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const cachedCourse = sessionStorage.getItem(`player_course_${slug}`);
+            if (cachedCourse) course = JSON.parse(cachedCourse);
+          } catch (e) {}
         }
-        const { course } = await courseRes.json();
+
+        // 1. Fetch course details by slug if not cached
+        if (!course) {
+          const courseRes = await fetch(`/api/courses/by-slug/${slug}`);
+          if (!courseRes.ok) {
+            setError('Course not found');
+            return;
+          }
+          const data = await courseRes.json();
+          course = data.course;
+          if (course && typeof window !== 'undefined') {
+            sessionStorage.setItem(`player_course_${slug}`, JSON.stringify(course));
+          }
+        }
+
         if (!course) {
           setError('Course not found');
           return;
@@ -41,6 +70,10 @@ export default function LearnIndexPage() {
           // Redirect to landing page if not enrolled
           router.push(`/courses/${slug}`);
           return;
+        }
+
+        if (typeof window !== 'undefined' && progress) {
+          sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(progress));
         }
 
         // 3. Determine redirect lesson

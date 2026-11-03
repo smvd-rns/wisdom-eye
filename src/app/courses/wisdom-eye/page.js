@@ -156,7 +156,7 @@ export default function WisdomEyeLandingPage() {
       {/* 1. Header / Navbar */}
       <header className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-          <Link href="/" className="logo">
+          <Link href="/" prefetch={false} className="logo">
             <div className="logo-icon">👁</div>
             <span>Wisdom Eye</span>
           </Link>
@@ -169,6 +169,7 @@ export default function WisdomEyeLandingPage() {
               <li>
                 <Link 
                   href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
+                  prefetch={false}
                   className="btn btn-primary" 
                   style={{ padding: '10px 22px', fontSize: '14px' }}
                 >
@@ -178,13 +179,14 @@ export default function WisdomEyeLandingPage() {
             ) : (
               <>
                 <li>
-                  <Link href="/login" className="nav-link" style={{ fontWeight: '700', color: 'var(--primary)', marginRight: '4px' }}>
+                  <Link href="/login" prefetch={false} className="nav-link" style={{ fontWeight: '700', color: 'var(--primary)', marginRight: '4px' }}>
                     Sign In
                   </Link>
                 </li>
                 <li>
                   <Link 
                     href="/signup" 
+                    prefetch={false}
                     className="btn btn-secondary" 
                     style={{ padding: '10px 20px', fontSize: '14px', border: '1.5px solid var(--primary)', marginRight: '4px' }}
                   >
@@ -217,15 +219,15 @@ export default function WisdomEyeLandingPage() {
                   Register for Course @ ₹200
                 </button>
                 {user ? (
-                  <Link href={user.role === 'student' ? '/dashboard' : '/lms-admin'} className="btn btn-secondary" style={{ padding: '16px 32px' }}>
+                  <Link href={user.role === 'student' ? '/dashboard' : '/lms-admin'} prefetch={false} className="btn btn-secondary" style={{ padding: '16px 32px' }}>
                     Go to Dashboard
                   </Link>
                 ) : (
                   <>
-                    <Link href="/login" className="btn btn-secondary" style={{ padding: '16px 32px' }}>
+                    <Link href="/login" prefetch={false} className="btn btn-secondary" style={{ padding: '16px 32px' }}>
                       Sign In
                     </Link>
-                    <Link href="/signup" className="btn btn-secondary" style={{ padding: '16px 32px', backgroundColor: 'var(--primary)', color: 'white' }}>
+                    <Link href="/signup" prefetch={false} className="btn btn-secondary" style={{ padding: '16px 32px', backgroundColor: 'var(--primary)', color: 'white' }}>
                       Sign Up Free
                     </Link>
                   </>
@@ -591,24 +593,24 @@ export default function WisdomEyeLandingPage() {
                 <li><a href="#about" className="footer-link">Course Details</a></li>
                 <li><a href="#syllabus" className="footer-link">Syllabus Accordion</a></li>
                 <li><a href="#materials" className="footer-link">Physical Books</a></li>
-                <li><Link href="/track" className="footer-link" style={{ color: 'var(--secondary)', fontWeight: '700' }}>Track Your Order 🚚</Link></li>
+                <li><Link href="/track" prefetch={false} className="footer-link" style={{ color: 'var(--secondary)', fontWeight: '700' }}>Track Your Order 🚚</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="footer-title">Payment Policies</h4>
               <ul className="footer-links">
-                <li><Link href="/terms" className="footer-link">Terms & Conditions</Link></li>
-                <li><Link href="/privacy" className="footer-link">Privacy Policy</Link></li>
-                <li><Link href="/refund-policy" className="footer-link">Refund & Cancellation</Link></li>
-                <li><Link href="/shipping-policy" className="footer-link">Shipping & Delivery</Link></li>
+                <li><Link href="/terms" prefetch={false} className="footer-link">Terms & Conditions</Link></li>
+                <li><Link href="/privacy" prefetch={false} className="footer-link">Privacy Policy</Link></li>
+                <li><Link href="/refund-policy" prefetch={false} className="footer-link">Refund & Cancellation</Link></li>
+                <li><Link href="/shipping-policy" prefetch={false} className="footer-link">Shipping & Delivery</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="footer-title">Contact Us</h4>
               <ul className="footer-links">
-                <li><Link href="/contact" className="footer-link">Support Contact</Link></li>
+                <li><Link href="/contact" prefetch={false} className="footer-link">Support Contact</Link></li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255, 255, 255, 0.6)' }}>
                   <Mail size={14} /> manager@voicepune.com
                 </li>
@@ -622,7 +624,7 @@ export default function WisdomEyeLandingPage() {
           <div className="footer-bottom">
             <p>&copy; {new Date().getFullYear()} Wisdom Eye / VOICE Publication. All rights reserved.</p>
             <div style={{ display: 'flex', gap: '16px' }}>
-              <Link href="/admin" style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.4)' }} className="footer-link">
+              <Link href="/admin" prefetch={false} style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.4)' }} className="footer-link">
                 Staff Dashboard Portal
               </Link>
             </div>

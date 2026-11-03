@@ -82,60 +82,73 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: 'Failed to update lesson progress' }, { status: 500 });
   }
 
-  // 3.5. Update Daily Streak
-  try {
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('current_streak, last_active_date')
-      .eq('user_id', session.userId)
-      .single();
+  // 4. Concurrently run Streak check, Total lessons count, Completed lessons count, and Existing progress query
+  const streakPromise = (async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('current_streak, last_active_date')
+        .eq('user_id', session.userId)
+        .maybeSingle();
 
-    if (profile) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      const lastActiveStr = profile.last_active_date || null;
-      let newStreak = parseInt(profile.current_streak) || 0;
-      let didUpdate = false;
+      if (profile) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const lastActiveStr = profile.last_active_date || null;
+        let newStreak = parseInt(profile.current_streak) || 0;
+        let didUpdate = false;
 
-      if (lastActiveStr !== todayStr) {
-        if (lastActiveStr === yesterdayStr) {
-          newStreak += 1;
-        } else {
-          newStreak = 1;
+        if (lastActiveStr !== todayStr) {
+          if (lastActiveStr === yesterdayStr) {
+            newStreak += 1;
+          } else {
+            newStreak = 1;
+          }
+          didUpdate = true;
         }
-        didUpdate = true;
-      }
 
-      if (didUpdate) {
-        await supabase
-          .from('user_profiles')
-          .update({ current_streak: newStreak, last_active_date: todayStr })
-          .eq('user_id', session.userId);
+        if (didUpdate) {
+          await supabase
+            .from('user_profiles')
+            .update({ current_streak: newStreak, last_active_date: todayStr })
+            .eq('user_id', session.userId);
+        }
       }
+    } catch (err) {
+      console.error('Streak update failed inside progress log:', err);
     }
-  } catch (err) {
-    console.error('Streak update failed inside progress log:', err);
-  }
+  })();
 
-  // 4. Calculate total lessons in course
-  const { count: totalLessons, error: countError } = await supabase
-    .from('lessons')
-    .select('*', { count: 'exact', head: true })
-    .eq('course_id', courseId);
+  const [
+    { count: totalLessons, error: countError },
+    { count: completedLessons, error: completedCountError },
+    { data: existingProgress },
+    _streakResult
+  ] = await Promise.all([
+    supabase
+      .from('lessons')
+      .select('*', { count: 'exact', head: true })
+      .eq('course_id', courseId),
+    supabase
+      .from('lesson_progress')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', session.userId)
+      .eq('course_id', courseId)
+      .eq('completed', true),
+    supabase
+      .from('course_progress')
+      .select('certificate_issued, certificate_issued_at, completed_at')
+      .eq('user_id', session.userId)
+      .eq('course_id', courseId)
+      .maybeSingle(),
+    streakPromise
+  ]);
 
   if (countError) {
     return NextResponse.json({ error: 'Failed to count lessons' }, { status: 500 });
   }
-
-  // 5. Calculate completed lessons in course
-  const { count: completedLessons, error: completedCountError } = await supabase
-    .from('lesson_progress')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', session.userId)
-    .eq('course_id', courseId)
-    .eq('completed', true);
 
   if (completedCountError) {
     return NextResponse.json({ error: 'Failed to count completed lessons' }, { status: 500 });
@@ -144,15 +157,7 @@ export async function POST(req, { params }) {
   const percentComplete = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
   const isFinished = percentComplete >= 100;
 
-  // 6. Check existing course progress to preserve certificate_issued values
-  const { data: existingProgress } = await supabase
-    .from('course_progress')
-    .select('certificate_issued, certificate_issued_at, completed_at')
-    .eq('user_id', session.userId)
-    .eq('course_id', courseId)
-    .single();
-
-  // 7. Upsert course progress
+  // 5. Upsert course progress
   const completedAt = isFinished ? (existingProgress?.completed_at || now) : null;
 
   const { error: progressError } = await supabase
