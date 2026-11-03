@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, Loader2, BookOpen } from 'lucide-react';
@@ -23,7 +23,11 @@ function LoginForm() {
   });
 
   // Load tenant name dynamically from current domain settings context
-  useState(() => {
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__ && window.__TENANT_DATA__.name) {
+      setTenantName(window.__TENANT_DATA__.name);
+      return;
+    }
     const fetchBranding = async () => {
       try {
         const res = await fetch('/api/tenant/metadata');

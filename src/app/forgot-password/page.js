@@ -17,6 +17,10 @@ export default function ForgotPasswordPage() {
   });
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.__TENANT_DATA__ && window.__TENANT_DATA__.name) {
+      setTenantName(window.__TENANT_DATA__.name);
+      return;
+    }
     const fetchBranding = async () => {
       try {
         const res = await fetch('/api/tenant/metadata');
