@@ -5,7 +5,12 @@ import { supabase } from '@/lib/supabase';
 export async function GET(req) {
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
+    return NextResponse.json({ authenticated: false }, { 
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store'
+      }
+    });
   }
 
   // Resolve active tenant

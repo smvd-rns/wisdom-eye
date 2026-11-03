@@ -32,12 +32,18 @@ export default function Footer() {
 
     const loadNavLinks = async () => {
       try {
+        const cached = typeof window !== 'undefined' ? sessionStorage.getItem('nav_links') : null;
+        if (cached) {
+          setNavLinks(JSON.parse(cached));
+          return;
+        }
         const res = await fetch('/api/site-pages/navigation');
         if (res.ok) {
           const data = await res.json();
           // Filter to only visible links
           const visible = (data.links || []).filter(l => l.is_visible !== false);
           setNavLinks(visible);
+          sessionStorage.setItem('nav_links', JSON.stringify(visible));
         }
       } catch (err) {
         console.error('Failed to load footer navigation links', err);

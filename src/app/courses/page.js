@@ -115,6 +115,9 @@ export default function CoursesPage() {
   useEffect(() => {
     const fetchEnrollments = async () => {
       try {
+        const cachedUser = typeof window !== 'undefined' ? sessionStorage.getItem('auth_me') : null;
+        const isAuth = cachedUser ? JSON.parse(cachedUser)?.authenticated : false;
+        if (!isAuth) return;
         const res = await fetch('/api/student/enrollments');
         if (res.ok) {
           const data = await res.json();

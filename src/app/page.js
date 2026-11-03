@@ -282,6 +282,10 @@ export default function GeneralHomePage() {
   useEffect(() => {
     async function loadHomepage() {
       const slug = getTenantSlug();
+      if (typeof window !== 'undefined' && (sessionStorage.getItem('homepage_site_page_' + slug) || sessionStorage.getItem('homepage_config_' + slug))) {
+        setPageLoading(false);
+        return;
+      }
       try {
         const pageRes = await fetch('/api/site-pages/%2F'); // slug: '/'
         if (pageRes.ok) {
@@ -643,6 +647,9 @@ export default function GeneralHomePage() {
   useEffect(() => {
     const fetchEnrollments = async () => {
       try {
+        const cachedUser = typeof window !== 'undefined' ? sessionStorage.getItem('auth_me') : null;
+        const isAuth = cachedUser ? JSON.parse(cachedUser)?.authenticated : false;
+        if (!isAuth) return;
         const res = await fetch('/api/student/enrollments');
         if (res.ok) {
           const data = await res.json();

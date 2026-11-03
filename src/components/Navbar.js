@@ -67,8 +67,9 @@ export default function Navbar({ onlyBottom = false }) {
           if (data.authenticated) {
             setUser(data.user);
           }
-          // Cache both authenticated and unauthenticated state
           sessionStorage.setItem('auth_me', JSON.stringify(data));
+        } else {
+          sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: false }));
         }
       } catch (err) {
         console.error('Navbar user fetch failed:', err);

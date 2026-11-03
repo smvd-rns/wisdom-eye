@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 
 export function middleware(request) {
-  const hostname = request.headers.get('host') || '';
   const url = new URL(request.url);
   const tenantParam = url.searchParams.get('tenant');
-  
-  // Create a new headers object so we can pass host context downstream
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-tenant-host', hostname);
-
-  // Read existing tenant cookie
   const tenantCookie = request.cookies.get('x-tenant-slug')?.value;
+
+  // Fast path: if no custom tenant override, don't modify headers so Vercel can cache at Edge
+  if (!tenantParam && !tenantCookie) {
+    return NextResponse.next();
+  }
 
   // Determine active tenant slug override
   let activeTenantSlug = '';
@@ -20,6 +18,7 @@ export function middleware(request) {
     activeTenantSlug = tenantCookie;
   }
 
+  const requestHeaders = new Headers(request.headers);
   if (activeTenantSlug) {
     requestHeaders.set('x-tenant-slug', activeTenantSlug);
   }
