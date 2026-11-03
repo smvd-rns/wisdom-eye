@@ -1,8 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { getSession } from '@/lib/session';
 
-export const dynamic = 'force-dynamic';
-
 // GET /api/site-pages/navigation — list all navigation links
 export async function GET(req) {
   try {
@@ -22,11 +20,11 @@ export async function GET(req) {
           { label: 'Home', url: '/', is_visible: true, order_index: 1 },
           { label: 'Courses', url: '/courses', is_visible: true, order_index: 2 },
         ]
-      }, { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' } });
+      }, { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } });
     }
 
     return Response.json({ links: data || [] }, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
     });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });

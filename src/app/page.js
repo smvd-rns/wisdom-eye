@@ -495,14 +495,14 @@ export default function GeneralHomePage() {
               <img src="https://cdn.shopify.com/s/files/1/0614/8639/9543/files/WisdomEye-cover.jpg?v=1780304483" alt="Wisdom Eye" style={styles.featuredImage} />
               <h3 style={styles.featuredCardTitle}>Wisdom Eye</h3>
               <p style={styles.featuredCardDesc}>Laying the foundation for character and personal leadership success.</p>
-              <Link href="/books" style={styles.featuredCta}>View All Books <ExternalLink size={14} /></Link>
+              <Link href="/books" prefetch={false} style={styles.featuredCta}>View All Books <ExternalLink size={14} /></Link>
             </div>
             <div style={styles.featuredCard}>
               <span style={styles.featuredTag}>Scripture Academy</span>
               <img src="https://gaurangadarshandas.com/images/courses/8aab8f0c77c546568fd0c9c430ef6547_dw6z4v.png" alt="Wisdom Eye Course" style={styles.featuredImage} />
               <h3 style={styles.featuredCardTitle}>Certified Courses</h3>
               <p style={styles.featuredCardDesc}>Auto-graded quizzes, certification, and discussions under the guidance of Radheshyam Das.</p>
-              <Link href="/courses" style={styles.featuredCta}>Explore Academy <ChevronRight size={14} /></Link>
+              <Link href="/courses" prefetch={false} style={styles.featuredCta}>Explore Academy <ChevronRight size={14} /></Link>
             </div>
             <div style={styles.featuredCard}>
               <span style={styles.featuredTag}>Daily Reading</span>
@@ -511,7 +511,7 @@ export default function GeneralHomePage() {
               </div>
               <h3 style={styles.featuredCardTitle}>Daily Reading Wisdom</h3>
               <p style={styles.featuredCardDesc}>Start your day with spiritual inspiration and logical insights from timeless scriptures.</p>
-              <Link href="/daily-reading" style={styles.featuredCta}>Read Daily Verse <ChevronRight size={14} /></Link>
+              <Link href="/daily-reading" prefetch={false} style={styles.featuredCta}>Read Daily Verse <ChevronRight size={14} /></Link>
             </div>
           </div>
         </div>
@@ -530,7 +530,7 @@ export default function GeneralHomePage() {
               <div style={styles.divider} />
               <p style={styles.aboutText}><strong>Radheshyam Das</strong> is an IIT Mumbai Topper who dedicated his life as a full-time monk, youth educator, and author. Born in a devout family near Madurai, his childhood was fascinated by Vedic chants and philosophical classics.</p>
               <p style={styles.aboutText}>After top ranking at IIT Mumbai, working as a Senior Research Fellow and mechanical engineer at top companies, he took up the role of a celibate monk. He designed the DYS (Discover Your Self) and GAME (Gita for All Made Easy) course structures which are taught across leading universities.</p>
-              <Link href="/about" style={styles.heroBtnPrimary}>Read Full Biography <ArrowRight size={16} /></Link>
+              <Link href="/about" prefetch={false} style={styles.heroBtnPrimary}>Read Full Biography <ArrowRight size={16} /></Link>
             </div>
             <div style={styles.aboutVisualContent}>
               <div style={styles.imageCardDecoration} />
@@ -551,7 +551,7 @@ export default function GeneralHomePage() {
               <span style={styles.sectionLabelLight}>Featured Literature</span>
               <h2 style={styles.sectionTitleLight}>Radheshyam Das Books</h2>
             </div>
-            <Link href="/books" style={{ ...styles.viewAllBtn, whiteSpace: 'nowrap' }}>View All Books <ChevronRight size={16} /></Link>
+            <Link href="/books" prefetch={false} style={{ ...styles.viewAllBtn, whiteSpace: 'nowrap' }}>View All Books <ChevronRight size={16} /></Link>
           </div>
           <div ref={booksScrollRef} className="books-scroll-container" style={styles.booksGrid}>
             {FEATURED_BOOKS_LIVE.concat(FEATURED_BOOKS_LIVE).map((book, idx) => (

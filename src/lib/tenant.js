@@ -1,8 +1,46 @@
+import { unstable_cache } from 'next/cache';
 import { supabase } from './supabase';
 
 // In-memory cache for organization settings to prevent DB overhead
 const tenantCache = new Map();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+// Persistent Next.js Data Cache lookups
+const getOrgBySlugCached = unstable_cache(
+  async (slug) => {
+    try {
+      const { data } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('slug', slug)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    } catch {
+      return null;
+    }
+  },
+  ['org-by-slug'],
+  { revalidate: 3600, tags: ['organizations'] }
+);
+
+const getOrgByHostCached = unstable_cache(
+  async (cleanHost) => {
+    try {
+      const { data } = await supabase
+        .from('organizations')
+        .select('*')
+        .or(`custom_domain.eq.${cleanHost},slug.eq.${cleanHost.split('.')[0]}`)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    } catch {
+      return null;
+    }
+  },
+  ['org-by-host'],
+  { revalidate: 3600, tags: ['organizations'] }
+);
 
 /**
  * Resolves the active organization based on the request's hostname.
@@ -26,7 +64,7 @@ export async function getActiveTenant(req) {
   const cleanHost = host.split(':')[0].toLowerCase();
   const cacheKey = tenantSlug ? `slug:${tenantSlug}` : cleanHost;
 
-  // 2. Check cache first
+  // 2. Check L1 in-memory cache first
   const cached = tenantCache.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
     return cached.data;
@@ -37,44 +75,16 @@ export async function getActiveTenant(req) {
 
     // Prioritize slug override if provided (useful for vercel.app/local testing)
     if (tenantSlug) {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('slug', tenantSlug)
-        .limit(1)
-        .maybeSingle();
-
-      if (!error && data) {
-        org = data;
-      }
+      org = await getOrgBySlugCached(tenantSlug);
     }
 
     if (!org && cleanHost && cleanHost !== 'localhost' && cleanHost !== '127.0.0.1') {
-      // Look up by custom domain or subdomain slug
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .or(`custom_domain.eq.${cleanHost},slug.eq.${cleanHost.split('.')[0]}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (!error && data) {
-        org = data;
-      }
+      org = await getOrgByHostCached(cleanHost);
     }
 
     // 3. Fallback to default organization ('wisdom-eye')
     if (!org) {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('slug', 'wisdom-eye')
-        .limit(1)
-        .maybeSingle();
-
-      if (!error && data) {
-        org = data;
-      }
+      org = await getOrgBySlugCached('wisdom-eye');
     }
 
     if (org) {

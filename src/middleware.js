@@ -48,6 +48,6 @@ export function middleware(request) {
 // Enable middleware for all routes except api, static files, images, icons, and fonts
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|json)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|json|txt|xml)$).*)',
   ],
 };

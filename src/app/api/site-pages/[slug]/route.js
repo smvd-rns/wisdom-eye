@@ -1,8 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { getSession } from '@/lib/session';
 
-export const dynamic = 'force-dynamic';
-
 // GET /api/site-pages/[slug] — public read, used by the page renderer
 export async function GET(req, { params }) {
   try {
@@ -20,18 +18,24 @@ export async function GET(req, { params }) {
       .single();
 
     if (error || !data) {
-      return Response.json({ error: 'Page not found' }, { status: 404 });
+      return Response.json({ error: 'Page not found' }, { 
+        status: 404,
+        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+      });
     }
 
     if (!data.is_published) {
       const session = await getSession();
       if (!session || !['superadmin', 'admin', 'course_builder'].includes(session.role)) {
-        return Response.json({ error: 'Page not found' }, { status: 404 });
+        return Response.json({ error: 'Page not found' }, { 
+          status: 404,
+          headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+        });
       }
     }
 
     return Response.json({ page: data }, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
     });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });

@@ -68,15 +68,15 @@ export default function Footer() {
             <ul style={styles.footerLinks}>
               {navLinks.length > 0 ? (
                 navLinks.map((link, idx) => (
-                  <li key={idx}><Link href={link.url} style={styles.footerLink}>{link.label}</Link></li>
+                  <li key={idx}><Link href={link.url} prefetch={false} style={styles.footerLink}>{link.label}</Link></li>
                 ))
               ) : (
                 <>
-                  <li><Link href="/about" style={styles.footerLink}>About</Link></li>
-                  <li><Link href="/books" style={styles.footerLink}>Books Store</Link></li>
-                  <li><Link href="/courses" style={styles.footerLink}>Scripture Academy</Link></li>
-                  <li><Link href="/media" style={styles.footerLink}>Media Library</Link></li>
-                  <li><Link href="/daily-reading" style={styles.footerLink}>Daily Reading</Link></li>
+                  <li><Link href="/about" prefetch={false} style={styles.footerLink}>About</Link></li>
+                  <li><Link href="/books" prefetch={false} style={styles.footerLink}>Books Store</Link></li>
+                  <li><Link href="/courses" prefetch={false} style={styles.footerLink}>Scripture Academy</Link></li>
+                  <li><Link href="/media" prefetch={false} style={styles.footerLink}>Media Library</Link></li>
+                  <li><Link href="/daily-reading" prefetch={false} style={styles.footerLink}>Daily Reading</Link></li>
                 </>
               )}
             </ul>
@@ -85,9 +85,9 @@ export default function Footer() {
           <div>
             <h4 style={styles.footerSectionTitle}>Policies</h4>
             <ul style={styles.footerLinks}>
-              <li><Link href="/terms" style={styles.footerLink}>Terms & Conditions</Link></li>
-              <li><Link href="/privacy" style={styles.footerLink}>Privacy Policy</Link></li>
-              <li><Link href="/refund-policy" style={styles.footerLink}>Refund Policy</Link></li>
+              <li><Link href="/terms" prefetch={false} style={styles.footerLink}>Terms & Conditions</Link></li>
+              <li><Link href="/privacy" prefetch={false} style={styles.footerLink}>Privacy Policy</Link></li>
+              <li><Link href="/refund-policy" prefetch={false} style={styles.footerLink}>Refund Policy</Link></li>
             </ul>
           </div>
 

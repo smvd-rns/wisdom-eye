@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-export const dynamic = 'force-dynamic';
-
 // GET /api/packages — public list of published packages with associated courses
 export async function GET(req) {
   try {
@@ -24,7 +22,7 @@ export async function GET(req) {
 
     if (!rawPackages || rawPackages.length === 0) {
       return NextResponse.json({ packages: [] }, {
-        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+        headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
       });
     }
 
@@ -59,7 +57,7 @@ export async function GET(req) {
     });
 
     return NextResponse.json({ packages: packagesWithCourses }, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
     });
   } catch (err) {
     console.error('Fetch packages exception:', err);

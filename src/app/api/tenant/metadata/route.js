@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getSession } from '@/lib/session';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(req) {
   try {
     const { getActiveTenant } = await import('@/lib/tenant');
@@ -18,7 +16,7 @@ export async function GET(req) {
         email: 'manager@voicepune.com',
         phone: '+91 8605036000'
       });
-      response.headers.set('Cache-Control', 'public, max-age=600, s-maxage=600, stale-while-revalidate=60');
+      response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
       return response;
     }
 
@@ -43,7 +41,7 @@ export async function GET(req) {
       instagram_url: org.instagram_url || 'https://instagram.com',
       linkedin_url: org.linkedin_url || 'https://linkedin.com'
     });
-    response.headers.set('Cache-Control', 'public, max-age=600, s-maxage=600, stale-while-revalidate=60');
+    response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
     return response;
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });

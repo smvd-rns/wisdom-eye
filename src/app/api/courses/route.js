@@ -26,7 +26,7 @@ export async function GET(req) {
   if (error) return NextResponse.json({ error: 'Failed to fetch courses.' }, { status: 500 });
   // Only cache unfiltered lists; filtered lists (search/category) bypass CDN
   const cacheHeader = (!category && !search)
-    ? { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60' }
+    ? { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
     : { 'Cache-Control': 'no-store' };
   return NextResponse.json({ courses: data || [] }, { headers: cacheHeader });
 }

@@ -17,21 +17,25 @@ export default function DynamicSitePage() {
   
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     async function loadPage() {
       try {
         const res = await fetch(`/api/site-pages/${encodeURIComponent(rawSlug)}`);
         if (!res.ok) {
-          // If page not found, redirect to home or 404
-          router.push('/');
+          setNotFound(true);
           return;
         }
         const data = await res.json();
-        setPage(data.page);
+        if (data && data.page) {
+          setPage(data.page);
+        } else {
+          setNotFound(true);
+        }
       } catch (err) {
         console.error(err);
-        router.push('/');
+        setNotFound(true);
       } finally {
         setLoading(false);
       }
@@ -48,7 +52,37 @@ export default function DynamicSitePage() {
     );
   }
 
-  if (!page) return null;
+  if (notFound || !page) {
+    return (
+      <div style={{ background: '#f5f3eb', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Navbar />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '72px', fontWeight: '800', color: '#1A1B4B', margin: '0 0 16px 0' }}>404</h1>
+          <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#333', margin: '0 0 12px 0' }}>Page Not Found</h2>
+          <p style={{ fontSize: '16px', color: '#666', maxWidth: '460px', margin: '0 0 24px 0' }}>
+            The page you are looking for does not exist, has been removed, or is temporarily unavailable.
+          </p>
+          <a
+            href="/"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '12px 24px',
+              backgroundColor: '#FF9F1C',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: '600',
+              textDecoration: 'none',
+              boxShadow: '0 4px 12px rgba(255, 159, 28, 0.3)'
+            }}
+          >
+            Back to Home
+          </a>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: '#f5f3eb', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

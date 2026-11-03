@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /lms-admin/
+Disallow: /dashboard/
+Disallow: /profile/
+Disallow: /_next/
+
+# Prevent bots from aggressive crawling
+Crawl-delay: 10
+

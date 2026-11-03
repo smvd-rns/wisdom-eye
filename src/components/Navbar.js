@@ -247,7 +247,7 @@ export default function Navbar({ onlyBottom = false }) {
           backdropFilter: 'blur(10px)',
         }}>
           <div style={styles.navContainer}>
-            <Link href="/" style={styles.logo}>
+            <Link href="/" prefetch={false} style={styles.logo}>
               <div style={styles.logoTextContainer}>
                 <span style={styles.logoText}>{tenantDetails.name}</span>
                 <span style={styles.logoSubtext}>{tenantDetails.slogan}</span>
@@ -256,7 +256,7 @@ export default function Navbar({ onlyBottom = false }) {
             
             <nav className="desktop-links" style={styles.navLinks}>
               {visibleLinks.map((link, idx) => (
-                <Link key={idx} href={link.url} style={styles.navLink}>{link.label}</Link>
+                <Link key={idx} href={link.url} prefetch={false} style={styles.navLink}>{link.label}</Link>
               ))}
 
               {(dropdownLinks.length > 0 || (tenant.slug === 'wisdom-eye' && !user && !loadingUser) || (user && !loadingUser)) && (
@@ -272,6 +272,7 @@ export default function Navbar({ onlyBottom = false }) {
                         <Link 
                           key={idx} 
                           href={link.url} 
+                          prefetch={false}
                           onClick={() => setMoreDropdownOpen(false)} 
                           className="dropdown-item"
                         >
@@ -283,6 +284,7 @@ export default function Navbar({ onlyBottom = false }) {
                       {!loadingUser && !user && tenant.slug === 'wisdom-eye' && (
                         <Link 
                           href="/register-org" 
+                          prefetch={false}
                           onClick={() => setMoreDropdownOpen(false)} 
                           className="dropdown-item"
                           style={{ color: '#FF9F1C' }}
@@ -295,6 +297,7 @@ export default function Navbar({ onlyBottom = false }) {
                       {!loadingUser && user && (
                         <Link 
                           href="/profile" 
+                          prefetch={false}
                           onClick={() => setMoreDropdownOpen(false)} 
                           className="dropdown-item"
                         >
@@ -312,6 +315,7 @@ export default function Navbar({ onlyBottom = false }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <Link 
                     href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
+                    prefetch={false}
                     style={styles.navBtnPrimary}
                   >
                     Dashboard
@@ -319,10 +323,10 @@ export default function Navbar({ onlyBottom = false }) {
                 </div>
               ) : (
                 <div style={styles.authGroup}>
-                  <Link href="/login" style={styles.navLink}>
+                  <Link href="/login" prefetch={false} style={styles.navLink}>
                     Sign In
                   </Link>
-                  <Link href="/signup" style={styles.navBtnSecondary}>
+                  <Link href="/signup" prefetch={false} style={styles.navBtnSecondary}>
                     Sign Up
                   </Link>
                 </div>
@@ -344,7 +348,7 @@ export default function Navbar({ onlyBottom = false }) {
           else if (link.label.toLowerCase() === 'media') IconComponent = Play;
 
           return (
-            <Link key={idx} href={link.url} className={`mobile-tab-item ${pathname === link.url || (link.url !== '/' && pathname.startsWith(link.url)) ? 'active' : ''}`}>
+            <Link key={idx} href={link.url} prefetch={false} className={`mobile-tab-item ${pathname === link.url || (link.url !== '/' && pathname.startsWith(link.url)) ? 'active' : ''}`}>
               <IconComponent size={18} />
               <span>{link.label}</span>
             </Link>
@@ -353,6 +357,7 @@ export default function Navbar({ onlyBottom = false }) {
 
         <Link 
           href={user ? (user.role === 'student' ? '/dashboard' : '/lms-admin') : '/login'} 
+          prefetch={false}
           className={`mobile-tab-item ${pathname.startsWith('/dashboard') || pathname.startsWith('/lms-admin') ? 'active' : ''}`}
           style={{
             position: 'relative',
@@ -386,7 +391,7 @@ export default function Navbar({ onlyBottom = false }) {
           else if (link.label.toLowerCase() === 'media') IconComponent = Play;
 
           return (
-            <Link key={idx} href={link.url} className={`mobile-tab-item ${pathname === link.url || pathname.startsWith(link.url) ? 'active' : ''}`}>
+            <Link key={idx} href={link.url} prefetch={false} className={`mobile-tab-item ${pathname === link.url || pathname.startsWith(link.url) ? 'active' : ''}`}>
               <IconComponent size={18} />
               <span>{link.label}</span>
             </Link>
@@ -417,7 +422,7 @@ export default function Navbar({ onlyBottom = false }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Render dynamic links that overflow from the bottom tab bar (index 4+) */}
               {navLinks.slice(4).map((link, idx) => (
-                <Link key={idx} href={link.url} onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}>
+                <Link key={idx} href={link.url} prefetch={false} onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}>
                   {link.label}
                 </Link>
               ))}
@@ -430,6 +435,7 @@ export default function Navbar({ onlyBottom = false }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <Link 
                     href="/profile" 
+                    prefetch={false}
                     onClick={() => setMoreSheetOpen(false)}
                     style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}
                   >
@@ -437,6 +443,7 @@ export default function Navbar({ onlyBottom = false }) {
                   </Link>
                   <Link 
                     href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
+                    prefetch={false}
                     onClick={() => setMoreSheetOpen(false)}
                     style={{
                       background: '#FF9F1C',
@@ -455,15 +462,16 @@ export default function Navbar({ onlyBottom = false }) {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {tenant.slug === 'wisdom-eye' && (
-                    <Link href="/register-org" onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: '#FF9F1C', textDecoration: 'none', padding: '8px 0' }}>
+                    <Link href="/register-org" prefetch={false} onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: '#FF9F1C', textDecoration: 'none', padding: '8px 0' }}>
                       Register Org
                     </Link>
                   )}
-                  <Link href="/login" onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}>
+                  <Link href="/login" prefetch={false} onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}>
                     Sign In
                   </Link>
                   <Link 
                     href="/signup" 
+                    prefetch={false}
                     onClick={() => setMoreSheetOpen(false)}
                     style={{
                       background: '#FF9F1C',

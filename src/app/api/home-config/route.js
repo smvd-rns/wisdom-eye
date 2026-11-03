@@ -20,13 +20,13 @@ export async function GET(req) {
       // Return defaults for main site, empty config for other tenants
       const fallbackConfig = tenant.slug === 'wisdom-eye' ? DEFAULT_HOME_CONFIG : EMPTY_HOME_CONFIG;
       return Response.json(fallbackConfig, {
-        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+        headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
       });
     }
 
     return Response.json(data.config, {
       headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
         'X-Last-Updated': data.updated_at,
         'X-Updated-By': data.updated_by || '',
       }

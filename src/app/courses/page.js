@@ -148,7 +148,7 @@ export default function CoursesPage() {
     const cardHref = isEnrolled ? `/courses/${course.slug}/learn` : `/courses/${course.slug}`;
 
     return (
-      <Link key={course.id} href={cardHref} style={styles.card} className="course-card-item">
+      <Link key={course.id} href={cardHref} prefetch={false} style={styles.card} className="course-card-item">
         {/* Thumbnail */}
         <div style={{ ...styles.thumb, overflow: 'hidden' }}>
           {course.thumbnail_url ? (
@@ -339,7 +339,7 @@ export default function CoursesPage() {
                               <span style={styles.originalPrice}>₹{pkg.original_price.toLocaleString('en-IN')}</span>
                             )}
                           </div>
-                          <Link href={`/courses/package/${pkg.slug}`} style={{ ...styles.navBtnPrimary, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+                          <Link href={`/courses/package/${pkg.slug}`} prefetch={false} style={{ ...styles.navBtnPrimary, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
                             Buy Package <ChevronRight size={14} />
                           </Link>
                         </div>
