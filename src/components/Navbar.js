@@ -109,7 +109,7 @@ export default function Navbar({ onlyBottom = false }) {
           setTenant(data);
           setTenantDetails(data);
         }
-      } catch(e){}
+      } catch (e) { }
     };
     fetchActiveTenantDetails();
   }, []);
@@ -254,15 +254,15 @@ export default function Navbar({ onlyBottom = false }) {
                 <span style={styles.logoSubtext}>{tenantDetails.slogan}</span>
               </div>
             </Link>
-            
+
             <nav className="desktop-links" style={styles.navLinks}>
               {visibleLinks.map((link, idx) => (
                 <Link key={idx} href={link.url} prefetch={false} style={styles.navLink}>{link.label}</Link>
               ))}
 
               {(dropdownLinks.length > 0 || (tenant.slug === 'wisdom-eye' && !user && !loadingUser) || (user && !loadingUser)) && (
-                <div 
-                  className="nav-dropdown-trigger" 
+                <div
+                  className="nav-dropdown-trigger"
                   onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
                   style={{ ...styles.navLink, display: 'inline-flex', alignItems: 'center', gap: '4px', height: '40px', userSelect: 'none' }}
                 >
@@ -270,23 +270,23 @@ export default function Navbar({ onlyBottom = false }) {
                   {moreDropdownOpen && (
                     <div className="nav-dropdown-menu" onClick={(e) => e.stopPropagation()}>
                       {dropdownLinks.map((link, idx) => (
-                        <Link 
-                          key={idx} 
-                          href={link.url} 
+                        <Link
+                          key={idx}
+                          href={link.url}
                           prefetch={false}
-                          onClick={() => setMoreDropdownOpen(false)} 
+                          onClick={() => setMoreDropdownOpen(false)}
                           className="dropdown-item"
                         >
                           {link.label}
                         </Link>
                       ))}
-                      
+
                       {/* Register Org inside More dropdown when signed out on root site */}
                       {!loadingUser && !user && tenant.slug === 'wisdom-eye' && (
-                        <Link 
-                          href="/register-org" 
+                        <Link
+                          href="/register-org"
                           prefetch={false}
-                          onClick={() => setMoreDropdownOpen(false)} 
+                          onClick={() => setMoreDropdownOpen(false)}
                           className="dropdown-item"
                           style={{ color: '#FF9F1C' }}
                         >
@@ -296,10 +296,10 @@ export default function Navbar({ onlyBottom = false }) {
 
                       {/* Profile inside More dropdown when signed in */}
                       {!loadingUser && user && (
-                        <Link 
-                          href="/profile" 
+                        <Link
+                          href="/profile"
                           prefetch={false}
-                          onClick={() => setMoreDropdownOpen(false)} 
+                          onClick={() => setMoreDropdownOpen(false)}
                           className="dropdown-item"
                         >
                           Profile
@@ -309,13 +309,13 @@ export default function Navbar({ onlyBottom = false }) {
                   )}
                 </div>
               )}
-              
+
               {loadingUser ? (
                 <div style={{ width: '100px' }} />
               ) : user ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <Link 
-                    href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
+                  <Link
+                    href={user.role === 'student' ? '/dashboard' : '/lms-admin'}
                     prefetch={false}
                     style={styles.navBtnPrimary}
                   >
@@ -356,8 +356,8 @@ export default function Navbar({ onlyBottom = false }) {
           );
         })}
 
-        <Link 
-          href={user ? (user.role === 'student' ? '/dashboard' : '/lms-admin') : '/login'} 
+        <Link
+          href={user ? (user.role === 'student' ? '/dashboard' : '/lms-admin') : '/login'}
           prefetch={false}
           className={`mobile-tab-item ${pathname.startsWith('/dashboard') || pathname.startsWith('/lms-admin') ? 'active' : ''}`}
           style={{
@@ -401,8 +401,8 @@ export default function Navbar({ onlyBottom = false }) {
 
         {/* If fewer than 4 links, render placeholder/empty spacer or More button depending on list size */}
         {(navLinks.length > 4 || navLinks.length <= 2) && (
-          <div 
-            onClick={() => setMoreSheetOpen(true)} 
+          <div
+            onClick={() => setMoreSheetOpen(true)}
             className={`mobile-tab-item ${moreSheetOpen ? 'active' : ''}`}
             style={{ cursor: 'pointer' }}
           >
@@ -434,16 +434,16 @@ export default function Navbar({ onlyBottom = false }) {
                 <div style={{ height: '40px' }} />
               ) : user ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <Link 
-                    href="/profile" 
+                  <Link
+                    href="/profile"
                     prefetch={false}
                     onClick={() => setMoreSheetOpen(false)}
                     style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}
                   >
                     Profile Settings
                   </Link>
-                  <Link 
-                    href={user.role === 'student' ? '/dashboard' : '/lms-admin'} 
+                  <Link
+                    href={user.role === 'student' ? '/dashboard' : '/lms-admin'}
                     prefetch={false}
                     onClick={() => setMoreSheetOpen(false)}
                     style={{
@@ -470,8 +470,8 @@ export default function Navbar({ onlyBottom = false }) {
                   <Link href="/login" prefetch={false} onClick={() => setMoreSheetOpen(false)} style={{ fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', padding: '8px 0' }}>
                     Sign In
                   </Link>
-                  <Link 
-                    href="/signup" 
+                  <Link
+                    href="/signup"
                     prefetch={false}
                     onClick={() => setMoreSheetOpen(false)}
                     style={{
