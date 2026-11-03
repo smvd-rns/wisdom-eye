@@ -64,7 +64,7 @@ export default function StudentQuizPage() {
           try {
             const cached = sessionStorage.getItem(`player_course_${slug}`);
             if (cached) fetchedCourse = JSON.parse(cached);
-          } catch (e) {}
+          } catch (e) { }
         }
 
         if (!fetchedCourse) {
@@ -94,7 +94,7 @@ export default function StudentQuizPage() {
           try {
             const cachedProg = sessionStorage.getItem(`player_progress_summary_${slug}`);
             if (cachedProg) progressSummary = JSON.parse(cachedProg);
-          } catch (e) {}
+          } catch (e) { }
         }
 
         // Fetch student's enrollment and progress if not cached
@@ -246,7 +246,7 @@ export default function StudentQuizPage() {
         setAttempts(p => {
           const updated = [data.attempt, ...p];
           if (typeof window !== 'undefined') {
-            try { sessionStorage.setItem(`player_quiz_attempts_${quizId}`, JSON.stringify(updated)); } catch(e){}
+            try { sessionStorage.setItem(`player_quiz_attempts_${quizId}`, JSON.stringify(updated)); } catch (e) { }
           }
           return updated;
         });
@@ -263,7 +263,7 @@ export default function StudentQuizPage() {
                 sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(parsed));
               }
             }
-          } catch (e) {}
+          } catch (e) { }
         }
         // Update quiz state with the server's response which includes
         // correct_answer per question (only present when show_correct_answers=true)
@@ -312,8 +312,8 @@ export default function StudentQuizPage() {
   // Calculate score radial metrics
   const percentage = activeAttempt
     ? (activeAttempt.total_marks > 0
-        ? Math.round((activeAttempt.score / activeAttempt.total_marks) * 100)
-        : 0)
+      ? Math.round((activeAttempt.score / activeAttempt.total_marks) * 100)
+      : 0)
     : 0;
   const radius = 62;
   const circumference = 2 * Math.PI * radius;
@@ -322,417 +322,15 @@ export default function StudentQuizPage() {
     <div className="quiz-page-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#0c0a1c', position: 'relative' }}>
       <Navbar />
       <div style={{ ...styles.container, flex: 1, minHeight: 'auto' }}>
-      {/* Decorative ambient glowing backdrops */}
-      <div className="ambient-glow" />
-      <div className="ambient-glow-2" />
+        {/* Decorative ambient glowing backdrops */}
+        <div className="ambient-glow" />
+        <div className="ambient-glow-2" />
 
-      {/* Intro Screen */}
-      {quizState === 'intro' && (
-        <div className="glass-card" style={styles.introCard}>
-          {(() => {
-            // Find next and prev items in syllabus sequence
-            const allFlat = [];
-            if (course?.modules) {
-              course.modules.forEach(mod => {
-                const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
-                const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
-                const combined = [...lessons, ...quizzes].sort((a, b) => {
-                  if (a.order_index === b.order_index) return a.itemType === 'lesson' ? -1 : 1;
-                  return a.order_index - b.order_index;
-                });
-                allFlat.push(...combined);
-              });
-            }
-
-            const curIdx = allFlat.findIndex(it => it.id === quizId);
-            const prevItem = curIdx > 0 ? allFlat[curIdx - 1] : null;
-            const nextItem = curIdx < allFlat.length - 1 ? allFlat[curIdx + 1] : null;
-
-            return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {prevItem ? (
-                    <Link href={prevItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${prevItem.id}` : `/courses/${slug}/learn/${prevItem.id}`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      <ChevronLeft size={14} /> Prev
-                    </Link>
-                  ) : (
-                    <Link href={`/courses/${slug}/learn`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      <ArrowLeft size={14} /> Back to Player
-                    </Link>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {nextItem && (
-                    <Link href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      Next <ChevronRight size={14} />
-                    </Link>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
-          <h1 style={styles.title}>{quiz.title}</h1>
-          <p style={styles.description}>{quiz.description || 'Test your knowledge on this module.'}</p>
-
-          <div className="info-grid-responsive" style={styles.infoGrid}>
-            <div style={styles.infoItem}>
-              <div className="info-icon-wrapper">
-                <Clock size={20} color="#FF9F1C" />
-              </div>
-              <div>
-                <div style={styles.infoHeading}>Time Limit</div>
-                <div style={styles.infoVal}>{quiz.time_limit_mins ? `${quiz.time_limit_mins} minutes` : 'No limit'}</div>
-              </div>
-            </div>
-            <div style={styles.infoItem}>
-              <div className="info-icon-wrapper">
-                <Award size={20} color="#FF9F1C" />
-              </div>
-              <div>
-                <div style={styles.infoHeading}>Passing Score</div>
-                <div style={styles.infoVal}>{quiz.pass_score_percent}% passing grade</div>
-              </div>
-            </div>
-            <div style={styles.infoItem}>
-              <div className="info-icon-wrapper">
-                <HelpCircle size={20} color="#FF9F1C" />
-              </div>
-              <div>
-                <div style={styles.infoHeading}>Questions</div>
-                <div style={styles.infoVal}>{quiz.questions?.length || 0} questions</div>
-              </div>
-            </div>
-            <div style={styles.infoItem}>
-              <div className="info-icon-wrapper">
-                <AlertCircle size={20} color="#FF9F1C" />
-              </div>
-              <div>
-                <div style={styles.infoHeading}>Attempts</div>
-                <div style={styles.infoVal}>
-                  {attempts.length} / {quiz.max_attempts || 'unlimited'} used
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Past attempts history */}
-          <div style={styles.historySection}>
-            <h3 style={styles.historyTitle}>Your Previous Attempts</h3>
-            {attemptsLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
-                <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', color: '#FF9F1C' }} />
-              </div>
-            ) : attempts.length === 0 ? (
-              <p style={styles.noAttempts}>No attempts recorded yet.</p>
-            ) : (
-              <div style={styles.attemptsTable}>
-                {attempts.map((att, index) => (
-                  <div key={att.id} className="history-row">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={styles.attNum}>Attempt {attempts.length - index}</span>
-                      <span style={styles.attDate}>{new Date(att.submitted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                    </div>
-                    <div>
-                      <span style={{
-                        ...styles.attStatus,
-                        background: att.status === 'graded' || att.status === 'auto_graded'
-                          ? (att.passed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)')
-                          : 'rgba(245, 158, 11, 0.12)',
-                        color: att.status === 'graded' || att.status === 'auto_graded'
-                          ? (att.passed ? '#34D399' : '#F87171')
-                          : '#FBBF24',
-                        border: att.status === 'graded' || att.status === 'auto_graded'
-                          ? (att.passed ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)')
-                          : '1px solid rgba(245, 158, 11, 0.2)'
-                      }}>
-                        {att.status === 'pending_grade' ? 'Pending Grade' : att.passed ? 'PASSED' : 'FAILED'}
-                      </span>
-                    </div>
-                    <div style={styles.attScore}>
-                      <span style={{ color: '#fff', fontWeight: '800' }}>{att.score}</span>
-                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginLeft: '2px' }}>/ {att.total_marks}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={styles.actionBlock}>
-            {quiz.max_attempts && attempts.length >= quiz.max_attempts ? (
-              <button disabled style={styles.startBtnDisabled}>
-                Attempts Limit Reached
-              </button>
-            ) : (
-              <button onClick={startQuiz} className="btn-primary">
-                Start Quiz <ChevronRight size={18} />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Active Quiz Viewport */}
-      {quizState === 'active' && activeQuestion && (
-        <div className="glass-card" style={styles.activeCard}>
-          {/* Progress Bar indicator */}
-          <div style={styles.progressBarContainer}>
-            <div style={{ 
-              ...styles.progressBarFill, 
-              width: `${((currentQuestionIdx + 1) / quiz.questions.length) * 100}%` 
-            }} />
-          </div>
-
-          {/* Quiz timer & stats */}
-          <div style={styles.quizHeader}>
-            <span style={styles.questionNavProgress}>
-              Question <strong style={{ color: '#fff' }}>{currentQuestionIdx + 1}</strong> of <strong style={{ color: '#fff' }}>{quiz.questions.length}</strong>
-            </span>
-            {timeLeft !== null && (
-              <div className={`timer-pill ${timeLeft < 60 ? 'timer-danger' : ''}`}>
-                <Clock size={15} />
-                <span>{formatTime(timeLeft)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Question Text */}
-          <div style={styles.questionBody}>
-            <h2 style={styles.questionText}>{activeQuestion.question_text}</h2>
-            <span style={styles.questionMarks}>
-              {activeQuestion.marks || 1} mark{activeQuestion.marks !== 1 ? 's' : ''}
-            </span>
-
-            {/* MCQ Option Radios */}
-            {activeQuestion.type === 'mcq' && (
-              <div style={styles.optionsGrid}>
-                {activeQuestion.options?.map((opt, optIdx) => {
-                  const isSelected = answers[activeQuestion.id] === String(optIdx);
-                  return (
-                    <button
-                      key={optIdx}
-                      onClick={() => handleSelectOption(activeQuestion.id, optIdx)}
-                      className={`mcq-option ${isSelected ? 'selected' : ''}`}
-                    >
-                      <span className="option-dot" />
-                      <span>{opt}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Subjective Essay Box */}
-            {activeQuestion.type === 'subjective' && (
-              <div style={styles.subjectiveArea}>
-                <label style={styles.essayLabel}>Type your response below *</label>
-                <textarea
-                  value={answers[activeQuestion.id] || ''}
-                  onChange={(e) => handleTextChange(activeQuestion.id, e.target.value)}
-                  placeholder="Provide your answer in detail..."
-                  className="essay-textarea"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Navigation */}
-          <div style={styles.quizFooter}>
-            <button
-              onClick={() => setCurrentQuestionIdx(p => Math.max(0, p - 1))}
-              disabled={currentQuestionIdx === 0}
-              className="btn-secondary"
-            >
-              <ChevronLeft size={16} /> Back
-            </button>
-
-            {currentQuestionIdx < quiz.questions.length - 1 ? (
-              <button
-                onClick={() => setCurrentQuestionIdx(p => p + 1)}
-                className="btn-primary"
-                style={{ padding: '10px 24px' }}
-              >
-                Next <ChevronRight size={16} />
-              </button>
-            ) : (
-              <button
-                onClick={submitQuiz}
-                disabled={submitting}
-                className="btn-success"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                    Submitting...
-                  </>
-                ) : (
-                  <>Submit Test</>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Results Screen */}
-      {quizState === 'result' && activeAttempt && (
-        <div className="glass-card" style={styles.resultCard}>
-          <div style={styles.resultStatusHeader}>
-            {activeAttempt.status === 'pending_grade' ? (
-              <div style={styles.statusBlockPending}>
-                <FileText size={56} color="#FF9F1C" style={{ marginBottom: '8px', filter: 'drop-shadow(0 0 10px rgba(255, 159, 28, 0.4))' }} />
-                <h2 style={{ color: '#FF9F1C', fontSize: '26px', fontWeight: '800', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Attempt Submitted!</h2>
-                <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', margin: 0 }}>This quiz has subjective questions and is pending grading by an evaluator.</p>
-              </div>
-            ) : activeAttempt.passed ? (
-              <div style={styles.statusBlockPass}>
-                <CheckCircle2 size={56} color="#10B981" style={{ marginBottom: '8px', filter: 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.4))' }} />
-                <h2 style={{ color: '#10B981', fontSize: '26px', fontWeight: '800', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Congratulations! Passed!</h2>
-                <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', margin: 0 }}>You have successfully passed this quiz.</p>
-              </div>
-            ) : (
-              <div style={styles.statusBlockFail}>
-                <XCircle size={56} color="#EF4444" style={{ marginBottom: '8px', filter: 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.4))' }} />
-                <h2 style={{ color: '#EF4444', fontSize: '26px', fontWeight: '800', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Failed</h2>
-                <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', margin: 0 }}>You did not reach the passing score of {quiz.pass_score_percent}% for this test.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Circular Score Visualizer */}
-          {activeAttempt.status !== 'pending_grade' && (
-            <div className="score-circle-container">
-              <svg width="160" height="160" className="score-circle-svg">
-                <circle
-                  cx="80"
-                  cy="80"
-                  r={radius}
-                  className="score-circle-bg"
-                />
-                <circle
-                  cx="80"
-                  cy="80"
-                  r={radius}
-                  className={activeAttempt.passed ? "score-circle-fill-pass" : "score-circle-fill-fail"}
-                  strokeDasharray={circumference + 4}
-                  strokeDashoffset={radialOffset}
-                />
-              </svg>
-              <div className="score-circle-text">
-                <span className="score-percentage">{percentage}%</span>
-                <span className="score-label">{activeAttempt.passed ? 'PASSED' : 'FAILED'}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Scores details */}
-          <div className="info-grid-responsive" style={styles.resultsGrid}>
-            <div style={styles.resultStatCard} className="stat-card">
-              <div style={styles.statHeading}>Your Score</div>
-              <div style={styles.statVal}>{activeAttempt.score} / {activeAttempt.total_marks}</div>
-            </div>
-            <div style={styles.resultStatCard} className="stat-card">
-              <div style={styles.statHeading}>Required Passing</div>
-              <div style={styles.statVal}>{quiz.pass_score_percent}%</div>
-            </div>
-          </div>
-
-          {/* Feedback */}
-          {activeAttempt.evaluator_feedback && (
-            <div style={styles.feedbackBlock}>
-              <h4 style={styles.feedbackTitle}>Evaluator Feedback:</h4>
-              <p style={styles.feedbackText}>{activeAttempt.evaluator_feedback}</p>
-            </div>
-          )}
-
-          {/* Student Review of Answers with Explanations */}
-          {quiz.show_correct_answers && activeAttempt.status !== 'pending_grade' && quiz.questions && (
-            <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px', textAlign: 'left' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#FF9F1C', marginBottom: '16px' }}>Review Questions & Explanations</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {quiz.questions.map((q, idx) => {
-                  const studentAns = activeAttempt.answers?.[q.id];
-                  let isCorrect = false;
-                  if (q.type === 'mcq') {
-                    // Only correct if student actually answered AND it matches
-                    isCorrect = studentAns !== undefined && studentAns !== null &&
-                      String(studentAns) === String(q.correct_answer);
-                  } else if (q.type === 'mcq_multi') {
-                    // Only correct if student actually answered AND arrays match
-                    try {
-                      if (!studentAns) {
-                        isCorrect = false; // Not answered = not correct
-                      } else {
-                        const sArr = JSON.parse(studentAns).sort();
-                        const cArr = JSON.parse(q.correct_answer || '[]').sort();
-                        // Both must be non-empty and equal
-                        isCorrect = sArr.length > 0 && cArr.length > 0 &&
-                          JSON.stringify(sArr) === JSON.stringify(cArr);
-                      }
-                    } catch {
-                      isCorrect = false;
-                    }
-                  }
-
-                  return (
-                    <div key={q.id} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`, borderRadius: '12px', padding: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'rgba(255,255,255,0.4)' }}>Question {idx + 1}</span>
-                        <span style={{ fontSize: '11px', color: isCorrect ? '#10B981' : '#EF4444', fontWeight: '800', background: isCorrect ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', padding: '2px 8px', borderRadius: '4px' }}>
-                          {isCorrect ? 'CORRECT' : 'INCORRECT'}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '12px', lineHeight: 1.45 }}>{q.question_text}</p>
-                      
-                      {q.type === 'mcq' && q.options && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                          {q.options.map((opt, oIdx) => {
-                            const isSelected = String(oIdx) === String(studentAns);
-                            const isCorrectOpt = String(oIdx) === String(q.correct_answer);
-                            let borderCol = 'rgba(255,255,255,0.05)';
-                            let bgCol = 'transparent';
-                            let textCol = 'rgba(255,255,255,0.6)';
-                            
-                            if (isCorrectOpt) {
-                              borderCol = '#10B981';
-                              bgCol = 'rgba(16,185,129,0.05)';
-                              textCol = '#10B981';
-                            } else if (isSelected) {
-                              borderCol = '#EF4444';
-                              bgCol = 'rgba(239,68,68,0.05)';
-                              textCol = '#EF4444';
-                            }
-
-                            return (
-                              <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', border: `1.5px solid ${borderCol}`, background: bgCol, borderRadius: '8px', fontSize: '13px', color: textCol, fontWeight: isCorrectOpt || isSelected ? '700' : '500' }}>
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isCorrectOpt ? '#10B981' : isSelected ? '#EF4444' : 'rgba(255,255,255,0.2)' }} />
-                                <span>{opt}</span>
-                                {isCorrectOpt && <span style={{ marginLeft: 'auto', fontSize: '10px', background: 'rgba(16,185,129,0.1)', padding: '1px 6px', borderRadius: '4px' }}>Correct Option</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {q.explanation && (
-                        <div style={{ background: 'rgba(255, 159, 28, 0.05)', borderLeft: '3px solid #FF9F1C', padding: '10px 14px', borderRadius: '0 8px 8px 0', fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
-                          <strong style={{ color: '#FF9F1C', display: 'block', marginBottom: '4px', fontSize: '12px' }}>💡 Explanation:</strong>
-                          {q.explanation}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div style={{ ...styles.resultActions, display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href={`/courses/${slug}/learn`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none' }}>
-              Return to Syllabus player
-            </Link>
+        {/* Intro Screen */}
+        {quizState === 'intro' && (
+          <div className="glass-card" style={styles.introCard}>
             {(() => {
+              // Find next and prev items in syllabus sequence
               const allFlat = [];
               if (course?.modules) {
                 course.modules.forEach(mod => {
@@ -747,78 +345,480 @@ export default function StudentQuizPage() {
               }
 
               const curIdx = allFlat.findIndex(it => it.id === quizId);
+              const prevItem = curIdx > 0 ? allFlat[curIdx - 1] : null;
               const nextItem = curIdx < allFlat.length - 1 ? allFlat[curIdx + 1] : null;
 
-              if (nextItem) {
-                return (
-                  <Link
-                    href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`}
-                    prefetch={false}
-                    className="btn-primary"
-                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    Go to Next Lesson <ChevronRight size={16} />
-                  </Link>
-                );
-              }
-              return null;
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {prevItem ? (
+                      <Link href={prevItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${prevItem.id}` : `/courses/${slug}/learn/${prevItem.id}`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <ChevronLeft size={14} /> Prev
+                      </Link>
+                    ) : (
+                      <Link href={`/courses/${slug}/learn`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <ArrowLeft size={14} /> Back to Player
+                      </Link>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {nextItem && (
+                      <Link href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        Next <ChevronRight size={14} />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
             })()}
-          </div>
-        </div>
-      )}
 
-      {/* Sleek Alert Modal for locked quiz */}
-      {lockModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999, animation: 'fadeIn 0.2s ease-out'
-        }}>
+            <h1 style={styles.title}>{quiz.title}</h1>
+            <p style={styles.description}>{quiz.description || 'Test your knowledge on this module.'}</p>
+
+            <div className="info-grid-responsive" style={styles.infoGrid}>
+              <div style={styles.infoItem}>
+                <div className="info-icon-wrapper">
+                  <Clock size={20} color="#FF9F1C" />
+                </div>
+                <div>
+                  <div style={styles.infoHeading}>Time Limit</div>
+                  <div style={styles.infoVal}>{quiz.time_limit_mins ? `${quiz.time_limit_mins} minutes` : 'No limit'}</div>
+                </div>
+              </div>
+              <div style={styles.infoItem}>
+                <div className="info-icon-wrapper">
+                  <Award size={20} color="#FF9F1C" />
+                </div>
+                <div>
+                  <div style={styles.infoHeading}>Passing Score</div>
+                  <div style={styles.infoVal}>{quiz.pass_score_percent}% passing grade</div>
+                </div>
+              </div>
+              <div style={styles.infoItem}>
+                <div className="info-icon-wrapper">
+                  <HelpCircle size={20} color="#FF9F1C" />
+                </div>
+                <div>
+                  <div style={styles.infoHeading}>Questions</div>
+                  <div style={styles.infoVal}>{quiz.questions?.length || 0} questions</div>
+                </div>
+              </div>
+              <div style={styles.infoItem}>
+                <div className="info-icon-wrapper">
+                  <AlertCircle size={20} color="#FF9F1C" />
+                </div>
+                <div>
+                  <div style={styles.infoHeading}>Attempts</div>
+                  <div style={styles.infoVal}>
+                    {attempts.length} / {quiz.max_attempts || 'unlimited'} used
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Past attempts history */}
+            <div style={styles.historySection}>
+              <h3 style={styles.historyTitle}>Your Previous Attempts</h3>
+              {attemptsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
+                  <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', color: '#FF9F1C' }} />
+                </div>
+              ) : attempts.length === 0 ? (
+                <p style={styles.noAttempts}>No attempts recorded yet.</p>
+              ) : (
+                <div style={styles.attemptsTable}>
+                  {attempts.map((att, index) => (
+                    <div key={att.id} className="history-row">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={styles.attNum}>Attempt {attempts.length - index}</span>
+                        <span style={styles.attDate}>{new Date(att.submitted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+                      <div>
+                        <span style={{
+                          ...styles.attStatus,
+                          background: att.status === 'graded' || att.status === 'auto_graded'
+                            ? (att.passed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)')
+                            : 'rgba(245, 158, 11, 0.12)',
+                          color: att.status === 'graded' || att.status === 'auto_graded'
+                            ? (att.passed ? '#34D399' : '#F87171')
+                            : '#FBBF24',
+                          border: att.status === 'graded' || att.status === 'auto_graded'
+                            ? (att.passed ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)')
+                            : '1px solid rgba(245, 158, 11, 0.2)'
+                        }}>
+                          {att.status === 'pending_grade' ? 'Pending Grade' : att.passed ? 'PASSED' : 'FAILED'}
+                        </span>
+                      </div>
+                      <div style={styles.attScore}>
+                        <span style={{ color: '#fff', fontWeight: '800' }}>{att.score}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginLeft: '2px' }}>/ {att.total_marks}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={styles.actionBlock}>
+              {quiz.max_attempts && attempts.length >= quiz.max_attempts ? (
+                <button disabled style={styles.startBtnDisabled}>
+                  Attempts Limit Reached
+                </button>
+              ) : (
+                <button onClick={startQuiz} className="btn-primary">
+                  Start Quiz <ChevronRight size={18} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Active Quiz Viewport */}
+        {quizState === 'active' && activeQuestion && (
+          <div className="glass-card" style={styles.activeCard}>
+            {/* Progress Bar indicator */}
+            <div style={styles.progressBarContainer}>
+              <div style={{
+                ...styles.progressBarFill,
+                width: `${((currentQuestionIdx + 1) / quiz.questions.length) * 100}%`
+              }} />
+            </div>
+
+            {/* Quiz timer & stats */}
+            <div style={styles.quizHeader}>
+              <span style={styles.questionNavProgress}>
+                Question <strong style={{ color: '#fff' }}>{currentQuestionIdx + 1}</strong> of <strong style={{ color: '#fff' }}>{quiz.questions.length}</strong>
+              </span>
+              {timeLeft !== null && (
+                <div className={`timer-pill ${timeLeft < 60 ? 'timer-danger' : ''}`}>
+                  <Clock size={15} />
+                  <span>{formatTime(timeLeft)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Question Text */}
+            <div style={styles.questionBody}>
+              <h2 style={styles.questionText}>{activeQuestion.question_text}</h2>
+              <span style={styles.questionMarks}>
+                {activeQuestion.marks || 1} mark{activeQuestion.marks !== 1 ? 's' : ''}
+              </span>
+
+              {/* MCQ Option Radios */}
+              {activeQuestion.type === 'mcq' && (
+                <div style={styles.optionsGrid}>
+                  {activeQuestion.options?.map((opt, optIdx) => {
+                    const isSelected = answers[activeQuestion.id] === String(optIdx);
+                    return (
+                      <button
+                        key={optIdx}
+                        onClick={() => handleSelectOption(activeQuestion.id, optIdx)}
+                        className={`mcq-option ${isSelected ? 'selected' : ''}`}
+                      >
+                        <span className="option-dot" />
+                        <span>{opt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Subjective Essay Box */}
+              {activeQuestion.type === 'subjective' && (
+                <div style={styles.subjectiveArea}>
+                  <label style={styles.essayLabel}>Type your response below *</label>
+                  <textarea
+                    value={answers[activeQuestion.id] || ''}
+                    onChange={(e) => handleTextChange(activeQuestion.id, e.target.value)}
+                    placeholder="Provide your answer in detail..."
+                    className="essay-textarea"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Navigation */}
+            <div style={styles.quizFooter}>
+              <button
+                onClick={() => setCurrentQuestionIdx(p => Math.max(0, p - 1))}
+                disabled={currentQuestionIdx === 0}
+                className="btn-secondary"
+              >
+                <ChevronLeft size={16} /> Back
+              </button>
+
+              {currentQuestionIdx < quiz.questions.length - 1 ? (
+                <button
+                  onClick={() => setCurrentQuestionIdx(p => p + 1)}
+                  className="btn-primary"
+                  style={{ padding: '10px 24px' }}
+                >
+                  Next <ChevronRight size={16} />
+                </button>
+              ) : (
+                <button
+                  onClick={submitQuiz}
+                  disabled={submitting}
+                  className="btn-success"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>Submit Test</>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Results Screen */}
+        {quizState === 'result' && activeAttempt && (
+          <div className="glass-card" style={styles.resultCard}>
+            <div style={styles.resultStatusHeader}>
+              {activeAttempt.status === 'pending_grade' ? (
+                <div style={styles.statusBlockPending}>
+                  <FileText size={56} color="#FF9F1C" style={{ marginBottom: '8px', filter: 'drop-shadow(0 0 10px rgba(255, 159, 28, 0.4))' }} />
+                  <h2 style={{ color: '#FF9F1C', fontSize: '26px', fontWeight: '800', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Attempt Submitted!</h2>
+                  <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', margin: 0 }}>This quiz has subjective questions and is pending grading by an evaluator.</p>
+                </div>
+              ) : activeAttempt.passed ? (
+                <div style={styles.statusBlockPass}>
+                  <CheckCircle2 size={56} color="#10B981" style={{ marginBottom: '8px', filter: 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.4))' }} />
+                  <h2 style={{ color: '#10B981', fontSize: '26px', fontWeight: '800', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Congratulations! Passed!</h2>
+                  <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', margin: 0 }}>You have successfully passed this quiz.</p>
+                </div>
+              ) : (
+                <div style={styles.statusBlockFail}>
+                  <XCircle size={56} color="#EF4444" style={{ marginBottom: '8px', filter: 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.4))' }} />
+                  <h2 style={{ color: '#EF4444', fontSize: '26px', fontWeight: '800', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Failed</h2>
+                  <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', margin: 0 }}>You did not reach the passing score of {quiz.pass_score_percent}% for this test.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Circular Score Visualizer */}
+            {activeAttempt.status !== 'pending_grade' && (
+              <div className="score-circle-container">
+                <svg width="160" height="160" className="score-circle-svg">
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r={radius}
+                    className="score-circle-bg"
+                  />
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r={radius}
+                    className={activeAttempt.passed ? "score-circle-fill-pass" : "score-circle-fill-fail"}
+                    strokeDasharray={circumference + 4}
+                    strokeDashoffset={radialOffset}
+                  />
+                </svg>
+                <div className="score-circle-text">
+                  <span className="score-percentage">{percentage}%</span>
+                  <span className="score-label">{activeAttempt.passed ? 'PASSED' : 'FAILED'}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Scores details */}
+            <div className="info-grid-responsive" style={styles.resultsGrid}>
+              <div style={styles.resultStatCard} className="stat-card">
+                <div style={styles.statHeading}>Your Score</div>
+                <div style={styles.statVal}>{activeAttempt.score} / {activeAttempt.total_marks}</div>
+              </div>
+              <div style={styles.resultStatCard} className="stat-card">
+                <div style={styles.statHeading}>Required Passing</div>
+                <div style={styles.statVal}>{quiz.pass_score_percent}%</div>
+              </div>
+            </div>
+
+            {/* Feedback */}
+            {activeAttempt.evaluator_feedback && (
+              <div style={styles.feedbackBlock}>
+                <h4 style={styles.feedbackTitle}>Evaluator Feedback:</h4>
+                <p style={styles.feedbackText}>{activeAttempt.evaluator_feedback}</p>
+              </div>
+            )}
+
+            {/* Student Review of Answers with Explanations */}
+            {quiz.show_correct_answers && activeAttempt.status !== 'pending_grade' && quiz.questions && (
+              <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px', textAlign: 'left' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#FF9F1C', marginBottom: '16px' }}>Review Questions & Explanations</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {quiz.questions.map((q, idx) => {
+                    const studentAns = activeAttempt.answers?.[q.id];
+                    let isCorrect = false;
+                    if (q.type === 'mcq') {
+                      // Only correct if student actually answered AND it matches
+                      isCorrect = studentAns !== undefined && studentAns !== null &&
+                        String(studentAns) === String(q.correct_answer);
+                    } else if (q.type === 'mcq_multi') {
+                      // Only correct if student actually answered AND arrays match
+                      try {
+                        if (!studentAns) {
+                          isCorrect = false; // Not answered = not correct
+                        } else {
+                          const sArr = JSON.parse(studentAns).sort();
+                          const cArr = JSON.parse(q.correct_answer || '[]').sort();
+                          // Both must be non-empty and equal
+                          isCorrect = sArr.length > 0 && cArr.length > 0 &&
+                            JSON.stringify(sArr) === JSON.stringify(cArr);
+                        }
+                      } catch {
+                        isCorrect = false;
+                      }
+                    }
+
+                    return (
+                      <div key={q.id} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`, borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: 'rgba(255,255,255,0.4)' }}>Question {idx + 1}</span>
+                          <span style={{ fontSize: '11px', color: isCorrect ? '#10B981' : '#EF4444', fontWeight: '800', background: isCorrect ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', padding: '2px 8px', borderRadius: '4px' }}>
+                            {isCorrect ? 'CORRECT' : 'INCORRECT'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '12px', lineHeight: 1.45 }}>{q.question_text}</p>
+
+                        {q.type === 'mcq' && q.options && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                            {q.options.map((opt, oIdx) => {
+                              const isSelected = String(oIdx) === String(studentAns);
+                              const isCorrectOpt = String(oIdx) === String(q.correct_answer);
+                              let borderCol = 'rgba(255,255,255,0.05)';
+                              let bgCol = 'transparent';
+                              let textCol = 'rgba(255,255,255,0.6)';
+
+                              if (isCorrectOpt) {
+                                borderCol = '#10B981';
+                                bgCol = 'rgba(16,185,129,0.05)';
+                                textCol = '#10B981';
+                              } else if (isSelected) {
+                                borderCol = '#EF4444';
+                                bgCol = 'rgba(239,68,68,0.05)';
+                                textCol = '#EF4444';
+                              }
+
+                              return (
+                                <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', border: `1.5px solid ${borderCol}`, background: bgCol, borderRadius: '8px', fontSize: '13px', color: textCol, fontWeight: isCorrectOpt || isSelected ? '700' : '500' }}>
+                                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isCorrectOpt ? '#10B981' : isSelected ? '#EF4444' : 'rgba(255,255,255,0.2)' }} />
+                                  <span>{opt}</span>
+                                  {isCorrectOpt && <span style={{ marginLeft: 'auto', fontSize: '10px', background: 'rgba(16,185,129,0.1)', padding: '1px 6px', borderRadius: '4px' }}>Correct Option</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {q.explanation && (
+                          <div style={{ background: 'rgba(255, 159, 28, 0.05)', borderLeft: '3px solid #FF9F1C', padding: '10px 14px', borderRadius: '0 8px 8px 0', fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                            <strong style={{ color: '#FF9F1C', display: 'block', marginBottom: '4px', fontSize: '12px' }}>💡 Explanation:</strong>
+                            {q.explanation}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div style={{ ...styles.resultActions, display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link href={`/courses/${slug}/learn`} prefetch={false} className="btn-secondary" style={{ textDecoration: 'none' }}>
+                Return to Syllabus player
+              </Link>
+              {(() => {
+                const allFlat = [];
+                if (course?.modules) {
+                  course.modules.forEach(mod => {
+                    const lessons = (mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' }));
+                    const quizzes = (mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }));
+                    const combined = [...lessons, ...quizzes].sort((a, b) => {
+                      if (a.order_index === b.order_index) return a.itemType === 'lesson' ? -1 : 1;
+                      return a.order_index - b.order_index;
+                    });
+                    allFlat.push(...combined);
+                  });
+                }
+
+                const curIdx = allFlat.findIndex(it => it.id === quizId);
+                const nextItem = curIdx < allFlat.length - 1 ? allFlat[curIdx + 1] : null;
+
+                if (nextItem) {
+                  return (
+                    <Link
+                      href={nextItem.itemType === 'quiz' ? `/courses/${slug}/quiz/${nextItem.id}` : `/courses/${slug}/learn/${nextItem.id}`}
+                      prefetch={false}
+                      className="btn-primary"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      Go to Next Lesson <ChevronRight size={16} />
+                    </Link>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Sleek Alert Modal for locked quiz */}
+        {lockModal && (
           <div style={{
-            background: '#ffffff', borderRadius: '16px', padding: '24px',
-            maxWidth: '380px', width: '90%', textAlign: 'center',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-            animation: 'scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, animation: 'fadeIn 0.2s ease-out'
           }}>
             <div style={{
-              width: '48px', height: '48px', borderRadius: '50%',
-              backgroundColor: '#FEE2E2', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', color: '#EF4444',
-              margin: '0 auto 16px'
+              background: '#ffffff', borderRadius: '16px', padding: '24px',
+              maxWidth: '380px', width: '90%', textAlign: 'center',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+              animation: 'scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
             }}>
-              🔒
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '50%',
+                backgroundColor: '#FEE2E2', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: '#EF4444',
+                margin: '0 auto 16px'
+              }}>
+                🔒
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', fontFamily: 'Outfit, sans-serif' }}>
+                {lockModal.title}
+              </h3>
+              <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+                {lockModal.message}
+              </p>
+              <button
+                onClick={() => {
+                  if (lockModal.onClose) {
+                    lockModal.onClose();
+                  }
+                  setLockModal(null);
+                }}
+                style={{
+                  width: '100%', padding: '10px 16px', borderRadius: '10px',
+                  border: 'none', backgroundColor: '#1A1B4B',
+                  color: '#ffffff', fontSize: '13px', fontWeight: '700',
+                  cursor: 'pointer', transition: 'all 0.15s ease',
+                  fontFamily: 'Outfit, sans-serif'
+                }}
+                onMouseOver={e => e.target.style.backgroundColor = '#2E3072'}
+                onMouseOut={e => e.target.style.backgroundColor = '#1A1B4B'}
+              >
+                Okay, I understand
+              </button>
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', fontFamily: 'Outfit, sans-serif' }}>
-              {lockModal.title}
-            </h3>
-            <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.5', margin: '0 0 20px 0' }}>
-              {lockModal.message}
-            </p>
-            <button
-              onClick={() => {
-                if (lockModal.onClose) {
-                  lockModal.onClose();
-                }
-                setLockModal(null);
-              }}
-              style={{
-                width: '100%', padding: '10px 16px', borderRadius: '10px',
-                border: 'none', backgroundColor: '#1A1B4B',
-                color: '#ffffff', fontSize: '13px', fontWeight: '700',
-                cursor: 'pointer', transition: 'all 0.15s ease',
-                fontFamily: 'Outfit, sans-serif'
-              }}
-              onMouseOver={e => e.target.style.backgroundColor = '#2E3072'}
-              onMouseOut={e => e.target.style.backgroundColor = '#1A1B4B'}
-            >
-              Okay, I understand
-            </button>
           </div>
-        </div>
-      )}
+        )}
       </div>
-      
+
       {/* Global CSS overrides for micro-interactions and ambient depth */}
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -1188,12 +1188,12 @@ const styles = {
     display: 'flex',
     flexDirection: 'column'
   },
-  title: { 
-    fontSize: '28px', 
-    fontWeight: '800', 
-    marginBottom: '12px', 
-    background: 'linear-gradient(135deg, #fff 60%, #cbd5e1 100%)', 
-    WebkitBackgroundClip: 'text', 
+  title: {
+    fontSize: '28px',
+    fontWeight: '800',
+    marginBottom: '12px',
+    background: 'linear-gradient(135deg, #fff 60%, #cbd5e1 100%)',
+    WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     lineHeight: 1.25
   },

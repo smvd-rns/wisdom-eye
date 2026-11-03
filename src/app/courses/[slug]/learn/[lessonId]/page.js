@@ -99,8 +99,8 @@ export default function StudentPlayerPage() {
 
   useEffect(() => {
     if (course && activeLessonId) {
-      const activeMod = course.modules?.find(m => 
-        m.lessons?.some(l => l.id === activeLessonId) || 
+      const activeMod = course.modules?.find(m =>
+        m.lessons?.some(l => l.id === activeLessonId) ||
         m.quizzes?.some(q => q.id === activeLessonId)
       );
       if (activeMod) {
@@ -118,7 +118,7 @@ export default function StudentPlayerPage() {
           try {
             const cached = sessionStorage.getItem(`player_course_${slug}`);
             if (cached) fetchedCourse = JSON.parse(cached);
-          } catch (e) {}
+          } catch (e) { }
         }
 
         if (!fetchedCourse) {
@@ -221,7 +221,7 @@ export default function StudentPlayerPage() {
                     break;
                   }
                 }
-                
+
                 if (firstUncompleted.itemType === 'quiz') {
                   router.push(`/courses/${slug}/quiz/${firstUncompleted.id}`);
                 } else {
@@ -331,7 +331,7 @@ export default function StudentPlayerPage() {
       if (res.ok) {
         setLessonProgress(p => ({ ...p, completed: true }));
         sessionStorage.setItem(`player_lesson_progress_${activeLesson.id}`, JSON.stringify({ completed: true, watch_seconds: lessonProgress.watch_seconds }));
-        
+
         // Optimistically update progressSummary in local state and session storage without extra API call
         setProgressSummary(prev => {
           const currentCompleted = prev?.completed_lessons_ids || [];
@@ -430,461 +430,462 @@ export default function StudentPlayerPage() {
       <div className="outline-layout" style={styles.layout}>
         {/* Sidebar */}
         <div className="outline-sidebar" style={{ ...styles.sidebar, display: sidebarOpen ? 'flex' : 'none' }}>
-        <div style={styles.sidebarHeader}>
-          <Link href="/dashboard" prefetch={false} style={styles.backLink}>
-            <ArrowLeft size={14} /> Student Dashboard
-          </Link>
-          <h2 style={styles.sidebarCourseTitle}>{course?.title}</h2>
+          <div style={styles.sidebarHeader}>
+            <Link href="/dashboard" prefetch={false} style={styles.backLink}>
+              <ArrowLeft size={14} /> Student Dashboard
+            </Link>
+            <h2 style={styles.sidebarCourseTitle}>{course?.title}</h2>
 
-          {/* Progress bar */}
-          {progressSummary && (
-            <div style={styles.progressSection}>
-              <div style={styles.progressLabel}>
-                <span>Your Progress</span>
-                <span>{Math.round(progressSummary.percent_complete)}%</span>
+            {/* Progress bar */}
+            {progressSummary && (
+              <div style={styles.progressSection}>
+                <div style={styles.progressLabel}>
+                  <span>Your Progress</span>
+                  <span>{Math.round(progressSummary.percent_complete)}%</span>
+                </div>
+                <div style={styles.progressBarBg}>
+                  <div style={{ ...styles.progressBarFill, width: `${progressSummary.percent_complete}%` }} />
+                </div>
               </div>
-              <div style={styles.progressBarBg}>
-                <div style={{ ...styles.progressBarFill, width: `${progressSummary.percent_complete}%` }} />
+            )}
+          </div>
+
+          {/* Modules & Lessons accordion */}
+          <div style={styles.outlineScroll}>
+            {course?.modules?.map((mod, mi) => {
+              const isExpanded = !!expandedModules[mod.id];
+              const toggleModule = (id) => setExpandedModules(p => ({ ...p, [id]: !p[id] }));
+              return (
+                <div key={mod.id} style={styles.sidebarModule}>
+                  <button
+                    onClick={() => toggleModule(mod.id)}
+                    style={styles.sidebarModuleHeader}
+                  >
+                    <span style={styles.moduleTitleText}>
+                      Module {mi + 1}: {mod.title}
+                    </span>
+                    <span style={styles.moduleToggleIcon}>
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
+                  </button>
+
+                  {isExpanded && (
+                    <div style={styles.sidebarLessons}>
+                      {(() => {
+                        const moduleItems = [
+                          ...(mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' })),
+                          ...(mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }))
+                        ].sort((a, b) => {
+                          if (a.order_index === b.order_index) {
+                            return a.itemType === 'lesson' ? -1 : 1;
+                          }
+                          return a.order_index - b.order_index;
+                        });
+
+                        // Get flat list of all course items to determine sequential locking
+                        const allFlat = getFlatItems();
+
+                        return moduleItems.map((item) => {
+                          // Check sequential locking: lock if course.is_sequential is true
+                          // AND there exists any item before this one in allFlat that is not completed
+                          let isLocked = false;
+                          if (course?.is_sequential) {
+                            const itemIdx = allFlat.findIndex(it => it.id === item.id);
+                            if (itemIdx > 0) {
+                              // Look at all items before itemIdx
+                              for (let i = 0; i < itemIdx; i++) {
+                                const prevItem = allFlat[i];
+                                const isPrevCompleted = prevItem.itemType === 'lesson'
+                                  ? (progressSummary?.completed_lessons_ids?.includes(prevItem.id) || (prevItem.id === activeLessonId && lessonProgress.completed))
+                                  : progressSummary?.passed_quiz_ids?.includes(prevItem.id);
+
+                                if (!isPrevCompleted) {
+                                  isLocked = true;
+                                  break;
+                                }
+                              }
+                            }
+                          }
+
+                          if (item.itemType === 'lesson') {
+                            const isActive = item.id === activeLessonId;
+                            const isCompleted = progressSummary?.completed_lessons_ids?.includes(item.id) ||
+                              (item.id === activeLessonId && lessonProgress.completed);
+
+                            return (
+                              <Link
+                                key={item.id}
+                                href={isLocked ? '#' : `/courses/${slug}/learn/${item.id}`}
+                                prefetch={false}
+                                onClick={(e) => {
+                                  if (isLocked) {
+                                    e.preventDefault();
+                                    setLockModal({
+                                      title: 'Syllabus Locked',
+                                      message: 'Please complete all previous lessons and pass quizzes to unlock this section.'
+                                    });
+                                    return;
+                                  }
+                                  handleSelectLesson(item.id, e);
+                                }}
+                                style={{
+                                  ...styles.lessonItem,
+                                  ...(isActive ? styles.lessonItemActive : {}),
+                                  ...(isLocked ? { opacity: 0.4, cursor: 'not-allowed' } : {})
+                                }}
+                              >
+                                <span style={{ marginRight: '8px', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center' }}>
+                                  {isLocked ? (
+                                    <span style={{ fontSize: '12px' }}>🔒</span>
+                                  ) : isCompleted ? (
+                                    <CheckCircle size={15} color="#10B981" />
+                                  ) : (
+                                    <Circle size={15} color="#9CA3AF" />
+                                  )}
+                                </span>
+                                <span style={styles.lessonTitleText}>{item.title}</span>
+                                <span style={{ ...styles.lessonTypeIcon, flexShrink: 0, marginTop: '2.5px' }}>
+                                  {item.type === 'youtube' ? '▶️' : item.type === 'gdrive' ? '📄' : '📝'}
+                                </span>
+                              </Link>
+                            );
+                          } else {
+                            const isCompleted = progressSummary?.passed_quiz_ids?.includes(item.id);
+                            return (
+                              <Link
+                                key={item.id}
+                                href={isLocked ? '#' : `/courses/${slug}/quiz/${item.id}`}
+                                prefetch={false}
+                                onClick={(e) => {
+                                  if (isLocked) {
+                                    e.preventDefault();
+                                    setLockModal({
+                                      title: 'Syllabus Locked',
+                                      message: 'Please complete all previous lessons and pass quizzes to unlock this section.'
+                                    });
+                                  }
+                                }}
+                                style={{
+                                  ...styles.lessonItem,
+                                  borderLeftColor: 'transparent',
+                                  paddingLeft: '20px',
+                                  ...(isLocked ? { opacity: 0.4, cursor: 'not-allowed' } : {})
+                                }}
+                              >
+                                <span style={{ marginRight: '8px', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center' }}>
+                                  {isLocked ? (
+                                    <span style={{ fontSize: '12px' }}>🔒</span>
+                                  ) : isCompleted ? (
+                                    <CheckCircle size={15} color="#10B981" />
+                                  ) : (
+                                    <Circle size={15} color="#FF9F1C" />
+                                  )}
+                                </span>
+                                <span style={styles.lessonTitleText}>{item.title}</span>
+                                <span style={{ ...styles.lessonTypeIcon, flexShrink: 0, marginTop: '2.5px' }}>📝</span>
+                              </Link>
+                            );
+                          }
+                        });
+                      })()}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Certificate section */}
+          {course?.has_certificate && progressSummary?.percent_complete >= 100 && (
+            <div style={styles.certificateCard}>
+              <Award size={24} color="#FF9F1C" />
+              <div>
+                <div style={styles.certHeading}>Certificate Earned!</div>
+                <Link href="/certificates" prefetch={false} style={styles.certLink}>
+                  View Certificate <ChevronRight size={14} />
+                </Link>
               </div>
             </div>
           )}
         </div>
 
-        {/* Modules & Lessons accordion */}
-        <div style={styles.outlineScroll}>
-          {course?.modules?.map((mod, mi) => {
-            const isExpanded = !!expandedModules[mod.id];
-            const toggleModule = (id) => setExpandedModules(p => ({ ...p, [id]: !p[id] }));
-            return (
-              <div key={mod.id} style={styles.sidebarModule}>
-                <button 
-                  onClick={() => toggleModule(mod.id)}
-                  style={styles.sidebarModuleHeader}
-                >
-                  <span style={styles.moduleTitleText}>
-                    Module {mi + 1}: {mod.title}
-                  </span>
-                  <span style={styles.moduleToggleIcon}>
-                    {isExpanded ? '▼' : '▶'}
-                  </span>
-                </button>
-                
-                {isExpanded && (
-                  <div style={styles.sidebarLessons}>
-                    {(() => {
-                      const moduleItems = [
-                        ...(mod.lessons || []).map(l => ({ ...l, itemType: 'lesson' })),
-                        ...(mod.quizzes || []).map(q => ({ ...q, itemType: 'quiz' }))
-                      ].sort((a, b) => {
-                        if (a.order_index === b.order_index) {
-                          return a.itemType === 'lesson' ? -1 : 1;
-                        }
-                        return a.order_index - b.order_index;
-                      });
-
-                      // Get flat list of all course items to determine sequential locking
-                      const allFlat = getFlatItems();
-
-                      return moduleItems.map((item) => {
-                        // Check sequential locking: lock if course.is_sequential is true
-                        // AND there exists any item before this one in allFlat that is not completed
-                        let isLocked = false;
-                        if (course?.is_sequential) {
-                          const itemIdx = allFlat.findIndex(it => it.id === item.id);
-                          if (itemIdx > 0) {
-                            // Look at all items before itemIdx
-                            for (let i = 0; i < itemIdx; i++) {
-                              const prevItem = allFlat[i];
-                              const isPrevCompleted = prevItem.itemType === 'lesson'
-                                ? (progressSummary?.completed_lessons_ids?.includes(prevItem.id) || (prevItem.id === activeLessonId && lessonProgress.completed))
-                                : progressSummary?.passed_quiz_ids?.includes(prevItem.id);
-                              
-                              if (!isPrevCompleted) {
-                                isLocked = true;
-                                break;
-                              }
-                            }
-                          }
-                        }
-
-                        if (item.itemType === 'lesson') {
-                          const isActive = item.id === activeLessonId;
-                          const isCompleted = progressSummary?.completed_lessons_ids?.includes(item.id) || 
-                                              (item.id === activeLessonId && lessonProgress.completed);
-
-                          return (
-                            <Link
-                              key={item.id}
-                              href={isLocked ? '#' : `/courses/${slug}/learn/${item.id}`}
-                              prefetch={false}
-                              onClick={(e) => {
-                                if (isLocked) {
-                                  e.preventDefault();
-                                  setLockModal({
-                                    title: 'Syllabus Locked',
-                                    message: 'Please complete all previous lessons and pass quizzes to unlock this section.'
-                                  });
-                                  return;
-                                }
-                                handleSelectLesson(item.id, e);
-                              }}
-                              style={{
-                                ...styles.lessonItem,
-                                ...(isActive ? styles.lessonItemActive : {}),
-                                ...(isLocked ? { opacity: 0.4, cursor: 'not-allowed' } : {})
-                              }}
-                            >
-                              <span style={{ marginRight: '8px', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center' }}>
-                                {isLocked ? (
-                                  <span style={{ fontSize: '12px' }}>🔒</span>
-                                ) : isCompleted ? (
-                                  <CheckCircle size={15} color="#10B981" />
-                                ) : (
-                                  <Circle size={15} color="#9CA3AF" />
-                                )}
-                              </span>
-                              <span style={styles.lessonTitleText}>{item.title}</span>
-                              <span style={{ ...styles.lessonTypeIcon, flexShrink: 0, marginTop: '2.5px' }}>
-                                {item.type === 'youtube' ? '▶️' : item.type === 'gdrive' ? '📄' : '📝'}
-                              </span>
-                            </Link>
-                          );
-                        } else {
-                          const isCompleted = progressSummary?.passed_quiz_ids?.includes(item.id);
-                          return (
-                            <Link
-                              key={item.id}
-                              href={isLocked ? '#' : `/courses/${slug}/quiz/${item.id}`}
-                              prefetch={false}
-                              onClick={(e) => {
-                                if (isLocked) {
-                                  e.preventDefault();
-                                  setLockModal({
-                                    title: 'Syllabus Locked',
-                                    message: 'Please complete all previous lessons and pass quizzes to unlock this section.'
-                                  });
-                                }
-                              }}
-                              style={{
-                                ...styles.lessonItem,
-                                borderLeftColor: 'transparent',
-                                paddingLeft: '20px',
-                                ...(isLocked ? { opacity: 0.4, cursor: 'not-allowed' } : {})
-                              }}
-                            >
-                              <span style={{ marginRight: '8px', flexShrink: 0, marginTop: '2px', display: 'flex', alignItems: 'center' }}>
-                                {isLocked ? (
-                                  <span style={{ fontSize: '12px' }}>🔒</span>
-                                ) : isCompleted ? (
-                                  <CheckCircle size={15} color="#10B981" />
-                                ) : (
-                                  <Circle size={15} color="#FF9F1C" />
-                                )}
-                              </span>
-                              <span style={styles.lessonTitleText}>{item.title}</span>
-                              <span style={{ ...styles.lessonTypeIcon, flexShrink: 0, marginTop: '2.5px' }}>📝</span>
-                            </Link>
-                          );
-                        }
-                      });
-                    })()}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Certificate section */}
-        {course?.has_certificate && progressSummary?.percent_complete >= 100 && (
-          <div style={styles.certificateCard}>
-            <Award size={24} color="#FF9F1C" />
-            <div>
-              <div style={styles.certHeading}>Certificate Earned!</div>
-              <Link href="/certificates" prefetch={false} style={styles.certLink}>
-                View Certificate <ChevronRight size={14} />
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Main player workspace */}
-      <div className="outline-workspace" style={styles.workspace}>
-        {/* Top bar */}
-        <div className="outline-topbar" style={styles.topBar}>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={styles.toggleSidebarBtn}>
-            <span className="desktop-text">{sidebarOpen ? 'Hide Syllabus' : 'Show Syllabus'}</span>
-            <span className="mobile-text">{sidebarOpen ? 'Hide Outline' : 'Outline'}</span>
-          </button>
-
-          <div style={styles.topActions}>
-            <button
-              onClick={handleGoPrev}
-              disabled={!nav.prev}
-              style={styles.navBtn}
-            >
-              <ChevronLeft size={14} /> <span className="desktop-text">Previous</span><span className="mobile-text">Prev</span>
+        {/* Main player workspace */}
+        <div className="outline-workspace" style={styles.workspace}>
+          {/* Top bar */}
+          <div className="outline-topbar" style={styles.topBar}>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={styles.toggleSidebarBtn}>
+              <span className="desktop-text">{sidebarOpen ? 'Hide Syllabus' : 'Show Syllabus'}</span>
+              <span className="mobile-text">{sidebarOpen ? 'Hide Outline' : 'Outline'}</span>
             </button>
 
-            <button
-              onClick={handleMarkComplete}
-              disabled={savingProgress || !activeLesson}
-              style={{
-                ...styles.navBtn,
-                background: lessonProgress.completed ? '#10B981' : '#FF9F1C',
-                color: lessonProgress.completed ? '#fff' : '#1A1B4B',
-                fontWeight: '700'
-              }}
-            >
-              {savingProgress ? (
-                <Loader2 size={14} style={{ animation: 'spin 1s linear' }} />
-              ) : lessonProgress.completed ? (
-                <><span className="desktop-text">Completed ✓</span><span className="mobile-text">Completed ✓</span></>
-              ) : (
-                <><span className="desktop-text">Mark Completed & Next</span><span className="mobile-text">Complete</span></>
-              )}
-            </button>
-
-            {nav.next && (
+            <div style={styles.topActions}>
               <button
-                onClick={handleGoNext}
+                onClick={handleGoPrev}
+                disabled={!nav.prev}
                 style={styles.navBtn}
               >
-                <span className="desktop-text">Next</span><span className="mobile-text">Next</span> <ChevronRight size={14} />
+                <ChevronLeft size={14} /> <span className="desktop-text">Previous</span><span className="mobile-text">Prev</span>
               </button>
+
+              <button
+                onClick={handleMarkComplete}
+                disabled={savingProgress || !activeLesson}
+                style={{
+                  ...styles.navBtn,
+                  background: lessonProgress.completed ? '#10B981' : '#FF9F1C',
+                  color: lessonProgress.completed ? '#fff' : '#1A1B4B',
+                  fontWeight: '700'
+                }}
+              >
+                {savingProgress ? (
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear' }} />
+                ) : lessonProgress.completed ? (
+                  <><span className="desktop-text">Completed ✓</span><span className="mobile-text">Completed ✓</span></>
+                ) : (
+                  <><span className="desktop-text">Mark Completed & Next</span><span className="mobile-text">Complete</span></>
+                )}
+              </button>
+
+              {nav.next && (
+                <button
+                  onClick={handleGoNext}
+                  style={styles.navBtn}
+                >
+                  <span className="desktop-text">Next</span><span className="mobile-text">Next</span> <ChevronRight size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Player viewport */}
+          <div style={styles.playerArea}>
+            {lessonLoading ? (
+              <div style={styles.lessonLoadingWrap}>
+                <Loader2 size={32} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
+              </div>
+            ) : activeLesson ? (
+              <div style={styles.playerContent}>
+                {/* Media viewer */}
+                <div style={styles.mediaContainer}>
+                  {activeLesson.type === 'youtube' && (
+                    <iframe
+                      src={getYoutubeEmbedUrl(activeLesson.content_url)}
+                      style={styles.videoIFrame}
+                      allowFullScreen
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    />
+                  )}
+
+                  {activeLesson.type === 'gdrive' && (
+                    <iframe
+                      src={getGoogleDriveEmbedUrl(activeLesson.content_url)}
+                      style={styles.driveIFrame}
+                      allow="autoplay"
+                    />
+                  )}
+
+                  {activeLesson.type === 'text' && (
+                    <div style={styles.textContent}>
+                      <h2 style={styles.textLessonTitle}>{activeLesson.title}</h2>
+                      <div style={styles.richTextBody}>
+                        {activeLesson.content_text ? (
+                          activeLesson.content_text.split('\n').map((paragraph, pi) => (
+                            <p key={pi} style={{ marginBottom: '14px', lineHeight: 1.6 }}>{paragraph}</p>
+                          ))
+                        ) : (
+                          <p style={{ color: '#9CA3AF', fontStyle: 'italic' }}>No text content available.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info tabs */}
+                <div style={styles.tabsContainer}>
+                  <div style={styles.tabHeaders}>
+                    <button
+                      onClick={() => setActiveTab('about')}
+                      style={{ ...styles.tabBtn, ...(activeTab === 'about' ? styles.tabBtnActive : {}) }}
+                    >
+                      <BookOpen size={14} /> Lesson Details
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('discussion')}
+                      style={{ ...styles.tabBtn, ...(activeTab === 'discussion' ? styles.tabBtnActive : {}) }}
+                    >
+                      <MessageSquare size={14} /> Q&A Discussion ({comments.length})
+                    </button>
+                  </div>
+
+                  <div style={styles.tabContent}>
+                    {activeTab === 'about' && (
+                      <div style={styles.aboutTab}>
+                        <h3 style={styles.lessonInfoTitle}>{activeLesson.title}</h3>
+                        <div style={styles.metaRow}>
+                          {activeLesson.duration_seconds > 0 && (
+                            <span style={styles.metaBadge}><Clock size={12} /> {Math.ceil(activeLesson.duration_seconds / 60)} mins</span>
+                          )}
+                          <span style={{ ...styles.metaBadge, background: '#EEF2FF', color: '#4F46E5' }}>
+                            Type: {activeLesson.type.toUpperCase()}
+                          </span>
+                        </div>
+                        <p style={styles.lessonDescription}>{activeLesson.description || 'No description provided.'}</p>
+                      </div>
+                    )}
+
+                    {activeTab === 'discussion' && (
+                      <div style={styles.discussionTab}>
+                        {/* Comment Input */}
+                        <form onSubmit={(e) => handlePostComment(e)} style={styles.commentForm}>
+                          <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Ask a question or share a thought about this lesson..."
+                            style={styles.commentInput}
+                          />
+                          <button type="submit" disabled={postingComment || !newComment.trim()} style={styles.postBtn}>
+                            <Send size={14} />
+                          </button>
+                        </form>
+
+                        {/* Comments List */}
+                        <div style={styles.commentsList}>
+                          {comments.filter(c => !c.parent_id).length === 0 ? (
+                            <div style={styles.noComments}>No discussions yet. Be the first to ask!</div>
+                          ) : (
+                            comments.filter(c => !c.parent_id).map((parent) => (
+                              <div key={parent.id} style={styles.commentCard}>
+                                <div style={styles.commentHeader}>
+                                  <div style={styles.commentAuthor}>
+                                    <div style={styles.avatarPlaceholder}>
+                                      {parent.user?.name ? parent.user.name[0].toUpperCase() : 'S'}
+                                    </div>
+                                    <div>
+                                      <div style={styles.commentName}>
+                                        {parent.user?.name}
+                                        {parent.user?.role !== 'student' && <span style={styles.roleBadge}>{parent.user?.role}</span>}
+                                      </div>
+                                      <div style={styles.commentTime}>{new Date(parent.created_at).toLocaleDateString()}</div>
+                                    </div>
+                                  </div>
+                                  <button onClick={() => setReplyingTo(parent.id)} style={styles.replyLink}>
+                                    Reply
+                                  </button>
+                                </div>
+
+                                <div style={styles.commentMessage}>{parent.message}</div>
+
+                                {/* Replies */}
+                                <div style={styles.repliesBlock}>
+                                  {comments.filter(r => r.parent_id === parent.id).map((reply) => (
+                                    <div key={reply.id} style={styles.replyCard}>
+                                      <CornerDownRight size={14} style={{ color: '#D1D5DB', marginTop: '4px' }} />
+                                      <div style={{ flex: 1 }}>
+                                        <div style={styles.commentHeader}>
+                                          <div style={styles.commentAuthor}>
+                                            <div style={styles.avatarPlaceholderSm}>
+                                              {reply.user?.name ? reply.user.name[0].toUpperCase() : 'S'}
+                                            </div>
+                                            <div>
+                                              <div style={styles.commentName}>
+                                                {reply.user?.name}
+                                                {reply.user?.role !== 'student' && <span style={styles.roleBadge}>{reply.user?.role}</span>}
+                                              </div>
+                                              <div style={styles.commentTime}>{new Date(reply.created_at).toLocaleDateString()}</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div style={styles.replyMessage}>{reply.message}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+
+                                  {/* Reply Input */}
+                                  {replyingTo === parent.id && (
+                                    <form onSubmit={(e) => handlePostComment(e, parent.id)} style={styles.replyForm}>
+                                      <input
+                                        type="text"
+                                        value={newReply}
+                                        onChange={(e) => setNewReply(e.target.value)}
+                                        placeholder="Write a reply..."
+                                        style={styles.replyInput}
+                                        autoFocus
+                                      />
+                                      <button type="submit" disabled={postingComment || !newReply.trim()} style={styles.replySubmitBtn}>
+                                        Reply
+                                      </button>
+                                      <button type="button" onClick={() => setReplyingTo(null)} style={styles.replyCancelBtn}>
+                                        Cancel
+                                      </button>
+                                    </form>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={styles.emptyWrap}>
+                <h3>Select a lesson from the outline to get started.</h3>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Player viewport */}
-        <div style={styles.playerArea}>
-          {lessonLoading ? (
-            <div style={styles.lessonLoadingWrap}>
-              <Loader2 size={32} style={{ color: '#FF9F1C', animation: 'spin 1s linear infinite' }} />
-            </div>
-          ) : activeLesson ? (
-            <div style={styles.playerContent}>
-              {/* Media viewer */}
-              <div style={styles.mediaContainer}>
-                {activeLesson.type === 'youtube' && (
-                  <iframe
-                    src={getYoutubeEmbedUrl(activeLesson.content_url)}
-                    style={styles.videoIFrame}
-                    allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  />
-                )}
-
-                {activeLesson.type === 'gdrive' && (
-                  <iframe
-                    src={getGoogleDriveEmbedUrl(activeLesson.content_url)}
-                    style={styles.driveIFrame}
-                    allow="autoplay"
-                  />
-                )}
-
-                {activeLesson.type === 'text' && (
-                  <div style={styles.textContent}>
-                    <h2 style={styles.textLessonTitle}>{activeLesson.title}</h2>
-                    <div style={styles.richTextBody}>
-                      {activeLesson.content_text ? (
-                        activeLesson.content_text.split('\n').map((paragraph, pi) => (
-                          <p key={pi} style={{ marginBottom: '14px', lineHeight: 1.6 }}>{paragraph}</p>
-                        ))
-                      ) : (
-                        <p style={{ color: '#9CA3AF', fontStyle: 'italic' }}>No text content available.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Info tabs */}
-              <div style={styles.tabsContainer}>
-                <div style={styles.tabHeaders}>
-                  <button
-                    onClick={() => setActiveTab('about')}
-                    style={{ ...styles.tabBtn, ...(activeTab === 'about' ? styles.tabBtnActive : {}) }}
-                  >
-                    <BookOpen size={14} /> Lesson Details
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('discussion')}
-                    style={{ ...styles.tabBtn, ...(activeTab === 'discussion' ? styles.tabBtnActive : {}) }}
-                  >
-                    <MessageSquare size={14} /> Q&A Discussion ({comments.length})
-                  </button>
-                </div>
-
-                <div style={styles.tabContent}>
-                  {activeTab === 'about' && (
-                    <div style={styles.aboutTab}>
-                      <h3 style={styles.lessonInfoTitle}>{activeLesson.title}</h3>
-                      <div style={styles.metaRow}>
-                        {activeLesson.duration_seconds > 0 && (
-                          <span style={styles.metaBadge}><Clock size={12} /> {Math.ceil(activeLesson.duration_seconds / 60)} mins</span>
-                        )}
-                        <span style={{ ...styles.metaBadge, background: '#EEF2FF', color: '#4F46E5' }}>
-                          Type: {activeLesson.type.toUpperCase()}
-                        </span>
-                      </div>
-                      <p style={styles.lessonDescription}>{activeLesson.description || 'No description provided.'}</p>
-                    </div>
-                  )}
-
-                  {activeTab === 'discussion' && (
-                    <div style={styles.discussionTab}>
-                      {/* Comment Input */}
-                      <form onSubmit={(e) => handlePostComment(e)} style={styles.commentForm}>
-                        <input
-                          type="text"
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Ask a question or share a thought about this lesson..."
-                          style={styles.commentInput}
-                        />
-                        <button type="submit" disabled={postingComment || !newComment.trim()} style={styles.postBtn}>
-                          <Send size={14} />
-                        </button>
-                      </form>
-
-                      {/* Comments List */}
-                      <div style={styles.commentsList}>
-                        {comments.filter(c => !c.parent_id).length === 0 ? (
-                          <div style={styles.noComments}>No discussions yet. Be the first to ask!</div>
-                        ) : (
-                          comments.filter(c => !c.parent_id).map((parent) => (
-                            <div key={parent.id} style={styles.commentCard}>
-                              <div style={styles.commentHeader}>
-                                <div style={styles.commentAuthor}>
-                                  <div style={styles.avatarPlaceholder}>
-                                    {parent.user?.name ? parent.user.name[0].toUpperCase() : 'S'}
-                                  </div>
-                                  <div>
-                                    <div style={styles.commentName}>
-                                      {parent.user?.name}
-                                      {parent.user?.role !== 'student' && <span style={styles.roleBadge}>{parent.user?.role}</span>}
-                                    </div>
-                                    <div style={styles.commentTime}>{new Date(parent.created_at).toLocaleDateString()}</div>
-                                  </div>
-                                </div>
-                                <button onClick={() => setReplyingTo(parent.id)} style={styles.replyLink}>
-                                  Reply
-                                </button>
-                              </div>
-
-                              <div style={styles.commentMessage}>{parent.message}</div>
-
-                              {/* Replies */}
-                              <div style={styles.repliesBlock}>
-                                {comments.filter(r => r.parent_id === parent.id).map((reply) => (
-                                  <div key={reply.id} style={styles.replyCard}>
-                                    <CornerDownRight size={14} style={{ color: '#D1D5DB', marginTop: '4px' }} />
-                                    <div style={{ flex: 1 }}>
-                                      <div style={styles.commentHeader}>
-                                        <div style={styles.commentAuthor}>
-                                          <div style={styles.avatarPlaceholderSm}>
-                                            {reply.user?.name ? reply.user.name[0].toUpperCase() : 'S'}
-                                          </div>
-                                          <div>
-                                            <div style={styles.commentName}>
-                                              {reply.user?.name}
-                                              {reply.user?.role !== 'student' && <span style={styles.roleBadge}>{reply.user?.role}</span>}
-                                            </div>
-                                            <div style={styles.commentTime}>{new Date(reply.created_at).toLocaleDateString()}</div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div style={styles.replyMessage}>{reply.message}</div>
-                                    </div>
-                                  </div>
-                                ))}
-
-                                {/* Reply Input */}
-                                {replyingTo === parent.id && (
-                                  <form onSubmit={(e) => handlePostComment(e, parent.id)} style={styles.replyForm}>
-                                    <input
-                                      type="text"
-                                      value={newReply}
-                                      onChange={(e) => setNewReply(e.target.value)}
-                                      placeholder="Write a reply..."
-                                      style={styles.replyInput}
-                                      autoFocus
-                                    />
-                                    <button type="submit" disabled={postingComment || !newReply.trim()} style={styles.replySubmitBtn}>
-                                      Reply
-                                    </button>
-                                    <button type="button" onClick={() => setReplyingTo(null)} style={styles.replyCancelBtn}>
-                                      Cancel
-                                    </button>
-                                  </form>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={styles.emptyWrap}>
-              <h3>Select a lesson from the outline to get started.</h3>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Sleek Alert Modal for locked syllabus */}
-      {lockModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999, animation: 'fadeIn 0.2s ease-out'
-        }}>
+        {/* Sleek Alert Modal for locked syllabus */}
+        {lockModal && (
           <div style={{
-            background: '#ffffff', borderRadius: '16px', padding: '24px',
-            maxWidth: '380px', width: '90%', textAlign: 'center',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-            animation: 'scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, animation: 'fadeIn 0.2s ease-out'
           }}>
             <div style={{
-              width: '48px', height: '48px', borderRadius: '50%',
-              backgroundColor: '#FEE2E2', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', color: '#EF4444',
-              margin: '0 auto 16px'
+              background: '#ffffff', borderRadius: '16px', padding: '24px',
+              maxWidth: '380px', width: '90%', textAlign: 'center',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+              animation: 'scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
             }}>
-              🔒
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '50%',
+                backgroundColor: '#FEE2E2', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: '#EF4444',
+                margin: '0 auto 16px'
+              }}>
+                🔒
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', fontFamily: 'Outfit, sans-serif' }}>
+                {lockModal.title}
+              </h3>
+              <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+                {lockModal.message}
+              </p>
+              <button
+                onClick={() => setLockModal(null)}
+                style={{
+                  width: '100%', padding: '10px 16px', borderRadius: '10px',
+                  border: 'none', backgroundColor: '#1A1B4B',
+                  color: '#ffffff', fontSize: '13px', fontWeight: '700',
+                  cursor: 'pointer', transition: 'all 0.15s ease',
+                  fontFamily: 'Outfit, sans-serif'
+                }}
+                onMouseOver={e => e.target.style.backgroundColor = '#2E3072'}
+                onMouseOut={e => e.target.style.backgroundColor = '#1A1B4B'}
+              >
+                Okay, I understand
+              </button>
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', fontFamily: 'Outfit, sans-serif' }}>
-              {lockModal.title}
-            </h3>
-            <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.5', margin: '0 0 20px 0' }}>
-              {lockModal.message}
-            </p>
-            <button
-              onClick={() => setLockModal(null)}
-              style={{
-                width: '100%', padding: '10px 16px', borderRadius: '10px',
-                border: 'none', backgroundColor: '#1A1B4B',
-                color: '#ffffff', fontSize: '13px', fontWeight: '700',
-                cursor: 'pointer', transition: 'all 0.15s ease',
-                fontFamily: 'Outfit, sans-serif'
-              }}
-              onMouseOver={e => e.target.style.backgroundColor = '#2E3072'}
-              onMouseOut={e => e.target.style.backgroundColor = '#1A1B4B'}
-            >
-              Okay, I understand
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .player-page-root {
@@ -957,8 +958,8 @@ export default function StudentPlayerPage() {
           }
         }
       `}} />
+      </div>
     </div>
-  </div>
   );
 }
 
