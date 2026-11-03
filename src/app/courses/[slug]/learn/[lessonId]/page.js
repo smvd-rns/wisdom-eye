@@ -241,13 +241,6 @@ export default function StudentPlayerPage() {
 
         sessionStorage.setItem(`player_lesson_${activeLessonId}`, JSON.stringify(lesson));
         sessionStorage.setItem(`player_lesson_progress_${activeLessonId}`, JSON.stringify(lProg));
-
-        // Load discussions
-        const commentsRes = await fetch(`/api/discussions/${activeLessonId}`);
-        if (commentsRes.ok) {
-          const { discussions } = await commentsRes.json();
-          setComments(discussions || []);
-        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -257,6 +250,23 @@ export default function StudentPlayerPage() {
 
     loadLesson();
   }, [activeLessonId]);
+
+  // Load discussions ONLY when user switches to discussion tab
+  useEffect(() => {
+    if (activeTab !== 'discussion' || !activeLessonId) return;
+    const loadDiscussions = async () => {
+      try {
+        const commentsRes = await fetch(`/api/discussions/${activeLessonId}`);
+        if (commentsRes.ok) {
+          const { discussions } = await commentsRes.json();
+          setComments(discussions || []);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadDiscussions();
+  }, [activeTab, activeLessonId]);
 
   // Helper: Find next/previous lesson
   const getFlatItems = () => {

@@ -47,5 +47,9 @@ export async function GET(req, { params }) {
     quiz.questions.sort((a, b) => a.order_index - b.order_index);
   }
 
-  return NextResponse.json({ quiz });
+  return NextResponse.json({ quiz }, {
+    headers: {
+      'Cache-Control': 'private, max-age=60, stale-while-revalidate=120'
+    }
+  });
 }

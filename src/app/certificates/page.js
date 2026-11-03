@@ -19,7 +19,7 @@ export default function CertificatesPage() {
       const cachedCerts = sessionStorage.getItem('certificates_list');
       const cachedUser = sessionStorage.getItem('dashboard_user');
       const cachedTenant = sessionStorage.getItem('dashboard_tenant_name');
-      
+
       if (cachedCerts) setCerts(JSON.parse(cachedCerts));
       if (cachedUser) setUser(JSON.parse(cachedUser));
       if (cachedTenant) {
@@ -27,11 +27,11 @@ export default function CertificatesPage() {
       } else if (typeof window !== 'undefined' && window.__TENANT_DATA__) {
         setTenantName(window.__TENANT_DATA__.name || 'Wisdom Eye');
       }
-      
+
       if (cachedCerts && cachedUser) {
         setLoading(false);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const init = async () => {
       try {
@@ -86,7 +86,7 @@ export default function CertificatesPage() {
       sessionStorage.removeItem('dashboard_tenant_name');
       sessionStorage.removeItem('certificates_list');
       sessionStorage.removeItem('auth_me');
-    } catch (e) {}
+    } catch (e) { }
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
   };
@@ -142,10 +142,10 @@ export default function CertificatesPage() {
           <Link href="/dashboard" prefetch={false} style={styles.back}>
             <ArrowLeft size={14} /> Back to Dashboard
           </Link>
-    
+
           <h1 style={styles.title}>🏆 Your Certificates</h1>
           <p style={styles.subtitle}>Download credentials for courses you have successfully finished.</p>
-    
+
           {certs.length === 0 ? (
             <div style={styles.emptyState}>
               <Award size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />

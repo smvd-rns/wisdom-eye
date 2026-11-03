@@ -166,10 +166,22 @@ export default function StudentQuizPage() {
   useEffect(() => {
     const loadAttempts = async () => {
       try {
+        if (typeof window !== 'undefined') {
+          const cached = sessionStorage.getItem(`player_quiz_attempts_${quizId}`);
+          if (cached) {
+            setAttempts(JSON.parse(cached));
+            setAttemptsLoading(false);
+            return;
+          }
+        }
         const res = await fetch(`/api/quizzes/${quizId}/attempts`);
         if (res.ok) {
           const data = await res.json();
-          setAttempts(data.attempts || []);
+          const atts = data.attempts || [];
+          setAttempts(atts);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`player_quiz_attempts_${quizId}`, JSON.stringify(atts));
+          }
         }
       } catch (err) {
         console.error(err);
@@ -230,8 +242,29 @@ export default function StudentQuizPage() {
       const data = await res.json();
       if (res.ok) {
         setActiveAttempt(data.attempt);
-        // Add to history
-        setAttempts(p => [data.attempt, ...p]);
+        // Add to history and update cache
+        setAttempts(p => {
+          const updated = [data.attempt, ...p];
+          if (typeof window !== 'undefined') {
+            try { sessionStorage.setItem(`player_quiz_attempts_${quizId}`, JSON.stringify(updated)); } catch(e){}
+          }
+          return updated;
+        });
+
+        // If quiz passed, update progress summary cache
+        if (data.attempt?.passed && typeof window !== 'undefined') {
+          try {
+            const cachedProg = sessionStorage.getItem(`player_progress_summary_${slug}`);
+            if (cachedProg) {
+              const parsed = JSON.parse(cachedProg);
+              const passedIds = parsed.passed_quiz_ids || [];
+              if (!passedIds.includes(quizId)) {
+                parsed.passed_quiz_ids = [...passedIds, quizId];
+                sessionStorage.setItem(`player_progress_summary_${slug}`, JSON.stringify(parsed));
+              }
+            }
+          } catch (e) {}
+        }
         // Update quiz state with the server's response which includes
         // correct_answer per question (only present when show_correct_answers=true)
         if (data.quiz) {

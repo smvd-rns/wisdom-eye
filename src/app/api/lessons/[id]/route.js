@@ -72,5 +72,9 @@ export async function GET(req, { params }) {
   return NextResponse.json({
     lesson,
     progress
+  }, {
+    headers: {
+      'Cache-Control': 'private, max-age=60, stale-while-revalidate=120'
+    }
   });
 }

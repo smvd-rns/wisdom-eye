@@ -42,7 +42,11 @@ export async function GET(req, { params }) {
     user: profileMap[d.user_id] || { name: 'Anonymous Student', role: 'student' }
   }));
 
-  return NextResponse.json({ discussions: discussionsWithProfiles });
+  return NextResponse.json({ discussions: discussionsWithProfiles }, {
+    headers: {
+      'Cache-Control': 'private, max-age=30, stale-while-revalidate=60'
+    }
+  });
 }
 
 // POST /api/discussions/[lessonId]

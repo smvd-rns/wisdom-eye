@@ -62,5 +62,9 @@ export async function GET(req, { params }) {
     course_title: course.title,
     completed_at: progress.completed_at,
     certificate_image_url: course.certificate_image_url || 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=1400'
+  }, {
+    headers: {
+      'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'
+    }
   });
 }

@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getSession } from '@/lib/session';
 
-export const dynamic = 'force-dynamic';
-
 // GET /api/admin/categories — Fetch tenant's custom categories
 export async function GET(req) {
   try {
@@ -21,7 +19,11 @@ export async function GET(req) {
       return NextResponse.json({ categories: [] });
     }
 
-    return NextResponse.json({ categories: data.map(c => c.name) || [] });
+    return NextResponse.json({ categories: data.map(c => c.name) || [] }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
+      }
+    });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

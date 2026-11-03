@@ -48,5 +48,9 @@ export async function GET() {
     course_progress: progressMap[e.courses?.id] || null
   }));
 
-  return NextResponse.json({ enrollments: mergedEnrollments });
+  return NextResponse.json({ enrollments: mergedEnrollments }, {
+    headers: {
+      'Cache-Control': 'private, max-age=15, stale-while-revalidate=30'
+    }
+  });
 }

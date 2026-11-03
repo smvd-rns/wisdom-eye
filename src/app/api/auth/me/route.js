@@ -29,5 +29,9 @@ export async function GET(req) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
-  return NextResponse.json({ authenticated: true, user });
+  return NextResponse.json({ authenticated: true, user }, {
+    headers: {
+      'Cache-Control': 'private, max-age=15, stale-while-revalidate=30'
+    }
+  });
 }

@@ -22,5 +22,9 @@ export async function GET(req, { params }) {
     return NextResponse.json({ error: 'Failed to fetch attempts' }, { status: 500 });
   }
 
-  return NextResponse.json({ attempts: attempts || [] });
+  return NextResponse.json({ attempts: attempts || [] }, {
+    headers: {
+      'Cache-Control': 'private, max-age=30, stale-while-revalidate=60'
+    }
+  });
 }
