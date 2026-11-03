@@ -19,10 +19,18 @@ export async function GET(req, { params }) {
     .eq('slug', slug)
     .single();
 
-  if (error || !course) return NextResponse.json({ error: 'Course not found.' }, { status: 404 });
+  if (error || !course) {
+    return NextResponse.json({ error: 'Course not found.' }, { 
+      status: 404,
+      headers: { 'Cache-Control': 'public, s-maxage=300' }
+    });
+  }
 
   if (course.status !== 'published' && (!session || !canManageCourses(session.role))) {
-    return NextResponse.json({ error: 'Course not found.' }, { status: 404 });
+    return NextResponse.json({ error: 'Course not found.' }, { 
+      status: 404,
+      headers: { 'Cache-Control': 'public, s-maxage=300' }
+    });
   }
 
   if (course.modules) {
@@ -33,5 +41,9 @@ export async function GET(req, { params }) {
     });
   }
 
-  return NextResponse.json({ course });
+  return NextResponse.json({ course }, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+    }
+  });
 }

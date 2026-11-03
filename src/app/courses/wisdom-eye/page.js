@@ -41,12 +41,21 @@ export default function WisdomEyeLandingPage() {
 
     const checkAuth = async () => {
       try {
+        const cachedUserStr = typeof window !== 'undefined' ? sessionStorage.getItem('auth_me') : null;
+        if (cachedUserStr) {
+          const parsed = JSON.parse(cachedUserStr);
+          if (parsed.authenticated) setUser(parsed.user);
+          return;
+        }
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated) {
             setUser(data.user);
           }
+          sessionStorage.setItem('auth_me', JSON.stringify(data));
+        } else {
+          sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: false }));
         }
       } catch (err) {
         console.error('Auth check error:', err);

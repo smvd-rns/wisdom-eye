@@ -99,11 +99,31 @@ export default function CourseLandingPage() {
         sessionStorage.setItem(`landing_course_${slug}`, JSON.stringify(data.course));
 
         // Check if logged in + enrolled
-        const meRes = await fetch('/api/auth/me');
-        if (meRes.ok) {
-          const meData = await meRes.json();
-          setUser(meData.user);
-          sessionStorage.setItem(`landing_user_${slug}`, JSON.stringify(meData.user));
+        const cachedUserStr = typeof window !== 'undefined' ? sessionStorage.getItem('auth_me') : null;
+        let currentUser = null;
+        if (cachedUserStr) {
+          try {
+            const parsed = JSON.parse(cachedUserStr);
+            if (parsed.authenticated) currentUser = parsed.user;
+          } catch {}
+        } else {
+          try {
+            const meRes = await fetch('/api/auth/me');
+            if (meRes.ok) {
+              const meData = await meRes.json();
+              if (meData.authenticated) {
+                currentUser = meData.user;
+                sessionStorage.setItem('auth_me', JSON.stringify(meData));
+              } else {
+                sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: false }));
+              }
+            }
+          } catch {}
+        }
+
+        if (currentUser) {
+          setUser(currentUser);
+          sessionStorage.setItem(`landing_user_${slug}`, JSON.stringify(currentUser));
           
           // Check enrollment
           const enrRes = await fetch(`/api/courses/${data.course.id}/enrollment-check`);

@@ -19,7 +19,7 @@ export default function PackageDetailPage() {
   useEffect(() => {
     const fetchPackage = async () => {
       try {
-        const res = await fetch('/api/packages', { cache: 'no-store' });
+        const res = await fetch('/api/packages');
         if (res.ok) {
           const data = await res.json();
           const found = (data.packages || []).find(p => p.slug === slug);
@@ -37,10 +37,21 @@ export default function PackageDetailPage() {
     };
     const fetchUser = async () => {
       try {
+        const cachedUserStr = typeof window !== 'undefined' ? sessionStorage.getItem('auth_me') : null;
+        if (cachedUserStr) {
+          const parsed = JSON.parse(cachedUserStr);
+          if (parsed.authenticated) setUser(parsed.user);
+          return;
+        }
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
-          setUser(data.user);
+          if (data.authenticated) {
+            setUser(data.user);
+          }
+          sessionStorage.setItem('auth_me', JSON.stringify(data));
+        } else {
+          sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: false }));
         }
       } catch (e) {
         console.error(e);
