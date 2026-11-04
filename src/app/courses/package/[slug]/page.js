@@ -37,6 +37,12 @@ export default function PackageDetailPage() {
     };
     const fetchUser = async () => {
       try {
+        const hasLoginHint = typeof window !== 'undefined' && (
+          document.cookie.includes('lms_is_logged_in=1') ||
+          localStorage.getItem('lms_is_logged_in') === '1'
+        );
+        if (!hasLoginHint) return;
+
         const cachedUserStr = typeof window !== 'undefined' ? sessionStorage.getItem('auth_me') : null;
         if (cachedUserStr) {
           const parsed = JSON.parse(cachedUserStr);
@@ -48,9 +54,12 @@ export default function PackageDetailPage() {
           const data = await res.json();
           if (data.authenticated) {
             setUser(data.user);
+          } else {
+            localStorage.removeItem('lms_is_logged_in');
           }
           sessionStorage.setItem('auth_me', JSON.stringify(data));
         } else {
+          localStorage.removeItem('lms_is_logged_in');
           sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: false }));
         }
       } catch (e) {

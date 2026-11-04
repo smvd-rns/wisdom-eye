@@ -55,6 +55,15 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    const hasLoginHint = typeof window !== 'undefined' && (
+      document.cookie.includes('lms_is_logged_in=1') ||
+      localStorage.getItem('lms_is_logged_in') === '1'
+    );
+    if (!hasLoginHint) {
+      router.push('/login');
+      return;
+    }
+
     const init = async () => {
       try {
         // Fetch tenant details

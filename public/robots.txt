@@ -10,6 +10,9 @@ Disallow: /signup
 Disallow: /forgot-password
 Disallow: /reset-password
 Disallow: /track
+Disallow: /certificates/
+Disallow: /courses/*/learn
+Disallow: /courses/*/quiz
 Disallow: /_next/
 
 # Prevent bots from aggressive crawling

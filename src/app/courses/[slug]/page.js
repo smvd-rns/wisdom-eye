@@ -99,6 +99,10 @@ export default function CourseLandingPage() {
         sessionStorage.setItem(`landing_course_${slug}`, JSON.stringify(data.course));
 
         // Check if logged in + enrolled
+        const hasLoginHint = typeof window !== 'undefined' && (
+          document.cookie.includes('lms_is_logged_in=1') ||
+          localStorage.getItem('lms_is_logged_in') === '1'
+        );
         const cachedUserStr = typeof window !== 'undefined' ? sessionStorage.getItem('auth_me') : null;
         let currentUser = null;
         if (cachedUserStr) {
@@ -106,7 +110,7 @@ export default function CourseLandingPage() {
             const parsed = JSON.parse(cachedUserStr);
             if (parsed.authenticated) currentUser = parsed.user;
           } catch {}
-        } else {
+        } else if (hasLoginHint) {
           try {
             const meRes = await fetch('/api/auth/me');
             if (meRes.ok) {
@@ -115,6 +119,7 @@ export default function CourseLandingPage() {
                 currentUser = meData.user;
                 sessionStorage.setItem('auth_me', JSON.stringify(meData));
               } else {
+                localStorage.removeItem('lms_is_logged_in');
                 sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: false }));
               }
             }

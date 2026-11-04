@@ -39,6 +39,15 @@ export default function LmsAdminLayout({ children }) {
 
   useEffect(() => {
     const init = async () => {
+      const hasLoginHint = typeof window !== 'undefined' && (
+        document.cookie.includes('lms_is_logged_in=1') ||
+        localStorage.getItem('lms_is_logged_in') === '1'
+      );
+      if (!hasLoginHint) {
+        router.push('/login');
+        return;
+      }
+
       try {
         // Read caches
         const cachedTenant = sessionStorage.getItem('cached_tenant_name');

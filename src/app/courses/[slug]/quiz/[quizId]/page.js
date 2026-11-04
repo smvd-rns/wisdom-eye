@@ -57,6 +57,15 @@ export default function StudentQuizPage() {
   }, [quizState, activeAttempt]);
 
   useEffect(() => {
+    const hasLoginHint = typeof window !== 'undefined' && (
+      document.cookie.includes('lms_is_logged_in=1') ||
+      localStorage.getItem('lms_is_logged_in') === '1'
+    );
+    if (!hasLoginHint) {
+      router.push(`/login?redirect=/courses/${slug}/quiz/${quizId}`);
+      return;
+    }
+
     const load = async () => {
       try {
         let fetchedCourse = null;

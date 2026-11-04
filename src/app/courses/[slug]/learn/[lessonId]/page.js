@@ -112,6 +112,15 @@ export default function StudentPlayerPage() {
   // Load Course Outline & Enrollment Check
   useEffect(() => {
     const checkAccess = async () => {
+      const hasLoginHint = typeof window !== 'undefined' && (
+        document.cookie.includes('lms_is_logged_in=1') ||
+        localStorage.getItem('lms_is_logged_in') === '1'
+      );
+      if (!hasLoginHint) {
+        router.push(`/login?redirect=/courses/${slug}/learn/${lessonId}`);
+        return;
+      }
+
       try {
         let fetchedCourse = course;
         if (!fetchedCourse && typeof window !== 'undefined') {

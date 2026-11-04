@@ -73,7 +73,7 @@ export default function CoursesPage() {
     const fetchPackages = async () => {
       const slug = getTenantSlug();
       try {
-        const res = await fetch('/api/packages', { cache: 'no-store' });
+        const res = await fetch('/api/packages');
         if (res.ok) {
           const data = await res.json();
           const pkgs = data.packages || [];
