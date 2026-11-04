@@ -67,6 +67,7 @@ export default function LmsAdminLayout({ children }) {
           const data = await res.json();
           activeUser = data.user;
           setUser(activeUser);
+          try { localStorage.setItem('lms_is_logged_in', '1'); } catch (e) {}
           sessionStorage.setItem('cached_admin_user', JSON.stringify(activeUser));
         }
 
@@ -102,6 +103,7 @@ export default function LmsAdminLayout({ children }) {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('lms_is_logged_in');
       sessionStorage.removeItem('cached_tenant_name');
       sessionStorage.removeItem('cached_admin_user');
       sessionStorage.removeItem('cached_admin_stats');

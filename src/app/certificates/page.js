@@ -80,6 +80,7 @@ export default function CertificatesPage() {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('lms_is_logged_in');
       sessionStorage.removeItem('dashboard_user');
       sessionStorage.removeItem('dashboard_enrollments');
       sessionStorage.removeItem('dashboard_recommended');

@@ -74,6 +74,7 @@ export default function DashboardPage() {
         }
         const meData = await meRes.json();
         setUser(meData.user);
+        try { localStorage.setItem('lms_is_logged_in', '1'); } catch (e) {}
         sessionStorage.setItem('dashboard_user', JSON.stringify(meData.user));
 
         // Get enrollments + progress
@@ -108,10 +109,12 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('lms_is_logged_in');
       sessionStorage.removeItem('dashboard_user');
       sessionStorage.removeItem('dashboard_enrollments');
       sessionStorage.removeItem('dashboard_recommended');
       sessionStorage.removeItem('dashboard_tenant_name');
+      sessionStorage.removeItem('cached_enrolled_course_ids');
       sessionStorage.removeItem('auth_me');
     } catch (e) {}
     await fetch('/api/auth/logout', { method: 'POST' });

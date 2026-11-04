@@ -53,22 +53,45 @@ export default function Navbar({ onlyBottom = false }) {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        // Fast-path: Check if user has an active session hint before making ANY network call
+        const hasLoginHint = typeof window !== 'undefined' && (
+          document.cookie.includes('lms_is_logged_in=1') ||
+          localStorage.getItem('lms_is_logged_in') === '1'
+        );
+
+        if (!hasLoginHint) {
+          // Guest visitor or bot: Zero API calls, Zero Active CPU consumption
+          setUser(null);
+          setLoadingUser(false);
+          return;
+        }
+
         // Cache auth state for the session to avoid hitting the DB on every page navigation
         const cachedUser = sessionStorage.getItem('auth_me');
         if (cachedUser) {
           const parsed = JSON.parse(cachedUser);
-          if (parsed.authenticated) setUser(parsed.user);
+          if (parsed.authenticated) {
+            setUser(parsed.user);
+          } else {
+            setUser(null);
+          }
           setLoadingUser(false);
           return;
         }
+
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated) {
             setUser(data.user);
+          } else {
+            setUser(null);
+            localStorage.removeItem('lms_is_logged_in');
           }
           sessionStorage.setItem('auth_me', JSON.stringify(data));
         } else {
+          setUser(null);
+          localStorage.removeItem('lms_is_logged_in');
           sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: false }));
         }
       } catch (err) {

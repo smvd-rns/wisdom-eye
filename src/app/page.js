@@ -647,14 +647,28 @@ export default function GeneralHomePage() {
   useEffect(() => {
     const fetchEnrollments = async () => {
       try {
+        const hasLoginHint = typeof window !== 'undefined' && (
+          document.cookie.includes('lms_is_logged_in=1') ||
+          localStorage.getItem('lms_is_logged_in') === '1'
+        );
+        if (!hasLoginHint) return;
+
         const cachedUser = typeof window !== 'undefined' ? sessionStorage.getItem('auth_me') : null;
         const isAuth = cachedUser ? JSON.parse(cachedUser)?.authenticated : false;
         if (!isAuth) return;
+
+        const cachedEnrollments = sessionStorage.getItem('cached_enrolled_course_ids');
+        if (cachedEnrollments) {
+          setEnrolledCourseIds(new Set(JSON.parse(cachedEnrollments)));
+          return;
+        }
+
         const res = await fetch('/api/student/enrollments');
         if (res.ok) {
           const data = await res.json();
-          const enrolledIds = new Set((data.enrollments || []).map(e => e.course_id));
-          setEnrolledCourseIds(enrolledIds);
+          const idsArray = (data.enrollments || []).map(e => e.course_id);
+          setEnrolledCourseIds(new Set(idsArray));
+          sessionStorage.setItem('cached_enrolled_course_ids', JSON.stringify(idsArray));
         }
       } catch (err) {
         console.error('Failed to load student enrollments', err);

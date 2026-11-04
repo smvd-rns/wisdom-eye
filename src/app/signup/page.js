@@ -73,6 +73,13 @@ export default function SignupPage() {
         return;
       }
 
+      try {
+        localStorage.setItem('lms_is_logged_in', '1');
+        if (data.user) {
+          sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: true, user: data.user }));
+        }
+      } catch (e) {}
+
       router.push('/dashboard');
     } catch {
       setError('An unexpected error occurred. Please try again.');

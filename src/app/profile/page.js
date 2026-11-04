@@ -124,7 +124,10 @@ export default function ProfilePage() {
   }, [router]);
 
   const handleLogout = async () => {
-    sessionStorage.removeItem('auth_me');
+    try {
+      localStorage.removeItem('lms_is_logged_in');
+      sessionStorage.removeItem('auth_me');
+    } catch (e) {}
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
   };

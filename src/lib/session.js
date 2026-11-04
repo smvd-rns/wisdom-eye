@@ -60,6 +60,15 @@ export async function createSession(user) {
     path: '/',
   });
 
+  // Client-readable cookie flag so frontend knows not to invoke /api/auth/me for guests
+  cookies().set('lms_is_logged_in', '1', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7,
+    path: '/',
+  });
+
   return token;
 }
 
@@ -99,6 +108,14 @@ export async function clearSession() {
 
   cookies().set(cookieName, '', {
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0,
+    path: '/',
+  });
+
+  cookies().set('lms_is_logged_in', '', {
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 0,

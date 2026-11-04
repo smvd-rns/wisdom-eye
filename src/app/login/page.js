@@ -62,6 +62,11 @@ function LoginForm() {
         return;
       }
 
+      try {
+        localStorage.setItem('lms_is_logged_in', '1');
+        sessionStorage.setItem('auth_me', JSON.stringify({ authenticated: true, user: data.user }));
+      } catch (e) {}
+
       // Redirect based on role
       const role = data.user?.role;
       if (role === 'superadmin' || role === 'admin' || role === 'course_builder' || role === 'evaluator') {

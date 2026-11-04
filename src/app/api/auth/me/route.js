@@ -29,9 +29,19 @@ export async function GET(req) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
-  return NextResponse.json({ authenticated: true, user }, {
+  const response = NextResponse.json({ authenticated: true, user }, {
     headers: {
       'Cache-Control': 'private, max-age=15, stale-while-revalidate=30'
     }
   });
+
+  response.cookies.set('lms_is_logged_in', '1', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7,
+    path: '/',
+  });
+
+  return response;
 }
